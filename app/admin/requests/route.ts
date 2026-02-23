@@ -1,46 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// Mock database (in production, use a real database)
+let requests: any[] = [];
+
+export async function GET() {
+  return NextResponse.json({ success: true, data: requests });
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const data = await request.json();
+    
+    const newRequest = {
+      id: Date.now().toString(),
+      ...data,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    
+    requests.push(newRequest);
+    
+    return NextResponse.json({ success: true, data: newRequest });
+  } catch (error) {
+    return NextResponse.json({ error }, { status: 400 });
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json()
-    const { status } = body
-
-    if (!status) {
+    const { id } = await params;
+    const updates = await request.json();
+    
+    const index = requests.findIndex(req => req.id === id);
+    
+    if (index === -1) {
       return NextResponse.json(
-        { error: 'Status is required' },
-        { status: 400 }
-      )
+        { error: 'Request not found' },
+        { status: 404 }
+      );
     }
-
-    const { data, error } = await supabase
-      .from('pickup_requests')
-      .update({ 
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', params.id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Supabase error:', error)
-      throw error
-    }
-
-    return NextResponse.json({ success: true, data })
-  } catch (error: any) {
-    console.error('API error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to update request' },
-      { status: 500 }
-    )
+    
+    requests[index] = { ...requests[index], ...updates };
+    
+    return NextResponse.json({ success: true, data: requests[index] });
+  } catch (error) {
+    return NextResponse.json({ error }, { status: 400 });
   }
 }
