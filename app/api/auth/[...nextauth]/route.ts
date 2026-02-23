@@ -1,8 +1,7 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import type { NextAuthOptions } from "next-auth"
 
-export const authOptions: NextAuthOptions = {
+const handler = NextAuth({
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -11,18 +10,14 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Check if username and password match what's in .env.local file
-        if (
-          credentials?.username === process.env.ADMIN_USERNAME &&
-          credentials?.password === process.env.ADMIN_PASSWORD
-        ) {
+        // Replace with your actual admin credentials check
+        if (credentials?.username === "admin" && credentials?.password === "admin123") {
           return {
-            id: '1',
-            name: 'Admin',
-            email: process.env.ADMIN_EMAIL,
+            id: "1",
+            name: "Admin",
+            email: "admin@example.com",
           }
         }
-        // If wrong username/password, don't allow login
         return null
       }
     })
@@ -45,8 +40,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-}
-
-const handler = NextAuth(authOptions)
+})
 
 export { handler as GET, handler as POST }
