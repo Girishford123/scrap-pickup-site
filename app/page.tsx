@@ -14,12 +14,14 @@ export default function RequestPickup() {
     customerEmail: '',
     phone: '',
     address: '',
+    customerZipCode: '',
     vehicleInfo: '',
     rcrcName: '',
     rcrcEmail: '',
     rcrcContactPerson: '',
     rcrcPhone: '',
     rcrcAddress: '',
+    rcrcZipCode: '',
     rcrcPhoneNumber: '',
     preferredDate: '',
     pickupHours: '',
@@ -136,6 +138,22 @@ export default function RequestPickup() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Zip Code *
+                    </label>
+                    <input
+                      type="text"
+                      name="customerZipCode"
+                      required
+                      value={formData.customerZipCode}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="12345"
+                      maxLength={10}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Address *
                     </label>
                     <input
@@ -145,7 +163,7 @@ export default function RequestPickup() {
                       value={formData.address}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="123 Main Street, City, State, ZIP"
+                      placeholder="123 Main Street, City, State"
                     />
                   </div>
 
@@ -244,6 +262,21 @@ export default function RequestPickup() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      RCRC Zip Code
+                    </label>
+                    <input
+                      type="text"
+                      name="rcrcZipCode"
+                      value={formData.rcrcZipCode}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="12345"
+                      maxLength={10}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       RCRC Address
                     </label>
                     <input
@@ -252,7 +285,7 @@ export default function RequestPickup() {
                       value={formData.rcrcAddress}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="456 Recycling Blvd, City, State, ZIP"
+                      placeholder="456 Recycling Blvd, City, State"
                     />
                   </div>
                 </div>

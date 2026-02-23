@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { sendPickupEmail } from '../../../lib/sendEmail'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -14,17 +13,15 @@ export async function POST(request: NextRequest) {
       .from('pickup_requests')
       .insert([
         {
-          customer_name: body.customerName,
-          customer_email: body.customerEmail,
-          phone: body.phone,
-          address: body.address,
-          vehicle_info: body.vehicleInfo,
+          rcrc_number: body.rcrcNumber,
           rcrc_name: body.rcrcName,
-          rcrc_email: body.rcrcEmail,
           rcrc_contact_person: body.rcrcContactPerson,
-          rcrc_phone: body.rcrcPhone,
-          rcrc_address: body.rcrcAddress,
+          rcrc_email: body.rcrcEmail,
           rcrc_phone_number: body.rcrcPhoneNumber,
+          rcrc_address: body.rcrcAddress,
+          rcrc_address_2: body.rcrcAddress2,
+          state: body.state,
+          rcrc_zip_code: body.rcrcZipCode,
           preferred_date: body.preferredDate,
           pickup_hours: body.pickupHours,
           pallet_quantity: body.palletQuantity ? parseInt(body.palletQuantity) : null,
@@ -39,22 +36,6 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Supabase error:', error)
       throw error
-    }
-
-    // Send email notification
-    try {
-      await sendPickupEmail({
-        customerName: body.customerName,
-        customerEmail: body.customerEmail,
-        phone: body.phone,
-        address: body.address,
-        vehicleInfo: body.vehicleInfo,
-        preferredDate: body.preferredDate,
-        notes: body.notes
-      })
-    } catch (emailError) {
-      console.error('Email error:', emailError)
-      // Don't fail the request if email fails
     }
 
     return NextResponse.json({ 
