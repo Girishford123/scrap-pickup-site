@@ -19,7 +19,16 @@ export async function POST(request: NextRequest) {
           phone: body.phone,
           address: body.address,
           vehicle_info: body.vehicleInfo,
+          rcrc_name: body.rcrcName,
+          rcrc_email: body.rcrcEmail,
+          rcrc_contact_person: body.rcrcContactPerson,
+          rcrc_phone: body.rcrcPhone,
+          rcrc_address: body.rcrcAddress,
+          rcrc_phone_number: body.rcrcPhoneNumber,
           preferred_date: body.preferredDate,
+          pickup_hours: body.pickupHours,
+          pallet_quantity: body.palletQuantity ? parseInt(body.palletQuantity) : null,
+          total_pieces_quantity: body.totalPiecesQuantity ? parseInt(body.totalPiecesQuantity) : null,
           notes: body.notes,
           status: 'pending'
         }
