@@ -1,415 +1,307 @@
-'use client'
-
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { CheckCircle, Truck, Clock, Shield, Phone, Mail, MapPin } from 'lucide-react'
 
-export default function RequestPickup() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  const [formData, setFormData] = useState({
-    customerName: '',
-    customerEmail: '',
-    phone: '',
-    address: '',
-    customerZipCode: '',
-    vehicleInfo: '',
-    rcrcName: '',
-    rcrcEmail: '',
-    rcrcContactPerson: '',
-    rcrcPhone: '',
-    rcrcAddress: '',
-    rcrcZipCode: '',
-    rcrcPhoneNumber: '',
-    preferredDate: '',
-    pickupHours: '',
-    palletQuantity: '',
-    totalPiecesQuantity: '',
-    notes: ''
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    try {
-      const response = await fetch('/api/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
-
-      if (!response.ok) throw new Error('Failed to submit request')
-
-      router.push('/request-pickup/success')
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong')
-      setLoading(false)
-    }
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }))
-  }
-
+export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link href="/" className="text-blue-900 hover:text-blue-700 font-semibold">
-            ← Back to Home
-          </Link>
+    <div className="min-h-screen bg-white">
+      {/* Navigation Bar */}
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-blue-900">Ford Component Sales</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/request-pickup"
+                className="bg-blue-900 text-white px-6 py-2 rounded-lg hover:bg-blue-800 transition-all font-semibold"
+              >
+                Request Pickup
+              </Link>
+              <Link
+                href="/admin"
+                className="text-blue-900 hover:text-blue-700 font-medium"
+              >
+                Admin
+              </Link>
+            </div>
+          </div>
         </div>
-      </header>
+      </nav>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Form Header */}
-          <div className="bg-gradient-to-r from-blue-900 to-blue-700 px-8 py-6">
-            <h1 className="text-3xl font-bold text-white">Request a Pickup</h1>
-            <p className="text-blue-100 mt-2">Complete all sections below to schedule your scrap vehicle pickup</p>
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white">
+        <div className="absolute inset-0 bg-black opacity-10"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+          <div className="text-center">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+              Professional Scrap Vehicle
+              <br />
+              <span className="text-blue-300">Pickup Service</span>
+            </h2>
+            <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto">
+              Fast, reliable, and eco-friendly scrap component collection for Ford vehicles
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/request-pickup"
+                className="bg-white text-blue-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 transition-all transform hover:scale-105 shadow-lg inline-flex items-center justify-center"
+              >
+                <Truck className="mr-2 h-5 w-5" />
+                Schedule Pickup Now
+              </Link>
+              <a
+                href="#how-it-works"
+                className="bg-blue-700 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-600 transition-all inline-flex items-center justify-center"
+              >
+                Learn More
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        {/* Wave Divider */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white"/>
+          </svg>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div className="bg-white p-8 rounded-xl shadow-md">
+              <div className="text-5xl font-bold text-blue-900 mb-2">1000+</div>
+              <div className="text-gray-600 font-medium">Pickups Completed</div>
+            </div>
+            <div className="bg-white p-8 rounded-xl shadow-md">
+              <div className="text-5xl font-bold text-blue-900 mb-2">24hrs</div>
+              <div className="text-gray-600 font-medium">Average Response Time</div>
+            </div>
+            <div className="bg-white p-8 rounded-xl shadow-md">
+              <div className="text-5xl font-bold text-blue-900 mb-2">100%</div>
+              <div className="text-gray-600 font-medium">Customer Satisfaction</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose Us?</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              We provide the most efficient and reliable scrap pickup service in the industry
+            </p>
           </div>
 
-          {/* Form Content */}
-          <form onSubmit={handleSubmit} className="p-8">
-            {error && (
-              <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                <p className="text-red-700">{error}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center p-6 rounded-xl hover:shadow-xl transition-shadow bg-blue-50">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-900 text-white rounded-full mb-4">
+                <Truck className="h-8 w-8" />
               </div>
-            )}
-
-            <div className="space-y-8">
-              {/* Section 1: Customer Information */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white rounded-full flex items-center justify-center mr-3 text-sm">1</span>
-                  Customer Information
-                </h3>
-                <div className="grid md:grid-cols-2 gap-6 ml-11">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="customerName"
-                      required
-                      value={formData.customerName}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="John Doe"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      name="customerEmail"
-                      value={formData.customerEmail}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Zip Code *
-                    </label>
-                    <input
-                      type="text"
-                      name="customerZipCode"
-                      required
-                      value={formData.customerZipCode}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="12345"
-                      maxLength={10}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address *
-                    </label>
-                    <input
-                      type="text"
-                      name="address"
-                      required
-                      value={formData.address}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="123 Main Street, City, State"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Vehicle Information
-                    </label>
-                    <input
-                      type="text"
-                      name="vehicleInfo"
-                      value={formData.vehicleInfo}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="e.g., 2015 Ford F-150, Silver"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: RCRC Information */}
-              <div className="pt-6 border-t">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white rounded-full flex items-center justify-center mr-3 text-sm">2</span>
-                  RCRC (Regional Collection & Recycling Center) Details
-                </h3>
-                <div className="grid md:grid-cols-2 gap-6 ml-11">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RCRC Name
-                    </label>
-                    <input
-                      type="text"
-                      name="rcrcName"
-                      value={formData.rcrcName}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="Center Name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RCRC Contact Person Name
-                    </label>
-                    <input
-                      type="text"
-                      name="rcrcContactPerson"
-                      value={formData.rcrcContactPerson}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="Contact Person"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RCRC Email
-                    </label>
-                    <input
-                      type="email"
-                      name="rcrcEmail"
-                      value={formData.rcrcEmail}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="rcrc@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RCRC Phone
-                    </label>
-                    <input
-                      type="tel"
-                      name="rcrcPhone"
-                      value={formData.rcrcPhone}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="(555) 987-6543"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RCRC Phone Number (Alternate)
-                    </label>
-                    <input
-                      type="tel"
-                      name="rcrcPhoneNumber"
-                      value={formData.rcrcPhoneNumber}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="(555) 987-6544"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RCRC Zip Code
-                    </label>
-                    <input
-                      type="text"
-                      name="rcrcZipCode"
-                      value={formData.rcrcZipCode}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="12345"
-                      maxLength={10}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      RCRC Address
-                    </label>
-                    <input
-                      type="text"
-                      name="rcrcAddress"
-                      value={formData.rcrcAddress}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="456 Recycling Blvd, City, State"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Pickup Details */}
-              <div className="pt-6 border-t">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white rounded-full flex items-center justify-center mr-3 text-sm">3</span>
-                  Pickup Schedule & Quantities
-                </h3>
-                <div className="grid md:grid-cols-2 gap-6 ml-11">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Preferred Pickup Date
-                    </label>
-                    <input
-                      type="date"
-                      name="preferredDate"
-                      value={formData.preferredDate}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pickup Hours
-                    </label>
-                    <select
-                      name="pickupHours"
-                      value={formData.pickupHours}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    >
-                      <option value="">Select time slot</option>
-                      <option value="8:00 AM - 10:00 AM">8:00 AM - 10:00 AM</option>
-                      <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
-                      <option value="12:00 PM - 2:00 PM">12:00 PM - 2:00 PM</option>
-                      <option value="2:00 PM - 4:00 PM">2:00 PM - 4:00 PM</option>
-                      <option value="4:00 PM - 6:00 PM">4:00 PM - 6:00 PM</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pallet Quantity
-                    </label>
-                    <input
-                      type="number"
-                      name="palletQuantity"
-                      min="0"
-                      value={formData.palletQuantity}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Total Pieces Quantity
-                    </label>
-                    <input
-                      type="number"
-                      name="totalPiecesQuantity"
-                      min="0"
-                      value={formData.totalPiecesQuantity}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 4: Additional Notes */}
-              <div className="pt-6 border-t">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white rounded-full flex items-center justify-center mr-3 text-sm">4</span>
-                  Additional Information
-                </h3>
-                <div className="ml-11">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Notes / Special Instructions
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleChange}
-                    rows={5}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
-                    placeholder="Any special instructions, access codes, gate information, or additional details..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="mt-8 pt-6 border-t">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-900 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 shadow-lg"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Submitting Request...
-                  </span>
-                ) : (
-                  'Submit Pickup Request'
-                )}
-              </button>
-              <p className="text-center text-sm text-gray-500 mt-3">
-                * Required fields must be filled out
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Fast Pickup</h3>
+              <p className="text-gray-600">
+                Quick response and scheduled pickup within 24-48 hours of request
               </p>
             </div>
-          </form>
+
+            <div className="text-center p-6 rounded-xl hover:shadow-xl transition-shadow bg-green-50">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 text-white rounded-full mb-4">
+                <CheckCircle className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Easy Process</h3>
+              <p className="text-gray-600">
+                Simple online form, no paperwork hassle, fully digital tracking
+              </p>
+            </div>
+
+            <div className="text-center p-6 rounded-xl hover:shadow-xl transition-shadow bg-orange-50">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-600 text-white rounded-full mb-4">
+                <Clock className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">24/7 Support</h3>
+              <p className="text-gray-600">
+                Round-the-clock customer support for all your queries and concerns
+              </p>
+            </div>
+
+            <div className="text-center p-6 rounded-xl hover:shadow-xl transition-shadow bg-purple-50">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600 text-white rounded-full mb-4">
+                <Shield className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Safe & Secure</h3>
+              <p className="text-gray-600">
+                Professional handling with complete insurance and safety protocols
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-20 bg-gradient-to-br from-blue-50 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">How It Works</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Get your scrap picked up in three simple steps
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="relative">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className="absolute -top-4 -left-4 w-12 h-12 bg-blue-900 text-white rounded-full flex items-center justify-center text-2xl font-bold shadow-lg">
+                  1
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 mt-4">Fill the Form</h3>
+                <p className="text-gray-600 mb-4">
+                  Complete our simple online pickup request form with your RCRC details and preferred schedule
+                </p>
+                <Link href="/request-pickup" className="text-blue-900 font-semibold hover:text-blue-700 inline-flex items-center">
+                  Start Request →
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className="absolute -top-4 -left-4 w-12 h-12 bg-blue-900 text-white rounded-full flex items-center justify-center text-2xl font-bold shadow-lg">
+                  2
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 mt-4">Get Confirmation</h3>
+                <p className="text-gray-600 mb-4">
+                  Receive instant confirmation and our team will contact you to finalize the pickup schedule
+                </p>
+                <div className="text-green-600 font-semibold inline-flex items-center">
+                  <CheckCircle className="mr-2 h-5 w-5" />
+                  Verified Process
+                </div>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className="absolute -top-4 -left-4 w-12 h-12 bg-blue-900 text-white rounded-full flex items-center justify-center text-2xl font-bold shadow-lg">
+                  3
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 mt-4">Pickup Complete</h3>
+                <p className="text-gray-600 mb-4">
+                  Our professional team arrives at scheduled time and handles everything safely and efficiently
+                </p>
+                <div className="text-blue-900 font-semibold inline-flex items-center">
+                  <Truck className="mr-2 h-5 w-5" />
+                  Quick & Easy
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-r from-blue-900 to-blue-800 text-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            Ready to Schedule Your Pickup?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8">
+            Join thousands of satisfied customers who trust us with their scrap component disposal
+          </p>
+          <Link
+            href="/request-pickup"
+            className="inline-flex items-center bg-white text-blue-900 px-10 py-5 rounded-lg font-bold text-xl hover:bg-blue-50 transition-all transform hover:scale-105 shadow-2xl"
+          >
+            <Truck className="mr-3 h-6 w-6" />
+            Request Pickup Now
+          </Link>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Get In Touch</h2>
+            <p className="text-lg text-gray-600">Have questions? We're here to help</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <Phone className="h-6 w-6 text-blue-900" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Phone</h3>
+              <p className="text-gray-600">+91 1800-XXX-XXXX</p>
+            </div>
+
+            <div className="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <Mail className="h-6 w-6 text-blue-900" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
+              <p className="text-gray-600">support@fordcomponentsales.in</p>
+            </div>
+
+            <div className="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <MapPin className="h-6 w-6 text-blue-900" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Location</h3>
+              <p className="text-gray-600">India</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h3 className="text-xl font-bold mb-4">Ford Component Sales</h3>
+              <p className="text-gray-400">
+                Professional scrap pickup service for Ford vehicles
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <ul className="space-y-2">
+                <li><Link href="/request-pickup" className="text-gray-400 hover:text-white transition">Request Pickup</Link></li>
+                <li><Link href="/admin" className="text-gray-400 hover:text-white transition">Admin Login</Link></li>
+                <li><a href="#how-it-works" className="text-gray-400 hover:text-white transition">How It Works</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Support</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-gray-400 hover:text-white transition">FAQ</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition">Contact Us</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition">Terms & Conditions</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Contact</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li>+91 1800-XXX-XXXX</li>
+                <li>support@fordcomponentsales.in</li>
+                <li>India</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 Ford Component Sales. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
