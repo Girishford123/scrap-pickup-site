@@ -1,7 +1,19 @@
-import type { NextConfig } from "next";
+import { DefaultSession } from "next-auth"
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+    } & DefaultSession["user"]
+  }
 
-export default nextConfig;
+  interface User {
+    id: string
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string
+  }
+}
