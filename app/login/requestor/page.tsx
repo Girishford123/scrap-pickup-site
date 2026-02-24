@@ -127,10 +127,26 @@ export default function RequestorLogin() {
     setError('')
 
     try {
-      const { error: submitError } = await supabase
+      const { data, error: submitError } = await supabase
         .from('pickup_requests')
         .insert([
           {
+            // Required fields from old structure
+            customer_name: formData.rcrcContactPerson || userData.full_name,
+            phone: formData.rcrcPhoneNumber || '0000000000',
+            email: formData.rcrcEmail || userData.email,
+            address1: formData.rcrcAddress || 'N/A',
+            address2: formData.rcrcAddress2,
+            city: formData.rcrcName || 'N/A',
+            state: formData.state || 'N/A',
+            zip: formData.rcrcZipCode || '00000',
+            preferred_date: formData.preferredDate,
+            time_window: formData.pickupHours || 'TBD',
+            scrap_category: 'Components',
+            description: formData.notes,
+            status: 'pending',
+            
+            // New RCRC fields
             user_id: userData.id,
             rcrc_number: formData.rcrcNumber,
             rcrc_name: formData.rcrcName,
@@ -139,20 +155,19 @@ export default function RequestorLogin() {
             rcrc_phone_number: formData.rcrcPhoneNumber,
             rcrc_address: formData.rcrcAddress,
             rcrc_address2: formData.rcrcAddress2,
-            state: formData.state,
             rcrc_zip_code: formData.rcrcZipCode,
-            pickup_date: formData.preferredDate,
-            pickup_time: formData.pickupHours,
             pallet_quantity: formData.palletQuantity ? parseInt(formData.palletQuantity) : 0,
             total_pieces_quantity: formData.totalPiecesQuantity ? parseInt(formData.totalPiecesQuantity) : 0,
-            special_instructions: formData.notes,
-            status: 'pending'
+            special_instructions: formData.notes
           }
         ])
+        .select()
+
+      console.log('Insert result:', { data, error: submitError })
 
       if (submitError) {
         console.error('Submit error:', submitError)
-        setError('Failed to submit pickup request. Please try again.')
+        setError(`Error: ${submitError.message}`)
         setSubmitLoading(false)
         return
       }
@@ -179,14 +194,11 @@ export default function RequestorLogin() {
         notes: ''
       })
 
-      // Scroll to top to see success message
       window.scrollTo({ top: 0, behavior: 'smooth' })
-
-      // Hide success message after 5 seconds
       setTimeout(() => setSubmitSuccess(false), 5000)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Pickup request error:', err)
-      setError('An unexpected error occurred')
+      setError(`Unexpected error: ${err.message}`)
       setSubmitLoading(false)
     }
   }
