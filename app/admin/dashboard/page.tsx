@@ -56,7 +56,11 @@ export default function AdminDashboard() {
   const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null)
   const itemsPerPage = 10
 
-  const supabase = createClientComponentClient()
+  // ✅ FIXED: Changed from createClientComponentClient() to createClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  )
 
   useEffect(() => {
     if (!user || !isAdmin(user)) {
