@@ -172,6 +172,72 @@ export default function RequestorLogin() {
         return
       }
 
+      const requestId = data && data[0] ? data[0].id : 'N/A'
+
+      // Send email to requestor
+      try {
+        await fetch('/api/pickup-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: formData.rcrcEmail || userData.email,
+            subject: 'Pickup Request Confirmation - Ford Component Sales',
+            requestorName: formData.rcrcContactPerson || userData.full_name,
+            rcrcNumber: formData.rcrcNumber,
+            rcrcName: formData.rcrcName,
+            rcrcContactPerson: formData.rcrcContactPerson,
+            rcrcEmail: formData.rcrcEmail,
+            rcrcPhoneNumber: formData.rcrcPhoneNumber,
+            rcrcAddress: formData.rcrcAddress,
+            rcrcAddress2: formData.rcrcAddress2,
+            state: formData.state,
+            rcrcZipCode: formData.rcrcZipCode,
+            preferredDate: formData.preferredDate,
+            pickupHours: formData.pickupHours,
+            palletQuantity: formData.palletQuantity,
+            totalPiecesQuantity: formData.totalPiecesQuantity,
+            notes: formData.notes,
+            requestId: requestId
+          })
+        })
+        console.log('Requestor email sent successfully')
+      } catch (emailError) {
+        console.error('Failed to send requestor email:', emailError)
+        // Don't fail the whole request if email fails
+      }
+
+      // Send email to admin
+      try {
+        await fetch('/api/pickup-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'admin@fordcomponentsales.in', // ⬅️ CHANGE TO YOUR ADMIN EMAIL
+            subject: 'New Pickup Request Submitted',
+            requestorName: formData.rcrcContactPerson || userData.full_name,
+            rcrcNumber: formData.rcrcNumber,
+            rcrcName: formData.rcrcName,
+            rcrcContactPerson: formData.rcrcContactPerson,
+            rcrcEmail: formData.rcrcEmail,
+            rcrcPhoneNumber: formData.rcrcPhoneNumber,
+            rcrcAddress: formData.rcrcAddress,
+            rcrcAddress2: formData.rcrcAddress2,
+            state: formData.state,
+            rcrcZipCode: formData.rcrcZipCode,
+            preferredDate: formData.preferredDate,
+            pickupHours: formData.pickupHours,
+            palletQuantity: formData.palletQuantity,
+            totalPiecesQuantity: formData.totalPiecesQuantity,
+            notes: formData.notes,
+            requestId: requestId
+          })
+        })
+        console.log('Admin email sent successfully')
+      } catch (emailError) {
+        console.error('Failed to send admin email:', emailError)
+        // Don't fail the whole request if email fails
+      }
+
       // Success!
       setSubmitSuccess(true)
       setSubmitLoading(false)
@@ -326,7 +392,7 @@ export default function RequestorLogin() {
 
             {submitSuccess && (
               <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded">
-                <p className="text-green-700 font-semibold">✅ Pickup request submitted successfully!</p>
+                <p className="text-green-700 font-semibold">✅ Pickup request submitted successfully! Check your email for confirmation.</p>
               </div>
             )}
 
