@@ -1,4 +1,4 @@
-mport { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
