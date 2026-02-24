@@ -2,17 +2,24 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 interface PickupRequest {
-  id: number
+  id: string
+  user_id?: string
   customer_name: string
   email: string
   phone: string
   address: string
+  city?: string
+  state?: string
+  zip_code?: string
   scrap_type: string
   quantity: string
+  description?: string
   status: 'pending' | 'approved' | 'rejected' | 'completed'
   created_at: string
+  updated_at?: string
 }
 
 export default function AdminDashboard() {
@@ -38,60 +45,61 @@ export default function AdminDashboard() {
     checkAuth()
   }, [router])
 
-  // Load mock data
+  // Load data from Supabase
   useEffect(() => {
     if (!isAuthenticated) return
 
-    setTimeout(() => {
-      const mockRequests: PickupRequest[] = [
-        {
-          id: 1,
-          customer_name: 'John Doe',
-          email: 'john@example.com',
-          phone: '123-456-7890',
-          address: '123 Main St, Detroit, MI',
-          scrap_type: 'Metal',
-          quantity: '500 lbs',
-          status: 'pending',
-          created_at: '2024-02-24T10:00:00Z'
-        },
-        {
-          id: 2,
-          customer_name: 'Jane Smith',
-          email: 'jane@example.com',
-          phone: '098-765-4321',
-          address: '456 Oak Ave, Dearborn, MI',
-          scrap_type: 'Plastic',
-          quantity: '200 lbs',
-          status: 'approved',
-          created_at: '2024-02-23T14:30:00Z'
-        },
-        {
-          id: 3,
-          customer_name: 'Bob Johnson',
-          email: 'bob@example.com',
-          phone: '555-123-4567',
-          address: '789 Pine Rd, Ann Arbor, MI',
-          scrap_type: 'Electronics',
-          quantity: '100 lbs',
-          status: 'completed',
-          created_at: '2024-02-22T09:15:00Z'
+    const fetchRequests = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('pickup_requests')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching requests:', error)
+          setLoading(false)
+          return
         }
-      ]
-      setRequests(mockRequests)
-      setLoading(false)
-    }, 1000)
+
+        setRequests(data || [])
+        setLoading(false)
+      } catch (err) {
+        console.error('Error:', err)
+        setLoading(false)
+      }
+    }
+
+    fetchRequests()
   }, [isAuthenticated])
 
-  const handleStatusChange = (id: number, newStatus: 'approved' | 'rejected' | 'completed') => {
-    setRequests(requests.map(req => 
-      req.id === id ? { ...req, status: newStatus } : req
-    ))
+  const handleStatusChange = async (id: string, newStatus: 'approved' | 'rejected' | 'completed') => {
+    try {
+      // Update in Supabase
+      const { error } = await supabase
+        .from('pickup_requests')
+        .update({ status: newStatus })
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error updating status:', error)
+        return
+      }
+
+      // Update local state
+      setRequests(requests.map(req => 
+        req.id === id ? { ...req, status: newStatus } : req
+      ))
+    } catch (err) {
+      console.error('Error:', err)
+    }
   }
 
   const handleLogout = () => {
     localStorage.removeItem('isAdminLoggedIn')
     localStorage.removeItem('adminEmail')
+    localStorage.removeItem('adminId')
+    localStorage.removeItem('adminName')
     router.push('/')
   }
 
@@ -150,7 +158,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-500">Scrap Pickup Management</p>
+                <p className="text-sm text-gray-500">Scrap Pickup Management - Real Data from Supabase</p>
               </div>
             </div>
             <button
@@ -278,6 +286,8 @@ export default function AdminDashboard() {
                           </div>
                           <div className="text-sm text-gray-500">
                             {request.address}
+                            {request.city && `, ${request.city}`}
+                            {request.state && `, ${request.state}`}
                           </div>
                         </div>
                       </div>
