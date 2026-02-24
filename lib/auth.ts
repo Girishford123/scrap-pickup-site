@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
 
 export interface User {
@@ -8,8 +8,16 @@ export interface User {
   role: 'admin' | 'requestor'
 }
 
+// Create Supabase client
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  
+  return createClient(supabaseUrl, supabaseKey)
+}
+
 export async function loginUser(email: string, password: string): Promise<User | null> {
-  const supabase = createClientComponentClient()
+  const supabase = getSupabaseClient()
 
   try {
     // Get user from database
@@ -51,7 +59,7 @@ export async function registerUser(
   fullName: string,
   role: 'admin' | 'requestor' = 'requestor'
 ): Promise<User | null> {
-  const supabase = createClientComponentClient()
+  const supabase = getSupabaseClient()
 
   try {
     // Hash password
