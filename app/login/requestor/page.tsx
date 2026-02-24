@@ -212,7 +212,7 @@ export default function RequestorLogin() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            to: 'admin@fordcomponentsales.in', // ⬅️ CHANGE TO YOUR ADMIN EMAIL
+            to: 'gkulkara@ford.com', // ⬅️ CHANGE TO YOUR ADMIN EMAIL
             subject: 'New Pickup Request Submitted',
             requestorName: formData.rcrcContactPerson || userData.full_name,
             rcrcNumber: formData.rcrcNumber,
