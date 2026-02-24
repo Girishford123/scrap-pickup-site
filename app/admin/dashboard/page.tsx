@@ -311,4 +311,18 @@ export default function AdminDashboard() {
                 <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completed}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Simple message for now */}
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Admin Dashboard</h2>
+          <p className="text-gray-600">Dashboard features will be loaded here</p>
+        </div>
+      </div>
+    </div>
+  )
+}
