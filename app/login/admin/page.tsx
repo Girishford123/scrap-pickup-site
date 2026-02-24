@@ -11,18 +11,30 @@ export default function AdminLogin() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setError('')
+  setLoading(true)
 
+  try {
+    // Simple check - replace with your actual auth logic
     if (email === 'admin@ford.com' && password === 'Admin123!') {
+      // Save login session
+      localStorage.setItem('isAdminLoggedIn', 'true')
+      localStorage.setItem('adminEmail', email)
+      
+      // Redirect to dashboard
       router.push('/admin/dashboard')
     } else {
       setError('Invalid email or password')
       setLoading(false)
     }
+  } catch (err) {
+    setError('An error occurred. Please try again.')
+    setLoading(false)
   }
+}
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
