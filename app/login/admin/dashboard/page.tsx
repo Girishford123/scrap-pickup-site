@@ -39,6 +39,7 @@ export default function AdminDashboard() {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [fordLogoError, setFordLogoError] = useState(false)
+  const [fcsLogoError, setFcsLogoError] = useState(false)
 
   // ✅ Export filter states
   const [exportStatusFilter, setExportStatusFilter] = useState<'all' | 'NEW' | 'pending' | 'approved' | 'rejected' | 'completed'>('all')
@@ -361,7 +362,10 @@ export default function AdminDashboard() {
                 <h2 className="text-xl font-bold text-gray-900">📊 Export to CSV</h2>
                 <p className="text-sm text-gray-500 mt-1">Choose filters before downloading</p>
               </div>
-              <button onClick={() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-light">✕</button>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-light"
+              >✕</button>
             </div>
 
             <div className="space-y-4">
@@ -434,12 +438,17 @@ export default function AdminDashboard() {
                           return acc
                         }, {} as Record<string, number>)
                       ).map(([status, count]) => (
-                        <span key={status} className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusBadge(status)}`}>
+                        <span
+                          key={status}
+                          className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusBadge(status)}`}
+                        >
                           {status}: {count}
                         </span>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">📁 Includes: Summary + All Data + Section-wise breakdown</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      📁 Includes: Summary + All Data + Section-wise breakdown
+                    </p>
                   </div>
                 ) : (
                   <p className="text-red-600 font-medium">⚠️ No records match selected filters</p>
@@ -476,7 +485,10 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">Request Details</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >✕</button>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -511,7 +523,9 @@ export default function AdminDashboard() {
               </div>
               <div className="col-span-2">
                 <p className="text-xs text-gray-500 uppercase font-medium">Submitted On</p>
-                <p className="text-sm text-gray-900">{new Date(selectedRequest.created_at).toLocaleString()}</p>
+                <p className="text-sm text-gray-900">
+                  {new Date(selectedRequest.created_at).toLocaleString()}
+                </p>
               </div>
             </div>
             <div className="mt-6 flex gap-3 flex-wrap">
@@ -553,7 +567,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ✅ HEADER - Option B Layout with FCS Logo */}
+      {/* ✅ HEADER - Option B Layout */}
       <header className="bg-white shadow-sm border-b border-gray-200">
 
         {/* Top Ford Blue Bar */}
@@ -566,10 +580,10 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between gap-4">
 
-            {/* LEFT: Ford Logo + Divider + Dashboard Title */}
+            {/* LEFT: Ford Logo + Divider + Title */}
             <div className="flex items-center gap-4">
 
-              {/* Ford Blue Oval Logo */}
+              {/* ✅ Ford Blue Oval Logo with fallback */}
               {!fordLogoError ? (
                 <Image
                   src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ford_logo_flat.svg/2560px-Ford_logo_flat.svg.png"
@@ -581,6 +595,7 @@ export default function AdminDashboard() {
                   unoptimized
                 />
               ) : (
+                // CSS Fallback if Ford logo fails to load
                 <div className="w-20 h-10 bg-[#003478] rounded-full flex items-center justify-center shadow-md">
                   <span className="text-white font-bold text-lg italic">Ford</span>
                 </div>
@@ -591,25 +606,46 @@ export default function AdminDashboard() {
 
               {/* Dashboard Title */}
               <div>
-                <h1 className="text-xl font-bold text-gray-900 leading-tight">Admin Dashboard</h1>
-                <p className="text-xs text-gray-500">Scrap Pickup Management – Real Data from Supabase</p>
+                <h1 className="text-xl font-bold text-gray-900 leading-tight">
+                  Admin Dashboard
+                </h1>
+                <p className="text-xs text-gray-500">
+                  Scrap Pickup Management – Real Data from Supabase
+                </p>
               </div>
             </div>
 
             {/* RIGHT: FCS Logo + Action Buttons */}
             <div className="flex items-center gap-3">
 
-              {/* ✅ NEW FCS Logo from public folder */}
-              <div className="hidden md:flex items-center bg-white rounded-lg px-2 py-1 shadow-sm border border-gray-100">
-                <Image
-                  src="/FCS logo.png"
-                  alt="Ford Component Sales Logo"
-                  width={130}
-                  height={50}
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
+              {/* ✅ FCS Logo from public folder - Updated */}
+              {!fcsLogoError ? (
+                <div className="hidden md:flex items-center bg-white rounded-lg px-2 py-1 shadow-sm border border-gray-100">
+                  <Image
+                    src="/FCS-logo.png"
+                    alt="Ford Component Sales Logo"
+                    width={140}
+                    height={55}
+                    className="object-contain"
+                    onError={() => setFcsLogoError(true)}
+                    unoptimized
+                    priority
+                  />
+                </div>
+              ) : (
+                // CSS Fallback if FCS logo fails to load
+                <div className="hidden md:flex items-center bg-[#003478] px-4 py-2 rounded-lg shadow">
+                  <div className="flex flex-col items-center">
+                    <span className="text-white text-xs font-light tracking-widest uppercase">Ford</span>
+                    <span className="text-[#c9a84c] text-sm font-bold tracking-wide uppercase leading-tight">Component</span>
+                    <span className="text-[#c9a84c] text-sm font-bold tracking-wide uppercase leading-tight">Sales</span>
+                  </div>
+                  <div className="w-px h-10 bg-blue-400 opacity-50 mx-2"></div>
+                  <div className="w-8 h-8 bg-[#c9a84c] rounded-full flex items-center justify-center">
+                    <span className="text-[#003478] font-bold text-xs">CS</span>
+                  </div>
+                </div>
+              )}
 
               {/* Vertical Divider */}
               <div className="hidden md:block w-px h-8 bg-gray-300"></div>
@@ -844,7 +880,10 @@ export default function AdminDashboard() {
               <span className="text-6xl mb-4 block">📭</span>
               <p className="text-gray-500 font-medium">No requests found</p>
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="mt-3 text-blue-600 text-sm hover:underline">
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-3 text-blue-600 text-sm hover:underline"
+                >
                   Clear search
                 </button>
               )}
