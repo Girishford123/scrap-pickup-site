@@ -553,20 +553,22 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ✅ HEADER with Logos - Option B Layout */}
+      {/* ✅ HEADER - Option B Layout with FCS Logo */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        {/* Top Blue Ford Bar */}
+
+        {/* Top Ford Blue Bar */}
         <div className="bg-[#003478] px-4 sm:px-6 lg:px-8 py-1">
           <p className="text-white text-xs text-center tracking-widest font-medium uppercase">
             Ford Motor Company – Component Sales Division
           </p>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between gap-4">
 
-            {/* LEFT: Ford Logo */}
+            {/* LEFT: Ford Logo + Divider + Dashboard Title */}
             <div className="flex items-center gap-4">
+
               {/* Ford Blue Oval Logo */}
               {!fordLogoError ? (
                 <Image
@@ -579,37 +581,38 @@ export default function AdminDashboard() {
                   unoptimized
                 />
               ) : (
-                // CSS Fallback Ford Oval
-                <div className="w-20 h-10 bg-[#003478] rounded-full flex items-center justify-center border-4 border-[#003478] shadow-md">
-                  <span className="text-white font-bold text-lg italic tracking-tight">Ford</span>
+                <div className="w-20 h-10 bg-[#003478] rounded-full flex items-center justify-center shadow-md">
+                  <span className="text-white font-bold text-lg italic">Ford</span>
                 </div>
               )}
 
-              {/* Divider */}
+              {/* Vertical Divider */}
               <div className="w-px h-10 bg-gray-300"></div>
 
-              {/* CENTER: Dashboard Title */}
+              {/* Dashboard Title */}
               <div>
                 <h1 className="text-xl font-bold text-gray-900 leading-tight">Admin Dashboard</h1>
                 <p className="text-xs text-gray-500">Scrap Pickup Management – Real Data from Supabase</p>
               </div>
             </div>
 
-            {/* RIGHT: Component Sales Logo + Buttons */}
+            {/* RIGHT: FCS Logo + Action Buttons */}
             <div className="flex items-center gap-3">
 
-              {/* Ford Component Sales Logo (CSS Styled) */}
-              <div className="hidden md:flex items-center gap-2 bg-[#003478] px-4 py-2 rounded-lg shadow">
-                <div className="flex flex-col items-center">
-                  <span className="text-white text-xs font-light tracking-widest uppercase">Ford</span>
-                  <span className="text-[#c9a84c] text-sm font-bold tracking-wide uppercase leading-tight">Component</span>
-                  <span className="text-[#c9a84c] text-sm font-bold tracking-wide uppercase leading-tight">Sales</span>
-                </div>
-                <div className="w-px h-10 bg-blue-400 opacity-50 mx-1"></div>
-                <div className="w-8 h-8 bg-[#c9a84c] rounded-full flex items-center justify-center">
-                  <span className="text-[#003478] font-bold text-xs">CS</span>
-                </div>
+              {/* ✅ NEW FCS Logo from public folder */}
+              <div className="hidden md:flex items-center bg-white rounded-lg px-2 py-1 shadow-sm border border-gray-100">
+                <Image
+                  src="/FCS logo.png"
+                  alt="Ford Component Sales Logo"
+                  width={130}
+                  height={50}
+                  className="object-contain"
+                  unoptimized
+                />
               </div>
+
+              {/* Vertical Divider */}
+              <div className="hidden md:block w-px h-8 bg-gray-300"></div>
 
               {/* Action Buttons */}
               <button
