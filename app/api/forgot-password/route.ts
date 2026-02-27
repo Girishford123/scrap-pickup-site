@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     // Step 7: Send email via Resend
     const { data: emailData, error: emailError } =
       await resend.emails.send({
-        from: 'Ford Component Sales <noreply@fordcomponentsales.in>',
+        from: 'Ford Component Sales <onboarding@resend.dev>',
         to: [email],
         subject: 'Reset Your Password – Ford Component Sales',
         html: `
