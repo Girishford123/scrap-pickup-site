@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import bcrypt from 'bcryptjs'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +11,7 @@ export async function POST(request: Request) {
   try {
     const { token, password } = await request.json()
 
+    // Step 1: Validate inputs
     if (!token || !password) {
       return NextResponse.json(
         { error: 'Token and password are required' },
@@ -24,7 +26,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 1: Verify token exists and is not used
+    // Step 2: Verify token exists and is not used
     const { data: tokenData, error: tokenError } = await supabase
       .from('password_reset_tokens')
       .select('*')
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 2: Check if token is expired
+    // Step 3: Check token not expired
     const now = new Date()
     const expiresAt = new Date(tokenData.expires_at)
 
@@ -50,10 +52,17 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 3: Update password in users table
+    // Step 4: Hash the new password with bcrypt
+    // 12 salt rounds = very secure
+    const hashedPassword = await bcrypt.hash(password, 12)
+
+    console.log('Hashing password for:', tokenData.email)
+
+    // Step 5: Update password in users table
+    // Storing HASH not plain text ✅
     const { error: updateError } = await supabase
       .from('users')
-      .update({ password: password })
+      .update({ password: hashedPassword })
       .eq('email', tokenData.email)
 
     if (updateError) {
@@ -64,11 +73,18 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 4: Mark token as used so it cannot be reused
-    await supabase
+    // Step 6: Mark token as used
+    // So it cannot be reused again!
+    const { error: tokenUpdateError } = await supabase
       .from('password_reset_tokens')
       .update({ used: true })
       .eq('token', token)
+
+    if (tokenUpdateError) {
+      console.error('Token update error:', tokenUpdateError)
+    }
+
+    console.log('Password reset successful for:', tokenData.email)
 
     return NextResponse.json(
       { success: true },
