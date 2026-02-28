@@ -39,7 +39,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+, "app/ostcss.config.js"  ],
   "exclude": [
     "node_modules"
   ]
