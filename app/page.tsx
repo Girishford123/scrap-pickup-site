@@ -354,7 +354,7 @@ export default function Home() {
                   w-2 h-2 bg-[#52B788]
                   rounded-full animate-pulse
                 " />
-                Trusted by 500+ Customers Across the US
+                Trusted by 500+ Customers Across the USA
               </div>
 
               <h1 className="
@@ -868,7 +868,7 @@ export default function Home() {
                     Location
                   </div>
                   <div className="text-[#1B4332] font-semibold mb-2">
-                    Pan United States
+                    Across United States
                   </div>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {[
