@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Ford Component Sales | Scrap Vehicle Pickup Service',
-  description: 'Professional scrap component collection for Ford vehicles. Fast, reliable and eco-friendly pickup service across India.',
+  description: 'Professional scrap component collection for Ford vehicles.',
   keywords: 'Ford, scrap pickup, component sales, vehicle recycling, India',
   icons: {
     icon: '/FCS-logo.png',

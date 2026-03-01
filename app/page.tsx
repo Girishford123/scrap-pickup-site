@@ -31,29 +31,85 @@ function useCountUp(
   return count
 }
 
-// ─── Ford Oval SVG Logo ───────────────────────────────────
+// ─── Ford Oval SVG Logo (Latest 2017–Present) ────────────
 function FordOvalLogo({ className = '' }: { className?: string }) {
   return (
     <svg
       className={className}
-      viewBox="0 0 200 80"
+      viewBox="0 0 280 112"
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Ford Logo"
     >
+      {/* ── Outer gold/silver border ring ── */}
       <ellipse
-        cx="100" cy="40" rx="98" ry="38"
-        fill="#003478"
-        stroke="#C0A050"
-        strokeWidth="3"
+        cx="140"
+        cy="56"
+        rx="138"
+        ry="54"
+        fill="#B8A96A"
       />
+
+      {/* ── Main deep blue oval ── */}
+      <ellipse
+        cx="140"
+        cy="56"
+        rx="132"
+        ry="48"
+        fill="#003499"
+      />
+
+      {/* ── Inner white border ring ── */}
+      <ellipse
+        cx="140"
+        cy="56"
+        rx="132"
+        ry="48"
+        fill="none"
+        stroke="white"
+        strokeWidth="2.5"
+      />
+
+      {/* ── Thin inner accent ring ── */}
+      <ellipse
+        cx="140"
+        cy="56"
+        rx="126"
+        ry="42"
+        fill="none"
+        stroke="white"
+        strokeWidth="0.8"
+        opacity="0.4"
+      />
+
+      {/* ── Ford Script Text ── */}
+      {/* Shadow/depth layer */}
       <text
-        x="100" y="52"
+        x="141"
+        y="75"
         textAnchor="middle"
-        fontFamily="Arial, sans-serif"
-        fontSize="38"
+        fontFamily="Times New Roman, Georgia, serif"
+        fontSize="54"
+        fontWeight="bold"
+        fontStyle="italic"
+        fill="#001a6e"
+        opacity="0.5"
+        letterSpacing="-1"
+      >
+        Ford
+      </text>
+
+      {/* Main white Ford text */}
+      <text
+        x="140"
+        y="74"
+        textAnchor="middle"
+        fontFamily="Times New Roman, Georgia, serif"
+        fontSize="54"
         fontWeight="bold"
         fontStyle="italic"
         fill="white"
-        letterSpacing="2"
+        letterSpacing="-1"
       >
         Ford
       </text>
