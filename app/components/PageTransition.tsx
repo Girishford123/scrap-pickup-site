@@ -1,27 +1,27 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 
-const variants = {
+const variants: Variants = {
   hidden: {
     opacity: 0,
-    y: 20,
+    y:       20,
   },
   enter: {
-    opacity: 1,
-    y: 0,
+    opacity:    1,
+    y:          0,
     transition: {
-      duration:  0.4,
-      ease:      'easeOut',
+      duration: 0.4,
+      ease:     [0.25, 0.1, 0.25, 1] as const,
     },
   },
   exit: {
-    opacity: 0,
-    y: -20,
+    opacity:    0,
+    y:          -20,
     transition: {
       duration: 0.3,
-      ease:     'easeIn',
+      ease:     [0.4, 0, 1, 1] as const,
     },
   },
 }
