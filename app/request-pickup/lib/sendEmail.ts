@@ -4,7 +4,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 // ─── Email Data Type ──────────────────────────────────
 export type EmailData = {
-  customerName:  string
+  customerName:   string
   customerEmail?: string | null
   phone?:         string
   address?:       string
@@ -45,7 +45,7 @@ export async function sendAdminNotificationEmail(data: EmailData) {
               font-size: 22px;
               font-weight: bold;
             ">
-              🚗 New Scrap Pickup Request
+              New Scrap Pickup Request
             </h1>
             <p style="
               color: #a7f3d0;
@@ -63,7 +63,6 @@ export async function sendAdminNotificationEmail(data: EmailData) {
             border-radius: 0 0 8px 8px;
             padding: 24px;
           ">
-
             <p style="
               color: #374151;
               font-size: 15px;
@@ -89,18 +88,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   color: #374151;
                   width: 42%;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  RCRC Number
-                </td>
+                ">RCRC Number</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.rcrcNumber}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.rcrcNumber}</td>
+              </tr>` : ''}
 
               ${data.rcrcName ? `
               <tr>
@@ -109,18 +103,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  RCRC Name
-                </td>
+                ">RCRC Name</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.rcrcName}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.rcrcName}</td>
+              </tr>` : ''}
 
               <tr style="background-color: #f9fafb;">
                 <td style="
@@ -128,16 +117,12 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Contact Person
-                </td>
+                ">Contact Person</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.customerName}
-                </td>
+                ">${data.customerName}</td>
               </tr>
 
               ${data.customerEmail ? `
@@ -147,18 +132,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Email
-                </td>
+                ">Email</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.customerEmail}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.customerEmail}</td>
+              </tr>` : ''}
 
               ${data.phone ? `
               <tr style="background-color: #f9fafb;">
@@ -167,18 +147,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Phone
-                </td>
+                ">Phone</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.phone}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.phone}</td>
+              </tr>` : ''}
 
               ${data.address ? `
               <tr>
@@ -187,18 +162,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Pickup Address
-                </td>
+                ">Pickup Address</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.address}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.address}</td>
+              </tr>` : ''}
 
               ${data.preferredDate ? `
               <tr style="background-color: #f9fafb;">
@@ -207,18 +177,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Preferred Pickup Date
-                </td>
+                ">Preferred Pickup Date</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.preferredDate}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.preferredDate}</td>
+              </tr>` : ''}
 
               ${data.pickupHours ? `
               <tr>
@@ -227,18 +192,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Pickup Hours
-                </td>
+                ">Pickup Hours</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.pickupHours}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.pickupHours}</td>
+              </tr>` : ''}
 
               ${data.vehicleInfo ? `
               <tr style="background-color: #f9fafb;">
@@ -247,18 +207,13 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Quantity Details
-                </td>
+                ">Quantity Details</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.vehicleInfo}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.vehicleInfo}</td>
+              </tr>` : ''}
 
               ${data.notes ? `
               <tr>
@@ -266,17 +221,12 @@ export async function sendAdminNotificationEmail(data: EmailData) {
                   padding: 12px 16px;
                   font-weight: bold;
                   color: #374151;
-                ">
-                  Notes
-                </td>
+                ">Notes</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
-                ">
-                  ${data.notes}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.notes}</td>
+              </tr>` : ''}
 
             </table>
 
@@ -292,8 +242,7 @@ export async function sendAdminNotificationEmail(data: EmailData) {
               <p style="margin: 0; font-size: 13px; color: #374151;">
                 <strong>Request ID:</strong> #${data.requestId}
               </p>
-            </div>
-            ` : ''}
+            </div>` : ''}
 
             <!-- CTA Button -->
             <div style="text-align: center; margin-top: 24px;">
@@ -376,7 +325,7 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
               font-size: 22px;
               font-weight: bold;
             ">
-              ✅ Request Received
+              Request Received
             </h1>
             <p style="
               color: #a7f3d0;
@@ -394,12 +343,7 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
             border-radius: 0 0 8px 8px;
             padding: 24px;
           ">
-
-            <p style="
-              color: #374151;
-              font-size: 15px;
-              margin-top: 0;
-            ">
+            <p style="color: #374151; font-size: 15px; margin-top: 0;">
               Dear <strong>${data.customerName}</strong>,
             </p>
             <p style="color: #374151; font-size: 15px;">
@@ -425,18 +369,13 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
                   color: #374151;
                   width: 42%;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  RCRC Name
-                </td>
+                ">RCRC Name</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.rcrcName}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.rcrcName}</td>
+              </tr>` : ''}
 
               ${data.preferredDate ? `
               <tr>
@@ -445,18 +384,13 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
                   font-weight: bold;
                   color: #374151;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  Preferred Pickup Date
-                </td>
+                ">Preferred Pickup Date</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
                   border-bottom: 1px solid #e5e7eb;
-                ">
-                  ${data.preferredDate}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.preferredDate}</td>
+              </tr>` : ''}
 
               ${data.vehicleInfo ? `
               <tr style="background-color: #f9fafb;">
@@ -464,17 +398,12 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
                   padding: 12px 16px;
                   font-weight: bold;
                   color: #374151;
-                ">
-                  Quantity Details
-                </td>
+                ">Quantity Details</td>
                 <td style="
                   padding: 12px 16px;
                   color: #111827;
-                ">
-                  ${data.vehicleInfo}
-                </td>
-              </tr>
-              ` : ''}
+                ">${data.vehicleInfo}</td>
+              </tr>` : ''}
 
             </table>
 
@@ -490,10 +419,8 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
               <p style="margin: 0; font-size: 13px; color: #374151;">
                 <strong>Your Request ID:</strong> #${data.requestId}
               </p>
-            </div>
-            ` : ''}
+            </div>` : ''}
 
-            <!-- Contact Info -->
             <p style="
               color: #6b7280;
               font-size: 13px;
@@ -504,43 +431,10 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
                 style="color: #1B4332; font-weight: bold;">
                 fcscats@ford.com
               </a>
-              or call
-              <strong>+1 (248) 912-7995</strong>
+              or call <strong>+1 (248) 912-7995</strong>
             </p>
-
           </div>
 
           <!-- Footer -->
           <p style="
-            text-align: center;
-            color: #9ca3af;
-            font-size: 12px;
-            margin-top: 20px;
-          ">
-            Ford Component Sales — Scrap Pickup System<br/>
-            This is an automated confirmation email.
-          </p>
-
-        </div>
-      `,
-    })
-
-    if (error) {
-      console.error('Requestor email error:', error)
-      return { success: false, error }
-    }
-
-    return { success: true }
-
-  } catch (err) {
-    console.error('sendRequestorConfirmationEmail failed:', err)
-    return { success: false, error: err }
-  }
-}
-
-// ─── Legacy Placeholder ───────────────────────────────
-export async function sendPickupEmail(data: EmailData) {
-  await sendAdminNotificationEmail(data)
-  await sendRequestorConfirmationEmail(data)
-  return { success: true }
-}
+            text-align:
