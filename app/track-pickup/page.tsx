@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -61,20 +61,12 @@ export default function TrackPickupPage() {
   const [cancelModal, setCancelModal] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Check if user is logged in via localStorage
-    const user = getUserSession();
-    if (!user) {
-      router.push("/login/requestor");
-      return;
-    }
-    fetchRequests(user.id);
-  }, []);
-
-  const fetchRequests = async (userId: string) => {
+  // Fetch requests function wrapped in useCallback
+  const fetchRequests = useCallback(async (uid: string) => {
     try {
-      const res = await fetch(`/api/request/status?userId=${userId}`);
+      const res = await fetch(`/api/request/status?userId=${uid}`);
       const data = await res.json();
       setRequests(data.requests || []);
     } catch {
@@ -82,7 +74,18 @@ export default function TrackPickupPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Auth check and initial fetch
+  useEffect(() => {
+    const user = getUserSession();
+    if (!user) {
+      router.push("/login/requestor");
+      return;
+    }
+    setUserId(user.id);
+    fetchRequests(user.id);
+  }, [router, fetchRequests]);
 
   const handleCancel = async (requestId: string) => {
     if (!cancelReason.trim()) {
