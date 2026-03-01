@@ -31,114 +31,6 @@ function useCountUp(
   return count
 }
 
-// ─── Ford Oval SVG Logo (Modern Flat Design) ─────────────
-function FordOvalLogo({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 660 265"
-      xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-label="Ford Logo"
-    >
-      {/* ── Outer Silver/Chrome Ring ── */}
-      <ellipse
-        cx="330"
-        cy="132"
-        rx="328"
-        ry="130"
-        fill="url(#silverRing)"
-      />
-
-      {/* ── Main Blue Oval ── */}
-      <ellipse
-        cx="330"
-        cy="132"
-        rx="310"
-        ry="112"
-        fill="url(#blueGrad)"
-      />
-
-      {/* ── Inner Highlight Ring ── */}
-      <ellipse
-        cx="330"
-        cy="132"
-        rx="310"
-        ry="112"
-        fill="none"
-        stroke="rgba(255,255,255,0.25)"
-        strokeWidth="4"
-      />
-
-      {/* ── Top Gloss Shine ── */}
-      <ellipse
-        cx="330"
-        cy="90"
-        rx="220"
-        ry="55"
-        fill="url(#gloss)"
-        opacity="0.25"
-      />
-
-      {/* ── Ford Script Text ── */}
-      <text
-        x="330"
-        y="172"
-        textAnchor="middle"
-        fontFamily="'Times New Roman', Georgia, serif"
-        fontSize="145"
-        fontWeight="bold"
-        fontStyle="italic"
-        fill="white"
-        letterSpacing="-3"
-        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
-      >
-        Ford
-      </text>
-
-      {/* ── Gradient Definitions ── */}
-      <defs>
-
-        {/* Silver outer ring gradient */}
-        <linearGradient
-          id="silverRing"
-          x1="0%" y1="0%"
-          x2="0%" y2="100%"
-        >
-          <stop offset="0%"   stopColor="#E8E8E8" />
-          <stop offset="30%"  stopColor="#C0C0C0" />
-          <stop offset="50%"  stopColor="#A8A8A8" />
-          <stop offset="70%"  stopColor="#D0D0D0" />
-          <stop offset="100%" stopColor="#F0F0F0" />
-        </linearGradient>
-
-        {/* Deep blue oval gradient */}
-        <linearGradient
-          id="blueGrad"
-          x1="0%" y1="0%"
-          x2="0%" y2="100%"
-        >
-          <stop offset="0%"   stopColor="#0057B8" />
-          <stop offset="40%"  stopColor="#003DA5" />
-          <stop offset="100%" stopColor="#002A7A" />
-        </linearGradient>
-
-        {/* Top gloss highlight */}
-        <radialGradient
-          id="gloss"
-          cx="50%" cy="30%"
-          rx="60%" ry="40%"
-        >
-          <stop offset="0%"   stopColor="white" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="white" stopOpacity="0"   />
-        </radialGradient>
-
-      </defs>
-    </svg>
-  )
-}
-
-
 // ─── Stats Section with Animation ────────────────────────
 function StatsSection() {
   const [isVisible, setIsVisible] = useState(false)
@@ -250,40 +142,46 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
 
-            {/* Logos */}
-<div className="flex items-center space-x-4">
+            {/* ── Logos ── */}
+            <div className="flex items-center space-x-4">
 
-  {/* Ford Oval Logo — Bigger & Clearer */}
-  <div className="
-    bg-white rounded-xl
-    px-3 py-1.5
-    shadow-md
-    flex items-center justify-center
-  ">
-    <FordOvalLogo className="h-10 w-auto" />
-  </div>
+              {/* Ford Logo — Official Image */}
+              <div className="
+                bg-white rounded-xl
+                px-3 py-2
+                shadow-md
+                flex items-center justify-center
+              ">
+                <Image
+                  src="/ford-Logo.PNG"
+                  alt="Ford Logo"
+                  width={90}
+                  height={38}
+                  className="object-contain h-9 w-auto"
+                  priority
+                />
+              </div>
 
-  {/* Divider */}
-  <div className="h-10 w-px bg-white/30" />
+              {/* Divider */}
+              <div className="h-10 w-px bg-white/30" />
 
-  {/* FCS Logo — Bigger & Clearer */}
-  <div className="
-    bg-white rounded-xl
-    px-3 py-1.5
-    shadow-md
-    flex items-center justify-center
-  ">
-    <Image
-      src="/FCS-logo.png"
-      alt="Ford Component Sales Logo"
-      width={150}
-      height={48}
-      className="object-contain h-10 w-auto"
-      priority
-    />
-  </div>
-
-</div>
+              {/* FCS Logo */}
+              <div className="
+                bg-white rounded-xl
+                px-3 py-2
+                shadow-md
+                flex items-center justify-center
+              ">
+                <Image
+                  src="/FCS-logo.png"
+                  alt="Ford Component Sales Logo"
+                  width={150}
+                  height={48}
+                  className="object-contain h-9 w-auto"
+                  priority
+                />
+              </div>
+            </div>
 
             {/* Desktop Nav Links */}
             <div className="hidden md:flex items-center space-x-6">
@@ -420,7 +318,6 @@ export default function Home() {
           absolute top-1/2 left-1/3 w-64 h-64
           bg-white/5 rounded-full blur-3xl
         " />
-        {/* Extra decorative leaf-like circles */}
         <div className="
           absolute top-1/4 right-1/4 w-48 h-48
           bg-[#52B788]/10 rounded-full blur-2xl
@@ -550,23 +447,42 @@ export default function Home() {
                 border border-white/20
                 rounded-3xl p-8 shadow-2xl
               ">
-                {/* FCS Logo — White Background for Visibility */}
-                {/* FCS Logo — White Background for Visibility */}
-<div className="flex justify-center mb-6">
-  <div className="
-    bg-white rounded-2xl
-    px-5 py-3
-    shadow-lg
-  ">
-    <Image
-      src="/FCS-logo.png"
-      alt="FCS Logo"
-      width={140}
-      height={55}
-      className="object-contain h-12 w-auto"
-    />
-  </div>
-</div>  
+
+                {/* Logos inside hero card */}
+                <div className="
+                  flex items-center justify-center
+                  gap-4 mb-6
+                ">
+                  {/* Ford Logo */}
+                  <div className="
+                    bg-white rounded-xl
+                    px-3 py-2 shadow-md
+                  ">
+                    <Image
+                      src="/ford-Logo.PNG"
+                      alt="Ford Logo"
+                      width={80}
+                      height={32}
+                      className="object-contain h-8 w-auto"
+                    />
+                  </div>
+
+                  <div className="h-8 w-px bg-white/30" />
+
+                  {/* FCS Logo */}
+                  <div className="
+                    bg-white rounded-xl
+                    px-3 py-2 shadow-md
+                  ">
+                    <Image
+                      src="/FCS-logo.png"
+                      alt="Ford Component Sales"
+                      width={120}
+                      height={40}
+                      className="object-contain h-8 w-auto"
+                    />
+                  </div>
+                </div>
 
                 <div className="text-center mb-6">
                   <p className="
@@ -723,9 +639,7 @@ export default function Home() {
                 ">
                   {item.title}
                 </h3>
-                <p className="
-                  text-gray-600 leading-relaxed mb-4
-                ">
+                <p className="text-gray-600 leading-relaxed mb-4">
                   {item.desc}
                 </p>
                 {item.btn && (
@@ -864,9 +778,7 @@ export default function Home() {
                 ">
                   {feature.title}
                 </h3>
-                <p className="
-                  text-gray-500 text-sm leading-relaxed
-                ">
+                <p className="text-gray-500 text-sm leading-relaxed">
                   {feature.desc}
                 </p>
               </div>
@@ -920,22 +832,17 @@ export default function Home() {
                   📞
                 </div>
                 <div>
-                  <div className="
-                    font-bold text-gray-900 text-lg
-                  ">
+                  <div className="font-bold text-gray-900 text-lg">
                     Phone
                   </div>
-                  <div className="
-                    text-[#1B4332] font-semibold text-base
-                  ">
+                  <div className="text-[#1B4332] font-semibold text-base">
                     Michelle Ridenour
                   </div>
                   <a
                     href="tel:+12489127995"
                     className="
                       text-[#2D6A4F] font-medium
-                      hover:text-[#1B4332] transition
-                      text-sm
+                      hover:text-[#1B4332] transition text-sm
                     "
                   >
                     +1 (248) 912-7995
@@ -959,17 +866,14 @@ export default function Home() {
                   📧
                 </div>
                 <div>
-                  <div className="
-                    font-bold text-gray-900 text-lg mb-1
-                  ">
+                  <div className="font-bold text-gray-900 text-lg mb-1">
                     Email
                   </div>
                   <a
                     href="mailto:fcscats@ford.com"
                     className="
                       block text-[#1B4332] font-medium
-                      hover:text-[#2D6A4F] transition
-                      text-sm
+                      hover:text-[#2D6A4F] transition text-sm
                     "
                   >
                     fcscats@ford.com
@@ -1003,14 +907,10 @@ export default function Home() {
                   📍
                 </div>
                 <div className="flex-1">
-                  <div className="
-                    font-bold text-gray-900 text-lg
-                  ">
+                  <div className="font-bold text-gray-900 text-lg">
                     Location
                   </div>
-                  <div className="
-                    text-[#1B4332] font-semibold mb-2
-                  ">
+                  <div className="text-[#1B4332] font-semibold mb-2">
                     Pan United States
                   </div>
                   <div className="flex flex-wrap gap-2 mb-2">
@@ -1050,14 +950,37 @@ export default function Home() {
               rounded-3xl p-10 text-white
               shadow-2xl text-center
             ">
-              <div className="flex justify-center mb-6">
-                <Image
-                  src="/FCS-logo.png"
-                  alt="FCS Logo"
-                  width={140}
-                  height={55}
-                  className="object-contain brightness-0 invert"
-                />
+
+              {/* Both Logos in Card */}
+              <div className="
+                flex items-center justify-center
+                gap-4 mb-6
+              ">
+                <div className="
+                  bg-white rounded-xl
+                  px-3 py-2 shadow-md
+                ">
+                  <Image
+                    src="/ford-Logo.PNG"
+                    alt="Ford Logo"
+                    width={70}
+                    height={28}
+                    className="object-contain h-7 w-auto"
+                  />
+                </div>
+                <div className="h-7 w-px bg-white/30" />
+                <div className="
+                  bg-white rounded-xl
+                  px-3 py-2 shadow-md
+                ">
+                  <Image
+                    src="/FCS-logo.png"
+                    alt="FCS Logo"
+                    width={110}
+                    height={36}
+                    className="object-contain h-7 w-auto"
+                  />
+                </div>
               </div>
 
               <h3 className="text-3xl font-bold mb-4">
@@ -1093,16 +1016,13 @@ export default function Home() {
               ">
                 <p className="
                   text-green-300 text-xs
-                  font-semibold uppercase tracking-wider
-                  mb-2
+                  font-semibold uppercase tracking-wider mb-2
                 ">
                   Direct Contact
                 </p>
                 <div className="flex items-center gap-3">
                   <span>👤</span>
-                  <span className="
-                    text-white text-sm font-semibold
-                  ">
+                  <span className="text-white text-sm font-semibold">
                     Michelle Ridenour
                   </span>
                 </div>
@@ -1176,7 +1096,6 @@ export default function Home() {
           max-w-4xl mx-auto
           px-4 sm:px-6 lg:px-8 text-center
         ">
-          {/* Decorative top icon */}
           <div className="
             w-16 h-16 bg-white/10
             rounded-2xl flex items-center
@@ -1213,12 +1132,8 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ─────────────────────────────────────── */}
-      <footer className="
-        bg-[#0D2B1F] text-white pt-16 pb-8
-      ">
-        <div className="
-          max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
-        ">
+      <footer className="bg-[#0D2B1F] text-white pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="
             grid grid-cols-1 md:grid-cols-4
             gap-10 mb-12
@@ -1226,24 +1141,38 @@ export default function Home() {
 
             {/* Brand */}
             <div className="col-span-1">
-              <div className="flex items-center gap-3 mb-4">
-                <FordOvalLogo className="h-10 w-auto" />
+
+              {/* Both logos in footer */}
+              <div className="
+                flex items-center gap-3 mb-5
+              ">
+                <div className="
+                  bg-white rounded-xl
+                  px-2 py-1.5 shadow-md
+                ">
+                  <Image
+                    src="/ford-Logo.PNG"
+                    alt="Ford Logo"
+                    width={60}
+                    height={24}
+                    className="object-contain h-7 w-auto"
+                  />
+                </div>
+                <div className="h-7 w-px bg-white/20" />
+                <div className="
+                  bg-white rounded-xl
+                  px-2 py-1.5 shadow-md
+                ">
+                  <Image
+                    src="/FCS-logo.png"
+                    alt="Ford Component Sales"
+                    width={100}
+                    height={32}
+                    className="object-contain h-7 w-auto"
+                  />
+                </div>
               </div>
-              {/* FCS Logo — White Background for Visibility */}
-<div className="
-  bg-white rounded-xl
-  px-3 py-2
-  inline-block mb-4
-  shadow-md
-">
-  <Image
-    src="/FCS-logo.png"
-    alt="Ford Component Sales"
-    width={130}
-    height={50}
-    className="object-contain h-10 w-auto"
-  />
-</div>
+
               <p className="
                 text-green-400/70 text-sm leading-relaxed
               ">
@@ -1252,7 +1181,7 @@ export default function Home() {
                 Authorised and trusted Ford partner.
               </p>
 
-              {/* Green eco badge */}
+              {/* Eco badge */}
               <div className="
                 mt-4 inline-flex items-center gap-2
                 bg-green-900/50 border border-green-700
@@ -1269,9 +1198,7 @@ export default function Home() {
 
             {/* Quick Links */}
             <div>
-              <h4 className="
-                font-bold text-white mb-5 text-lg
-              ">
+              <h4 className="font-bold text-white mb-5 text-lg">
                 Quick Links
               </h4>
               <ul className="space-y-3">
@@ -1287,8 +1214,7 @@ export default function Home() {
                       className="
                         text-green-400/70 hover:text-white
                         text-sm transition duration-200
-                        inline-block
-                        hover:translate-x-1
+                        inline-block hover:translate-x-1
                       "
                     >
                       → {link.label}
@@ -1300,9 +1226,7 @@ export default function Home() {
 
             {/* Support */}
             <div>
-              <h4 className="
-                font-bold text-white mb-5 text-lg
-              ">
+              <h4 className="font-bold text-white mb-5 text-lg">
                 Support
               </h4>
               <ul className="space-y-3 text-green-400/70 text-sm">
@@ -1314,10 +1238,7 @@ export default function Home() {
                 ].map(item => (
                   <li
                     key={item}
-                    className="
-                      hover:text-white
-                      cursor-pointer transition
-                    "
+                    className="hover:text-white cursor-pointer transition"
                   >
                     → {item}
                   </li>
@@ -1327,19 +1248,13 @@ export default function Home() {
 
             {/* Contact */}
             <div>
-              <h4 className="
-                font-bold text-white mb-5 text-lg
-              ">
+              <h4 className="font-bold text-white mb-5 text-lg">
                 Contact
               </h4>
-              <ul className="
-                space-y-3 text-green-400/70 text-sm
-              ">
+              <ul className="space-y-3 text-green-400/70 text-sm">
                 <li className="flex items-center gap-2">
                   <span>👤</span>
-                  <span className="
-                    text-white font-medium
-                  ">
+                  <span className="text-white font-medium">
                     Michelle Ridenour
                   </span>
                 </li>
@@ -1390,10 +1305,18 @@ export default function Home() {
               All rights reserved.
             </p>
             <div className="flex items-center gap-3">
-              <FordOvalLogo className="h-6 w-auto opacity-60" />
-              <span className="
-                text-green-400/60 text-xs
+              <div className="
+                bg-white/10 rounded-lg px-2 py-1
               ">
+                <Image
+                  src="/ford-Logo.PNG"
+                  alt="Ford Logo"
+                  width={50}
+                  height={20}
+                  className="object-contain h-5 w-auto opacity-80"
+                />
+              </div>
+              <span className="text-green-400/60 text-xs">
                 An Authorised Ford Partner
               </span>
             </div>
