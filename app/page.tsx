@@ -31,90 +31,113 @@ function useCountUp(
   return count
 }
 
-// ─── Ford Oval SVG Logo (Latest 2017–Present) ────────────
+// ─── Ford Oval SVG Logo (Modern Flat Design) ─────────────
 function FordOvalLogo({ className = '' }: { className?: string }) {
   return (
     <svg
       className={className}
-      viewBox="0 0 280 112"
+      viewBox="0 0 660 265"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Ford Logo"
     >
-      {/* Outer gold border ring */}
+      {/* ── Outer Silver/Chrome Ring ── */}
       <ellipse
-        cx="140"
-        cy="56"
-        rx="138"
-        ry="54"
-        fill="#B8A96A"
+        cx="330"
+        cy="132"
+        rx="328"
+        ry="130"
+        fill="url(#silverRing)"
       />
 
-      {/* Main deep blue oval */}
+      {/* ── Main Blue Oval ── */}
       <ellipse
-        cx="140"
-        cy="56"
-        rx="132"
-        ry="48"
-        fill="#003499"
+        cx="330"
+        cy="132"
+        rx="310"
+        ry="112"
+        fill="url(#blueGrad)"
       />
 
-      {/* Inner white border ring */}
+      {/* ── Inner Highlight Ring ── */}
       <ellipse
-        cx="140"
-        cy="56"
-        rx="132"
-        ry="48"
+        cx="330"
+        cy="132"
+        rx="310"
+        ry="112"
         fill="none"
-        stroke="white"
-        strokeWidth="2.5"
+        stroke="rgba(255,255,255,0.25)"
+        strokeWidth="4"
       />
 
-      {/* Thin inner accent ring */}
+      {/* ── Top Gloss Shine ── */}
       <ellipse
-        cx="140"
-        cy="56"
-        rx="126"
-        ry="42"
-        fill="none"
-        stroke="white"
-        strokeWidth="0.8"
-        opacity="0.4"
+        cx="330"
+        cy="90"
+        rx="220"
+        ry="55"
+        fill="url(#gloss)"
+        opacity="0.25"
       />
 
-      {/* Shadow/depth layer */}
+      {/* ── Ford Script Text ── */}
       <text
-        x="141"
-        y="75"
+        x="330"
+        y="172"
         textAnchor="middle"
-        fontFamily="Times New Roman, Georgia, serif"
-        fontSize="54"
-        fontWeight="bold"
-        fontStyle="italic"
-        fill="#001a6e"
-        opacity="0.5"
-        letterSpacing="-1"
-      >
-        Ford
-      </text>
-
-      {/* Main white Ford text */}
-      <text
-        x="140"
-        y="74"
-        textAnchor="middle"
-        fontFamily="Times New Roman, Georgia, serif"
-        fontSize="54"
+        fontFamily="'Times New Roman', Georgia, serif"
+        fontSize="145"
         fontWeight="bold"
         fontStyle="italic"
         fill="white"
-        letterSpacing="-1"
+        letterSpacing="-3"
+        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
       >
         Ford
       </text>
+
+      {/* ── Gradient Definitions ── */}
+      <defs>
+
+        {/* Silver outer ring gradient */}
+        <linearGradient
+          id="silverRing"
+          x1="0%" y1="0%"
+          x2="0%" y2="100%"
+        >
+          <stop offset="0%"   stopColor="#E8E8E8" />
+          <stop offset="30%"  stopColor="#C0C0C0" />
+          <stop offset="50%"  stopColor="#A8A8A8" />
+          <stop offset="70%"  stopColor="#D0D0D0" />
+          <stop offset="100%" stopColor="#F0F0F0" />
+        </linearGradient>
+
+        {/* Deep blue oval gradient */}
+        <linearGradient
+          id="blueGrad"
+          x1="0%" y1="0%"
+          x2="0%" y2="100%"
+        >
+          <stop offset="0%"   stopColor="#0057B8" />
+          <stop offset="40%"  stopColor="#003DA5" />
+          <stop offset="100%" stopColor="#002A7A" />
+        </linearGradient>
+
+        {/* Top gloss highlight */}
+        <radialGradient
+          id="gloss"
+          cx="50%" cy="30%"
+          rx="60%" ry="40%"
+        >
+          <stop offset="0%"   stopColor="white" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="white" stopOpacity="0"   />
+        </radialGradient>
+
+      </defs>
     </svg>
   )
 }
+
 
 // ─── Stats Section with Animation ────────────────────────
 function StatsSection() {
@@ -1206,16 +1229,21 @@ export default function Home() {
               <div className="flex items-center gap-3 mb-4">
                 <FordOvalLogo className="h-10 w-auto" />
               </div>
-              <Image
-                src="/FCS-logo.png"
-                alt="Ford Component Sales"
-                width={130}
-                height={50}
-                className="
-                  object-contain mb-4
-                  brightness-0 invert
-                "
-              />
+              {/* FCS Logo — White Background for Visibility */}
+<div className="
+  bg-white rounded-xl
+  px-3 py-2
+  inline-block mb-4
+  shadow-md
+">
+  <Image
+    src="/FCS-logo.png"
+    alt="Ford Component Sales"
+    width={130}
+    height={50}
+    className="object-contain h-10 w-auto"
+  />
+</div>
               <p className="
                 text-green-400/70 text-sm leading-relaxed
               ">
