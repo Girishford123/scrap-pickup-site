@@ -437,4 +437,35 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
 
           <!-- Footer -->
           <p style="
-            text-align:
+            text-align: center;
+            color: #9ca3af;
+            font-size: 12px;
+            margin-top: 20px;
+          ">
+            Ford Component Sales — Scrap Pickup System<br/>
+            This is an automated confirmation email.
+          </p>
+
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('Requestor email error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true }
+
+  } catch (err) {
+    console.error('sendRequestorConfirmationEmail failed:', err)
+    return { success: false, error: err }
+  }
+}
+
+// ─── Legacy Placeholder ───────────────────────────────
+export async function sendPickupEmail(data: EmailData) {
+  await sendAdminNotificationEmail(data)
+  await sendRequestorConfirmationEmail(data)
+  return { success: true }
+}
