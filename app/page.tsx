@@ -228,18 +228,39 @@ export default function Home() {
           <div className="flex justify-between items-center h-20">
 
             {/* Logos */}
-            <div className="flex items-center space-x-3">
-              <FordOvalLogo className="h-10 w-auto" />
-              <div className="h-8 w-px bg-white/30" />
-              <Image
-                src="/FCS-logo.png"
-                alt="Ford Component Sales Logo"
-                width={120}
-                height={40}
-                className="object-contain h-10 w-auto"
-                priority
-              />
-            </div>
+<div className="flex items-center space-x-4">
+
+  {/* Ford Oval Logo — Bigger & Clearer */}
+  <div className="
+    bg-white rounded-xl
+    px-3 py-1.5
+    shadow-md
+    flex items-center justify-center
+  ">
+    <FordOvalLogo className="h-10 w-auto" />
+  </div>
+
+  {/* Divider */}
+  <div className="h-10 w-px bg-white/30" />
+
+  {/* FCS Logo — Bigger & Clearer */}
+  <div className="
+    bg-white rounded-xl
+    px-3 py-1.5
+    shadow-md
+    flex items-center justify-center
+  ">
+    <Image
+      src="/FCS-logo.png"
+      alt="Ford Component Sales Logo"
+      width={150}
+      height={48}
+      className="object-contain h-10 w-auto"
+      priority
+    />
+  </div>
+
+</div>
 
             {/* Desktop Nav Links */}
             <div className="hidden md:flex items-center space-x-6">
@@ -506,16 +527,23 @@ export default function Home() {
                 border border-white/20
                 rounded-3xl p-8 shadow-2xl
               ">
-                {/* FCS Logo */}
-                <div className="flex justify-center mb-6">
-                  <Image
-                    src="/FCS-logo.png"
-                    alt="Ford Component Sales"
-                    width={180}
-                    height={70}
-                    className="object-contain"
-                  />
-                </div>
+                {/* FCS Logo — White Background for Visibility */}
+                {/* FCS Logo — White Background for Visibility */}
+<div className="flex justify-center mb-6">
+  <div className="
+    bg-white rounded-2xl
+    px-5 py-3
+    shadow-lg
+  ">
+    <Image
+      src="/FCS-logo.png"
+      alt="FCS Logo"
+      width={140}
+      height={55}
+      className="object-contain h-12 w-auto"
+    />
+  </div>
+</div>  
 
                 <div className="text-center mb-6">
                   <p className="
