@@ -19,7 +19,8 @@
     "nprogress": "^0.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-hot-toast": "^2.4.1"
+    "react-hot-toast": "^2.4.1",
+    "resend": "^3.0.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
