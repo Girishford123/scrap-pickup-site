@@ -153,7 +153,7 @@ export default function Home() {
                 flex items-center justify-center
               ">
                 <Image
-                  src="/ford-Logo.PNG"
+                  src="/ford-logo.png"
                   alt="Ford Logo"
                   width={90}
                   height={38}
@@ -347,7 +347,7 @@ export default function Home() {
     flex items-center justify-center
   ">
     <Image
-      src="/ford-Logo.PNG"
+      src="/ford-logo.png"
       alt="Ford Logo"
       width={100}
       height={40}
@@ -499,7 +499,7 @@ export default function Home() {
                     px-3 py-2 shadow-md
                   ">
                     <Image
-                      src="/ford-Logo.PNG"
+                      src="ford-logo.png"
                       alt="Ford Logo"
                       width={80}
                       height={32}
@@ -1001,7 +1001,7 @@ export default function Home() {
                   px-3 py-2 shadow-md
                 ">
                   <Image
-                    src="/ford-Logo.PNG"
+                    src="/ford-ford-logo.png"
                     alt="Ford Logo"
                     width={70}
                     height={28}
@@ -1191,7 +1191,7 @@ export default function Home() {
                   px-2 py-1.5 shadow-md
                 ">
                   <Image
-                    src="/ford-Logo.PNG"
+                    src="/ford-logo.png"
                     alt="Ford Logo"
                     width={60}
                     height={24}
@@ -1349,7 +1349,7 @@ export default function Home() {
                 bg-white/10 rounded-lg px-2 py-1
               ">
                 <Image
-                  src="/ford-Logo.PNG"
+                  src="/ford-logo.png"
                   alt="Ford Logo"
                   width={50}
                   height={20}
