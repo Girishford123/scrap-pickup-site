@@ -6,8 +6,12 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Scrap Metal Pickup Service',
-  description: 'Request scrap metal pickup service',
+  title: 'Ford Component Sales | Scrap Vehicle Pickup Service',
+  description: 'Professional scrap component collection for Ford vehicles. Fast, reliable and eco-friendly pickup service across India.',
+  keywords: 'Ford, scrap pickup, component sales, vehicle recycling, India',
+  icons: {
+    icon: '/FCS-logo.png',
+  },
 }
 
 export default function RootLayout({
@@ -16,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>
