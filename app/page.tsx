@@ -41,7 +41,7 @@ function FordOvalLogo({ className = '' }: { className?: string }) {
       role="img"
       aria-label="Ford Logo"
     >
-      {/* ── Outer gold/silver border ring ── */}
+      {/* Outer gold border ring */}
       <ellipse
         cx="140"
         cy="56"
@@ -50,7 +50,7 @@ function FordOvalLogo({ className = '' }: { className?: string }) {
         fill="#B8A96A"
       />
 
-      {/* ── Main deep blue oval ── */}
+      {/* Main deep blue oval */}
       <ellipse
         cx="140"
         cy="56"
@@ -59,7 +59,7 @@ function FordOvalLogo({ className = '' }: { className?: string }) {
         fill="#003499"
       />
 
-      {/* ── Inner white border ring ── */}
+      {/* Inner white border ring */}
       <ellipse
         cx="140"
         cy="56"
@@ -70,7 +70,7 @@ function FordOvalLogo({ className = '' }: { className?: string }) {
         strokeWidth="2.5"
       />
 
-      {/* ── Thin inner accent ring ── */}
+      {/* Thin inner accent ring */}
       <ellipse
         cx="140"
         cy="56"
@@ -82,7 +82,6 @@ function FordOvalLogo({ className = '' }: { className?: string }) {
         opacity="0.4"
       />
 
-      {/* ── Ford Script Text ── */}
       {/* Shadow/depth layer */}
       <text
         x="141"
@@ -210,7 +209,6 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Auto-rotate testimonials
   const testimonials = [
     {
       name:    'Rajesh Kumar',
@@ -235,6 +233,7 @@ export default function Home() {
     },
   ]
 
+  // Auto-rotate testimonials
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveTestim(prev => (prev + 1) % testimonials.length)
@@ -293,21 +292,8 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Desktop Login Buttons */}
-            <div className="hidden md:flex items-center space-x-3">
-              <Link
-                href="/login/requestor"
-                className="
-                  bg-green-600 text-white
-                  px-5 py-2 rounded-lg
-                  hover:bg-green-500
-                  font-semibold text-sm
-                  transition duration-200
-                  shadow-md hover:shadow-lg
-                "
-              >
-                Customer Login
-              </Link>
+            {/* Desktop — Admin Login Only */}
+            <div className="hidden md:flex items-center">
               <Link
                 href="/login/admin"
                 className="
@@ -330,12 +316,32 @@ export default function Home() {
               aria-label="Toggle menu"
             >
               {menuOpen ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 </svg>
               )}
             </button>
@@ -358,23 +364,12 @@ export default function Home() {
                   {link.label}
                 </a>
               ))}
-              <div className="flex flex-col space-y-2 pt-2 px-4">
-                <Link
-                  href="/login/requestor"
-                  className="
-                    bg-green-600 text-white
-                    px-4 py-2 rounded-lg
-                    hover:bg-green-500
-                    font-semibold text-sm
-                    text-center transition
-                  "
-                >
-                  Customer Login
-                </Link>
+              {/* Mobile — Admin Login Only */}
+              <div className="pt-2 px-4">
                 <Link
                   href="/login/admin"
                   className="
-                    bg-white text-[#003478]
+                    block bg-white text-[#003478]
                     px-4 py-2 rounded-lg
                     hover:bg-blue-50
                     font-semibold text-sm
@@ -396,16 +391,28 @@ export default function Home() {
         text-white py-28 overflow-hidden
       ">
         {/* Background decorative circles */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-400/10 rounded-full translate-x-1/2 translate-y-1/2" />
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
+        <div className="
+          absolute top-0 left-0 w-96 h-96
+          bg-blue-500/10 rounded-full
+          -translate-x-1/2 -translate-y-1/2
+        " />
+        <div className="
+          absolute bottom-0 right-0 w-96 h-96
+          bg-blue-400/10 rounded-full
+          translate-x-1/2 translate-y-1/2
+        " />
+        <div className="
+          absolute top-1/2 left-1/3 w-64 h-64
+          bg-white/5 rounded-full blur-3xl
+        " />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-12">
 
-            {/* Left Content */}
+            {/* ── Left Content ── */}
             <div className="flex-1 text-center lg:text-left">
-              {/* Badge */}
+
+              {/* Trusted Badge */}
               <div className="
                 inline-flex items-center gap-2
                 bg-white/10 backdrop-blur-sm
@@ -414,11 +421,17 @@ export default function Home() {
                 text-sm font-medium text-blue-100
                 mb-6
               ">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="
+                  w-2 h-2 bg-green-400
+                  rounded-full animate-pulse
+                " />
                 Trusted by 500+ Customers Across India
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+              <h1 className="
+                text-4xl md:text-5xl lg:text-6xl
+                font-bold leading-tight mb-6
+              ">
                 Professional Scrap
                 <br />
                 <span className="text-blue-300">
@@ -428,18 +441,26 @@ export default function Home() {
                 Service
               </h1>
 
-              <p className="text-lg text-blue-100 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Fast, reliable, and eco-friendly scrap component collection
-                for Ford vehicles across India. Login to schedule your
-                pickup today!
+              <p className="
+                text-lg text-blue-100 mb-8
+                max-w-xl mx-auto lg:mx-0
+                leading-relaxed
+              ">
+                Fast, reliable, and eco-friendly scrap component
+                collection for Ford vehicles across India.
+                Login to schedule your pickup today!
               </p>
 
-              {/* ✅ CTA → Login only, NO direct pickup button */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link
-                  href="/login/requestor"
+              {/* ✅ Learn More + Contact Us only */}
+              <div className="
+                flex flex-col sm:flex-row gap-4
+                justify-center lg:justify-start
+              ">
+                <a
+                  href="#how-it-works"
                   className="
-                    inline-flex items-center justify-center gap-2
+                    inline-flex items-center
+                    justify-center gap-2
                     bg-white text-[#003478]
                     px-8 py-4 rounded-xl
                     font-bold text-lg
@@ -449,13 +470,15 @@ export default function Home() {
                     transition duration-300
                   "
                 >
-                  🔐 Customer Login
-                </Link>
+                  Learn More →
+                </a>
                 <a
-                  href="#how-it-works"
+                  href="#contact"
                   className="
-                    inline-flex items-center justify-center gap-2
-                    bg-transparent border-2 border-white/40
+                    inline-flex items-center
+                    justify-center gap-2
+                    bg-transparent
+                    border-2 border-white/40
                     text-white
                     px-8 py-4 rounded-xl
                     font-semibold text-lg
@@ -463,13 +486,14 @@ export default function Home() {
                     transition duration-300
                   "
                 >
-                  Learn More →
+                  Contact Us →
                 </a>
               </div>
 
-              {/* Trust Badges — removed Free Pickup */}
+              {/* Trust Badges */}
               <div className="
-                flex flex-wrap justify-center lg:justify-start
+                flex flex-wrap
+                justify-center lg:justify-start
                 gap-4 mt-8
               ">
                 {[
@@ -492,13 +516,12 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right Content — Visual Card */}
+            {/* ── Right Content — Visual Card ── */}
             <div className="flex-1 w-full max-w-md">
               <div className="
                 bg-white/10 backdrop-blur-sm
                 border border-white/20
-                rounded-3xl p-8
-                shadow-2xl
+                rounded-3xl p-8 shadow-2xl
               ">
                 {/* FCS Logo */}
                 <div className="flex justify-center mb-6">
@@ -512,7 +535,10 @@ export default function Home() {
                 </div>
 
                 <div className="text-center mb-6">
-                  <p className="text-blue-200 text-sm font-medium uppercase tracking-wider">
+                  <p className="
+                    text-blue-200 text-sm
+                    font-medium uppercase tracking-wider
+                  ">
                     Authorised Scrap Collection
                   </p>
                   <h3 className="text-white text-2xl font-bold mt-1">
@@ -523,18 +549,17 @@ export default function Home() {
                 {/* Service Info */}
                 <div className="space-y-3">
                   {[
-                    { icon: '🚚', text: 'Doorstep Vehicle Pickup'   },
-                    { icon: '📋', text: 'Easy Online Booking'       },
-                    { icon: '💰', text: 'Competitive Scrap Rates'   },
-                    { icon: '🌿', text: 'Eco-Friendly Disposal'     },
-                    { icon: '📄', text: 'Proper Documentation'      },
+                    { icon: '🚚', text: 'Doorstep Vehicle Pickup'  },
+                    { icon: '📋', text: 'Easy Online Booking'      },
+                    { icon: '💰', text: 'Competitive Scrap Rates'  },
+                    { icon: '🌿', text: 'Eco-Friendly Disposal'    },
+                    { icon: '📄', text: 'Proper Documentation'     },
                   ].map((item, i) => (
                     <div
                       key={i}
                       className="
                         flex items-center gap-3
-                        bg-white/10 rounded-xl
-                        px-4 py-3
+                        bg-white/10 rounded-xl px-4 py-3
                       "
                     >
                       <span className="text-xl">{item.icon}</span>
@@ -545,9 +570,9 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* ✅ Login to access pickup — NOT direct pickup */}
-                <Link
-                  href="/login/requestor"
+                {/* ✅ See How It Works — No login button */}
+                <a
+                  href="#how-it-works"
                   className="
                     mt-6 block text-center
                     bg-white text-[#003478]
@@ -557,10 +582,11 @@ export default function Home() {
                     transition duration-300
                   "
                 >
-                  🔐 Login to Request Pickup →
-                </Link>
+                  See How It Works →
+                </a>
               </div>
             </div>
+
           </div>
         </div>
       </section>
@@ -587,25 +613,24 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                step:   '01',
-                icon:   '🔐',
-                title:  'Login to Your Account',
-                desc:   'Sign in to your customer account to access the pickup request form.',
-                color:  'bg-blue-50 border-blue-200',
-                iconBg: 'bg-[#003478]',
-                // ✅ Login link instead of pickup link
-                btn:    true,
-                btnText:'Login Now →',
-                btnHref:'/login/requestor',
+                step:    '01',
+                icon:    '🔐',
+                title:   'Login to Your Account',
+                desc:    'Sign in to your customer account to access the pickup request form.',
+                color:   'bg-blue-50 border-blue-200',
+                iconBg:  'bg-[#003478]',
+                btn:     true,
+                btnText: 'Login Now →',
+                btnHref: '/login/requestor',
               },
               {
                 step:   '02',
                 icon:   '📋',
                 title:  'Fill Pickup Form',
-                desc:   'Complete the simple online pickup request form with your vehicle details.',
+                desc:   'Complete the simple online pickup request form with your vehicle and contact details.',
                 color:  'bg-green-50 border-green-200',
                 iconBg: 'bg-green-600',
                 btn:    false,
@@ -624,13 +649,12 @@ export default function Home() {
                 key={i}
                 className={`
                   relative text-center p-8
-                  ${item.color}
-                  border-2 rounded-2xl
+                  ${item.color} border-2 rounded-2xl
                   hover:shadow-xl transition duration-300
                   transform hover:-translate-y-2
                 `}
               >
-                {/* Step number */}
+                {/* Step Number */}
                 <div className="
                   absolute -top-4 left-1/2 -translate-x-1/2
                   bg-white border-2 border-gray-200
@@ -795,12 +819,16 @@ export default function Home() {
       {/* ── TESTIMONIALS ───────────────────────────────── */}
       <section
         id="testimonials"
-        className="py-24 bg-gradient-to-br from-[#003478] to-[#001f5c] text-white"
+        className="
+          py-24 bg-gradient-to-br
+          from-[#003478] to-[#001f5c] text-white
+        "
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="
-              inline-block bg-white/10 border border-white/20
+              inline-block bg-white/10
+              border border-white/20
               text-blue-100 text-sm font-semibold
               px-4 py-2 rounded-full mb-4
             ">
@@ -821,14 +849,24 @@ export default function Home() {
               rounded-3xl p-10 text-center
               shadow-2xl transition-all duration-500
             ">
+              {/* Stars */}
               <div className="flex justify-center gap-1 mb-6">
                 {[...Array(testimonials[activeTestim].rating)].map((_, i) => (
-                  <span key={i} className="text-yellow-400 text-2xl">⭐</span>
+                  <span key={i} className="text-yellow-400 text-2xl">
+                    ⭐
+                  </span>
                 ))}
               </div>
-              <p className="text-xl text-blue-100 leading-relaxed mb-8 italic">
+
+              {/* Quote */}
+              <p className="
+                text-xl text-blue-100
+                leading-relaxed mb-8 italic
+              ">
                 "{testimonials[activeTestim].comment}"
               </p>
+
+              {/* Avatar + Name */}
               <div className="flex items-center justify-center gap-4">
                 <div className="
                   w-14 h-14 rounded-full
@@ -859,7 +897,8 @@ export default function Home() {
                     rounded-full transition-all duration-300
                     ${i === activeTestim
                       ? 'w-8 h-3 bg-white'
-                      : 'w-3 h-3 bg-white/40 hover:bg-white/60'}
+                      : 'w-3 h-3 bg-white/40 hover:bg-white/60'
+                    }
                   `}
                   aria-label={`Testimonial ${i + 1}`}
                 />
@@ -926,8 +965,7 @@ export default function Home() {
                   key={i}
                   className={`
                     flex items-center gap-5
-                    ${item.bg} border-2
-                    rounded-2xl p-5
+                    ${item.bg} border-2 rounded-2xl p-5
                     hover:shadow-md transition duration-300
                   `}
                 >
@@ -939,13 +977,15 @@ export default function Home() {
                     <div className="text-gray-700 font-medium">
                       {item.info}
                     </div>
-                    <div className="text-gray-500 text-sm">{item.sub}</div>
+                    <div className="text-gray-500 text-sm">
+                      {item.sub}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* ✅ Login CTA Card — No direct pickup */}
+            {/* ✅ Login CTA Card — Admin Login Only */}
             <div className="
               bg-gradient-to-br from-[#003478] to-[#001f5c]
               rounded-3xl p-10 text-white
@@ -965,8 +1005,8 @@ export default function Home() {
                 Ready to Get Started?
               </h3>
               <p className="text-blue-200 mb-8 leading-relaxed">
-                Login to your customer account to schedule
-                a scrap vehicle pickup. It only takes 2 minutes!
+                Login to your customer account to schedule a
+                scrap vehicle pickup. It only takes 2 minutes!
               </p>
 
               <Link
@@ -976,8 +1016,7 @@ export default function Home() {
                   bg-white text-[#003478]
                   px-10 py-4 rounded-xl
                   font-bold text-lg
-                  hover:bg-blue-50
-                  shadow-xl
+                  hover:bg-blue-50 shadow-xl
                   transform hover:scale-105
                   transition duration-300
                   mb-6 w-full text-center
@@ -986,19 +1025,17 @@ export default function Home() {
                 🔐 Login to Request Pickup
               </Link>
 
+              {/* ✅ Admin Login only */}
               <div className="
-                flex justify-center gap-6
+                flex justify-center
                 pt-6 border-t border-white/20
               ">
                 <Link
-                  href="/login/requestor"
-                  className="text-blue-200 hover:text-white text-sm font-medium transition"
-                >
-                  Customer Login →
-                </Link>
-                <Link
                   href="/login/admin"
-                  className="text-blue-200 hover:text-white text-sm font-medium transition"
+                  className="
+                    text-blue-200 hover:text-white
+                    text-sm font-medium transition
+                  "
                 >
                   Admin Login →
                 </Link>
@@ -1014,7 +1051,11 @@ export default function Home() {
         bg-gradient-to-r from-[#003478] to-[#0057a8]
         text-white
       ">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="
+          max-w-4xl mx-auto
+          px-4 sm:px-6 lg:px-8
+          text-center
+        ">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Ready to Schedule Your Pickup?
           </h2>
@@ -1029,8 +1070,7 @@ export default function Home() {
               bg-white text-[#003478]
               px-10 py-5 rounded-xl
               font-bold text-xl
-              hover:bg-blue-50
-              shadow-2xl
+              hover:bg-blue-50 shadow-2xl
               transform hover:scale-105
               transition duration-300
             "
@@ -1064,17 +1104,17 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Quick Links — ✅ No pickup link */}
+            {/* Quick Links — ✅ No Customer Login */}
             <div>
               <h4 className="font-bold text-white mb-5 text-lg">
                 Quick Links
               </h4>
               <ul className="space-y-3">
                 {[
-                  { label: 'Customer Login',  href: '/login/requestor' },
-                  { label: 'Admin Login',     href: '/login/admin'     },
-                  { label: 'How It Works',    href: '#how-it-works'    },
-                  { label: 'Why Choose Us',   href: '#why-us'          },
+                  { label: 'Admin Login',   href: '/login/admin'  },
+                  { label: 'How It Works',  href: '#how-it-works' },
+                  { label: 'Why Choose Us', href: '#why-us'       },
+                  { label: 'Contact Us',    href: '#contact'      },
                 ].map(link => (
                   <li key={link.label}>
                     <Link
@@ -1098,8 +1138,16 @@ export default function Home() {
                 Support
               </h4>
               <ul className="space-y-3 text-gray-400 text-sm">
-                {['FAQ', 'Contact Us', 'Terms & Conditions', 'Privacy Policy'].map(item => (
-                  <li key={item} className="hover:text-white cursor-pointer transition">
+                {[
+                  'FAQ',
+                  'Contact Us',
+                  'Terms & Conditions',
+                  'Privacy Policy',
+                ].map(item => (
+                  <li
+                    key={item}
+                    className="hover:text-white cursor-pointer transition"
+                  >
                     → {item}
                   </li>
                 ))}
@@ -1147,6 +1195,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
     </div>
   )
 }
