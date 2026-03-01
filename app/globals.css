@@ -2,297 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─────────────────────────────────────
-   BASE STYLES
-───────────────────────────────────── */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  height: 100%;
-  scroll-behavior: smooth;
-}
-
-body {
-  height: 100%;
-  min-height: 100vh;
-  background-color: #f3f4f6;
-  color: #111827;
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ─────────────────────────────────────
-   FORD BRAND COLOURS
-───────────────────────────────────── */
-
-:root {
-  --ford-blue:       #003478;
-  --ford-blue-light: #0057a8;
-  --ford-blue-pale:  #dbeafe;
-  --ford-white:      #ffffff;
-  --ford-gray:       #6b7280;
-  --ford-gray-light: #f3f4f6;
-  --ford-success:    #16a34a;
-  --ford-error:      #dc2626;
-  --ford-warning:    #d97706;
-}
-
-/* ─────────────────────────────────────
-   CUSTOM UTILITY CLASSES
-───────────────────────────────────── */
-
-@layer utilities {
-
-  /* Ford Blue Button */
-  .btn-ford {
-    display: inline-block;
-    background-color: var(--ford-blue);
-    color: #ffffff;
-    padding: 12px 32px;
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 15px;
-    text-decoration: none;
-    transition: background-color 0.2s ease;
-    cursor: pointer;
-    border: none;
-  }
-
-  .btn-ford:hover {
-    background-color: var(--ford-blue-light);
-  }
-
-  .btn-ford:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  /* Ford Card */
-  .card-ford {
-    background-color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-                0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    padding: 32px;
-  }
-
-  /* Ford Input */
-  .input-ford {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 15px;
-    color: #111827;
-    background-color: #ffffff;
-    outline: none;
-    transition: border-color 0.2s ease,
-                box-shadow 0.2s ease;
-  }
-
-  .input-ford:focus {
-    border-color: var(--ford-blue);
-    box-shadow: 0 0 0 3px rgba(0, 52, 120, 0.15);
-  }
-
-  .input-ford::placeholder {
-    color: #9ca3af;
-  }
-
-  /* Ford Label */
-  .label-ford {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 6px;
-  }
-
-  /* Ford Header Bar */
-  .header-ford {
-    background-color: var(--ford-blue);
-    color: #ffffff;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  /* Alert Boxes */
-  .alert-error {
-    background-color: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: #dc2626;
-    font-size: 14px;
-  }
-
-  .alert-success {
-    background-color: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: #16a34a;
-    font-size: 14px;
-  }
-
-  .alert-warning {
-    background-color: #fffbeb;
-    border: 1px solid #fcd34d;
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: #92400e;
-    font-size: 14px;
-  }
-
-  .alert-info {
-    background-color: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: #0369a1;
-    font-size: 14px;
-  }
-}
-
-/* ─────────────────────────────────────
-   SCROLLBAR STYLING
-───────────────────────────────────── */
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #003478;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #0057a8;
-}
-
-/* ─────────────────────────────────────
-   LINK STYLES
-───────────────────────────────────── */
-
-a {
-  color: var(--ford-blue);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-a:hover {
-  color: var(--ford-blue-light);
-  text-decoration: underline;
-}
-
-/* ─────────────────────────────────────
-   LOADING SPINNER
-───────────────────────────────────── */
-
-@keyframes spin {
-  from { transform: rotate(0deg);   }
-  to   { transform: rotate(360deg); }
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-
-.spinner-blue {
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(0, 52, 120, 0.2);
-  border-top-color: #003478;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-
-/* ─────────────────────────────────────
-   PAGE TRANSITIONS
-───────────────────────────────────── */
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease forwards;
-}
-
-/* ─────────────────────────────────────
-   RESPONSIVE TABLE
-───────────────────────────────────── */
-
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  background-color: var(--ford-blue);
-  color: #ffffff;
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 14px;
-  color: #374151;
-}
-
-tr:hover td {
-  background-color: #f9fafb;
-}
-
-/* ─────────────────────────────────────
-   PRINT STYLES
-───────────────────────────────────── */
-
-@media print {
-  body {
-    background-color: #ffffff;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-/* ── Progress Bar Custom Color ─────────────────── */
+/* ── Progress Bar Custom Color ─────────────────────── */
 #nprogress .bar {
   background: #52B788 !important;
   height: 3px !important;
@@ -302,14 +12,14 @@ tr:hover td {
   box-shadow: 0 0 10px #52B788, 0 0 5px #52B788 !important;
 }
 
-/* ── Shimmer Animation ─────────────────────────── */
+/* ── Shimmer Animation ──────────────────────────────── */
 @keyframes shimmer {
   100% {
     transform: translateX(200%);
   }
 }
 
-/* ── Dark Mode Styles ──────────────────────────── */
+/* ── Dark Mode Styles ───────────────────────────────── */
 .dark body {
   background-color: #0a0a0a;
   color: #f5f5f5;
@@ -348,25 +58,27 @@ tr:hover td {
 }
 
 .dark .shadow-sm {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
 }
 
 .dark .shadow-md {
-  box-shadow: 0 4px 6px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5) !important;
 }
 
 .dark .shadow-xl {
-  box-shadow: 0 20px 25px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* ── Smooth Transitions ────────────────────────── */
-* {
+/* ── Smooth Transitions ─────────────────────────────── */
+*,
+*::before,
+*::after {
   transition-property: background-color, border-color, color;
   transition-duration: 200ms;
   transition-timing-function: ease;
 }
 
-/* ── Scrollbar Styling ─────────────────────────── */
+/* ── Scrollbar Styling ──────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -390,4 +102,8 @@ tr:hover td {
 
 .dark ::-webkit-scrollbar-thumb {
   background: #52B788;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #2D6A4F;
 }
