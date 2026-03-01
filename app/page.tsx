@@ -148,30 +148,30 @@ function StatsSection() {
             {
               value: `${pickups}+`,
               label: 'Pickups Completed',
-              color: 'border-blue-500',
-              bg:    'bg-blue-50',
-              text:  'text-blue-900',
+              color: 'border-[#1B4332]',
+              bg:    'bg-green-50',
+              text:  'text-[#1B4332]',
             },
             {
               value: `${hours}hrs`,
               label: 'Average Response Time',
-              color: 'border-green-500',
-              bg:    'bg-green-50',
-              text:  'text-green-900',
+              color: 'border-[#52B788]',
+              bg:    'bg-emerald-50',
+              text:  'text-[#2D6A4F]',
             },
             {
               value: `${satisf}%`,
               label: 'Customer Satisfaction',
-              color: 'border-orange-500',
-              bg:    'bg-orange-50',
-              text:  'text-orange-900',
+              color: 'border-green-400',
+              bg:    'bg-green-50',
+              text:  'text-[#1B4332]',
             },
             {
               value: `${customers}+`,
               label: 'Happy Customers',
-              color: 'border-purple-500',
-              bg:    'bg-purple-50',
-              text:  'text-purple-900',
+              color: 'border-[#52B788]',
+              bg:    'bg-emerald-50',
+              text:  'text-[#2D6A4F]',
             },
           ].map((stat, i) => (
             <div
@@ -219,7 +219,8 @@ export default function Home() {
 
       {/* ── NAVBAR ─────────────────────────────────────── */}
       <nav className={`
-        sticky top-0 z-50 bg-[#003478] text-white
+        sticky top-0 z-50
+        bg-[#1B4332] text-white
         transition-shadow duration-300
         ${scrolled ? 'shadow-2xl' : 'shadow-lg'}
       `}>
@@ -247,7 +248,7 @@ export default function Home() {
                   key={link.label}
                   href={link.href}
                   className="
-                    text-blue-100 hover:text-white
+                    text-green-100 hover:text-white
                     font-medium text-sm
                     transition duration-200
                     hover:underline underline-offset-4
@@ -263,9 +264,9 @@ export default function Home() {
               <Link
                 href="/login/admin"
                 className="
-                  bg-white text-[#003478]
+                  bg-white text-[#1B4332]
                   px-5 py-2 rounded-lg
-                  hover:bg-blue-50
+                  hover:bg-green-50
                   font-semibold text-sm
                   transition duration-200
                   shadow-md hover:shadow-lg
@@ -278,7 +279,7 @@ export default function Home() {
             {/* Mobile Hamburger */}
             <button
               className="md:hidden p-2 rounded-lg
-              hover:bg-blue-800 transition"
+              hover:bg-[#2D6A4F] transition"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >
@@ -318,7 +319,7 @@ export default function Home() {
           {menuOpen && (
             <div className="
               md:hidden pb-4 space-y-2
-              border-t border-blue-700 pt-4
+              border-t border-green-700 pt-4
             ">
               {navLinks.map(link => (
                 <a
@@ -326,8 +327,8 @@ export default function Home() {
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
                   className="
-                    block px-4 py-2 text-blue-100
-                    hover:bg-blue-700 rounded-lg
+                    block px-4 py-2 text-green-100
+                    hover:bg-[#2D6A4F] rounded-lg
                     font-medium text-sm transition
                   "
                 >
@@ -339,9 +340,9 @@ export default function Home() {
                 <Link
                   href="/login/admin"
                   className="
-                    block bg-white text-[#003478]
+                    block bg-white text-[#1B4332]
                     px-4 py-2 rounded-lg
-                    hover:bg-blue-50
+                    hover:bg-green-50
                     font-semibold text-sm
                     text-center transition
                   "
@@ -357,23 +358,28 @@ export default function Home() {
       {/* ── HERO SECTION ───────────────────────────────── */}
       <section className="
         relative bg-gradient-to-br
-        from-[#003478] via-[#00297a] to-[#001f5c]
+        from-[#1B4332] via-[#2D6A4F] to-[#1B4332]
         text-white py-28 overflow-hidden
       ">
         {/* Background decorative circles */}
         <div className="
           absolute top-0 left-0 w-96 h-96
-          bg-blue-500/10 rounded-full
+          bg-green-400/10 rounded-full
           -translate-x-1/2 -translate-y-1/2
         " />
         <div className="
           absolute bottom-0 right-0 w-96 h-96
-          bg-blue-400/10 rounded-full
+          bg-green-300/10 rounded-full
           translate-x-1/2 translate-y-1/2
         " />
         <div className="
           absolute top-1/2 left-1/3 w-64 h-64
           bg-white/5 rounded-full blur-3xl
+        " />
+        {/* Extra decorative leaf-like circles */}
+        <div className="
+          absolute top-1/4 right-1/4 w-48 h-48
+          bg-[#52B788]/10 rounded-full blur-2xl
         " />
 
         <div className="
@@ -394,11 +400,11 @@ export default function Home() {
                 bg-white/10 backdrop-blur-sm
                 border border-white/20
                 rounded-full px-4 py-2
-                text-sm font-medium text-blue-100
+                text-sm font-medium text-green-100
                 mb-6
               ">
                 <span className="
-                  w-2 h-2 bg-green-400
+                  w-2 h-2 bg-[#52B788]
                   rounded-full animate-pulse
                 " />
                 Trusted by 500+ Customers Across the US
@@ -410,7 +416,7 @@ export default function Home() {
               ">
                 Professional Scrap
                 <br />
-                <span className="text-blue-300">
+                <span className="text-[#52B788]">
                   Vehicle Pickup
                 </span>
                 <br />
@@ -418,7 +424,7 @@ export default function Home() {
               </h1>
 
               <p className="
-                text-lg text-blue-100 mb-8
+                text-lg text-green-100 mb-8
                 max-w-xl mx-auto lg:mx-0
                 leading-relaxed
               ">
@@ -438,10 +444,10 @@ export default function Home() {
                   className="
                     inline-flex items-center
                     justify-center gap-2
-                    bg-white text-[#003478]
+                    bg-white text-[#1B4332]
                     px-8 py-4 rounded-xl
                     font-bold text-lg
-                    hover:bg-blue-50
+                    hover:bg-green-50
                     shadow-2xl
                     transform hover:scale-105
                     transition duration-300
@@ -484,7 +490,7 @@ export default function Home() {
                     className="
                       bg-white/10 border border-white/20
                       rounded-full px-3 py-1
-                      text-sm text-blue-100
+                      text-sm text-green-100
                     "
                   >
                     {badge}
@@ -513,7 +519,7 @@ export default function Home() {
 
                 <div className="text-center mb-6">
                   <p className="
-                    text-blue-200 text-sm font-medium
+                    text-green-200 text-sm font-medium
                     uppercase tracking-wider
                   ">
                     Authorised Scrap Collection
@@ -540,6 +546,8 @@ export default function Home() {
                         flex items-center gap-3
                         bg-white/10 rounded-xl
                         px-4 py-3
+                        hover:bg-white/20
+                        transition duration-200
                       "
                     >
                       <span className="text-xl">{item.icon}</span>
@@ -557,11 +565,12 @@ export default function Home() {
                   href="#how-it-works"
                   className="
                     mt-6 block text-center
-                    bg-white text-[#003478]
+                    bg-white text-[#1B4332]
                     px-6 py-3 rounded-xl
                     font-bold text-base
-                    hover:bg-blue-50
+                    hover:bg-green-50
                     transition duration-300
+                    shadow-lg
                   "
                 >
                   See How It Works →
@@ -581,13 +590,15 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="
-              inline-block bg-blue-100 text-[#003478]
+              inline-block bg-green-100 text-[#1B4332]
               text-sm font-semibold
               px-4 py-2 rounded-full mb-4
             ">
               Simple Process
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="
+              text-4xl font-bold text-gray-900 mb-4
+            ">
               How It Works
             </h2>
             <p className="text-xl text-gray-500 max-w-2xl mx-auto">
@@ -602,8 +613,8 @@ export default function Home() {
                 icon:    '🔐',
                 title:   'Login to Your Account',
                 desc:    'Sign in to your customer account to access the pickup request form.',
-                color:   'bg-blue-50 border-blue-200',
-                iconBg:  'bg-[#003478]',
+                color:   'bg-green-50 border-green-200',
+                iconBg:  'bg-[#1B4332]',
                 btn:     true,
                 btnText: 'Login Now →',
                 btnHref: '/login/requestor',
@@ -613,8 +624,8 @@ export default function Home() {
                 icon:   '📋',
                 title:  'Fill Pickup Form',
                 desc:   'Complete the simple online pickup request form with your vehicle and contact details.',
-                color:  'bg-green-50 border-green-200',
-                iconBg: 'bg-green-600',
+                color:  'bg-emerald-50 border-emerald-200',
+                iconBg: 'bg-[#2D6A4F]',
                 btn:    false,
               },
               {
@@ -622,8 +633,8 @@ export default function Home() {
                 icon:   '🚚',
                 title:  'Pickup Complete',
                 desc:   'Our professional team arrives at your location and handles everything safely.',
-                color:  'bg-orange-50 border-orange-200',
-                iconBg: 'bg-orange-500',
+                color:  'bg-teal-50 border-teal-200',
+                iconBg: 'bg-[#52B788]',
                 btn:    false,
               },
             ].map((item, i) => (
@@ -639,10 +650,10 @@ export default function Home() {
                 {/* Step Number */}
                 <div className="
                   absolute -top-4 left-1/2 -translate-x-1/2
-                  bg-white border-2 border-gray-200
+                  bg-white border-2 border-green-200
                   rounded-full w-8 h-8
                   flex items-center justify-center
-                  text-xs font-bold text-gray-500
+                  text-xs font-bold text-[#1B4332]
                 ">
                   {item.step}
                 </div>
@@ -661,7 +672,9 @@ export default function Home() {
                 ">
                   {item.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed mb-4">
+                <p className="
+                  text-gray-600 leading-relaxed mb-4
+                ">
                   {item.desc}
                 </p>
                 {item.btn && (
@@ -669,8 +682,8 @@ export default function Home() {
                     href={item.btnHref!}
                     className="
                       inline-flex items-center gap-1
-                      text-[#003478] font-semibold
-                      hover:text-blue-700 transition
+                      text-[#1B4332] font-semibold
+                      hover:text-[#2D6A4F] transition
                     "
                   >
                     {item.btnText}
@@ -687,13 +700,15 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="
-              inline-block bg-blue-100 text-[#003478]
+              inline-block bg-green-100 text-[#1B4332]
               text-sm font-semibold
               px-4 py-2 rounded-full mb-4
             ">
               Our Advantages
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="
+              text-4xl font-bold text-gray-900 mb-4
+            ">
               Why Choose Us?
             </h2>
             <p className="text-xl text-gray-500 max-w-2xl mx-auto">
@@ -711,65 +726,65 @@ export default function Home() {
                 icon:       '🚚',
                 title:      'Fast Pickup',
                 desc:       '24-48 hour guaranteed response time for all pickup requests.',
-                color:      'hover:border-blue-500 hover:bg-blue-50',
+                color:      'hover:border-[#1B4332] hover:bg-green-50',
                 badge:      'Fast',
-                badgeColor: 'bg-blue-100 text-blue-700',
+                badgeColor: 'bg-green-100 text-[#1B4332]',
               },
               {
                 icon:       '📋',
                 title:      'Easy Process',
                 desc:       'Simple 3-step online booking. No paperwork hassle.',
-                color:      'hover:border-green-500 hover:bg-green-50',
+                color:      'hover:border-[#2D6A4F] hover:bg-emerald-50',
                 badge:      'Simple',
-                badgeColor: 'bg-green-100 text-green-700',
+                badgeColor: 'bg-emerald-100 text-[#2D6A4F]',
               },
               {
                 icon:       '🕐',
                 title:      '24/7 Support',
                 desc:       'Our support team is always available to assist you.',
-                color:      'hover:border-orange-500 hover:bg-orange-50',
+                color:      'hover:border-[#52B788] hover:bg-teal-50',
                 badge:      'Always On',
-                badgeColor: 'bg-orange-100 text-orange-700',
+                badgeColor: 'bg-teal-100 text-teal-700',
               },
               {
                 icon:       '🛡️',
                 title:      'Safe & Secure',
                 desc:       'Professional handling with proper documentation provided.',
-                color:      'hover:border-purple-500 hover:bg-purple-50',
+                color:      'hover:border-green-400 hover:bg-green-50',
                 badge:      'Trusted',
-                badgeColor: 'bg-purple-100 text-purple-700',
+                badgeColor: 'bg-green-100 text-green-700',
               },
               {
                 icon:       '🌿',
                 title:      'Eco-Friendly',
                 desc:       'Responsible disposal and recycling of all scrap components.',
-                color:      'hover:border-teal-500 hover:bg-teal-50',
+                color:      'hover:border-[#1B4332] hover:bg-green-50',
                 badge:      'Green',
-                badgeColor: 'bg-teal-100 text-teal-700',
+                badgeColor: 'bg-green-100 text-[#1B4332]',
               },
               {
                 icon:       '💰',
                 title:      'Best Rates',
                 desc:       'Competitive and transparent pricing for all scrap vehicles.',
-                color:      'hover:border-yellow-500 hover:bg-yellow-50',
+                color:      'hover:border-[#52B788] hover:bg-emerald-50',
                 badge:      'Value',
-                badgeColor: 'bg-yellow-100 text-yellow-700',
+                badgeColor: 'bg-emerald-100 text-[#2D6A4F]',
               },
               {
                 icon:       '📄',
                 title:      'Documentation',
                 desc:       'Complete paperwork and legal compliance handled by us.',
-                color:      'hover:border-red-500 hover:bg-red-50',
+                color:      'hover:border-teal-500 hover:bg-teal-50',
                 badge:      'Compliant',
-                badgeColor: 'bg-red-100 text-red-700',
+                badgeColor: 'bg-teal-100 text-teal-700',
               },
               {
                 icon:       '🏆',
                 title:      'Ford Authorised',
                 desc:       'Officially authorised Ford scrap collection partner.',
-                color:      'hover:border-[#003478] hover:bg-blue-50',
+                color:      'hover:border-[#1B4332] hover:bg-green-50',
                 badge:      'Official',
-                badgeColor: 'bg-blue-100 text-[#003478]',
+                badgeColor: 'bg-green-100 text-[#1B4332]',
               },
             ].map((feature, i) => (
               <div
@@ -798,7 +813,9 @@ export default function Home() {
                 ">
                   {feature.title}
                 </h3>
-                <p className="text-gray-500 text-sm leading-relaxed">
+                <p className="
+                  text-gray-500 text-sm leading-relaxed
+                ">
                   {feature.desc}
                 </p>
               </div>
@@ -812,13 +829,15 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="
-              inline-block bg-blue-100 text-[#003478]
+              inline-block bg-green-100 text-[#1B4332]
               text-sm font-semibold
               px-4 py-2 rounded-full mb-4
             ">
               Get In Touch
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="
+              text-4xl font-bold text-gray-900 mb-4
+            ">
               Contact Us
             </h2>
             <p className="text-xl text-gray-500 max-w-2xl mx-auto">
@@ -837,11 +856,18 @@ export default function Home() {
               {/* Phone */}
               <div className="
                 flex items-center gap-5
-                bg-blue-50 border-2 border-blue-200
+                bg-green-50 border-2 border-green-200
                 rounded-2xl p-5
                 hover:shadow-md transition duration-300
               ">
-                <div className="text-4xl">📞</div>
+                <div className="
+                  w-14 h-14 bg-[#1B4332]
+                  rounded-xl flex items-center
+                  justify-center text-2xl
+                  shadow-md flex-shrink-0
+                ">
+                  📞
+                </div>
                 <div>
                   <div className="
                     font-bold text-gray-900 text-lg
@@ -849,15 +875,15 @@ export default function Home() {
                     Phone
                   </div>
                   <div className="
-                    text-gray-700 font-semibold text-base
+                    text-[#1B4332] font-semibold text-base
                   ">
                     Michelle Ridenour
                   </div>
                   <a
                     href="tel:+12489127995"
                     className="
-                      text-[#003478] font-medium
-                      hover:text-blue-700 transition
+                      text-[#2D6A4F] font-medium
+                      hover:text-[#1B4332] transition
                       text-sm
                     "
                   >
@@ -869,11 +895,18 @@ export default function Home() {
               {/* Email */}
               <div className="
                 flex items-start gap-5
-                bg-green-50 border-2 border-green-200
+                bg-emerald-50 border-2 border-emerald-200
                 rounded-2xl p-5
                 hover:shadow-md transition duration-300
               ">
-                <div className="text-4xl">📧</div>
+                <div className="
+                  w-14 h-14 bg-[#2D6A4F]
+                  rounded-xl flex items-center
+                  justify-center text-2xl
+                  shadow-md flex-shrink-0
+                ">
+                  📧
+                </div>
                 <div>
                   <div className="
                     font-bold text-gray-900 text-lg mb-1
@@ -883,8 +916,8 @@ export default function Home() {
                   <a
                     href="mailto:fcscats@ford.com"
                     className="
-                      block text-[#003478] font-medium
-                      hover:text-blue-700 transition
+                      block text-[#1B4332] font-medium
+                      hover:text-[#2D6A4F] transition
                       text-sm
                     "
                   >
@@ -893,8 +926,8 @@ export default function Home() {
                   <a
                     href="mailto:fcsmktg@ford.com"
                     className="
-                      block text-[#003478] font-medium
-                      hover:text-blue-700 transition
+                      block text-[#1B4332] font-medium
+                      hover:text-[#2D6A4F] transition
                       text-sm mt-1
                     "
                   >
@@ -906,11 +939,18 @@ export default function Home() {
               {/* Location */}
               <div className="
                 flex items-start gap-5
-                bg-orange-50 border-2 border-orange-200
+                bg-teal-50 border-2 border-teal-200
                 rounded-2xl p-5
                 hover:shadow-md transition duration-300
               ">
-                <div className="text-4xl">📍</div>
+                <div className="
+                  w-14 h-14 bg-[#52B788]
+                  rounded-xl flex items-center
+                  justify-center text-2xl
+                  shadow-md flex-shrink-0
+                ">
+                  📍
+                </div>
                 <div className="flex-1">
                   <div className="
                     font-bold text-gray-900 text-lg
@@ -918,7 +958,7 @@ export default function Home() {
                     Location
                   </div>
                   <div className="
-                    text-gray-700 font-semibold mb-2
+                    text-[#1B4332] font-semibold mb-2
                   ">
                     Pan United States
                   </div>
@@ -934,7 +974,7 @@ export default function Home() {
                       <span
                         key={i}
                         className="
-                          bg-orange-100 text-orange-700
+                          bg-teal-100 text-teal-700
                           text-xs font-semibold
                           px-2 py-1 rounded-full
                         "
@@ -955,7 +995,7 @@ export default function Home() {
             {/* ── Login CTA Card ── */}
             <div className="
               bg-gradient-to-br
-              from-[#003478] to-[#001f5c]
+              from-[#1B4332] to-[#0D2B1F]
               rounded-3xl p-10 text-white
               shadow-2xl text-center
             ">
@@ -972,7 +1012,7 @@ export default function Home() {
               <h3 className="text-3xl font-bold mb-4">
                 Ready to Get Started?
               </h3>
-              <p className="text-blue-200 mb-8 leading-relaxed">
+              <p className="text-green-200 mb-8 leading-relaxed">
                 Login to your customer account to
                 schedule a scrap vehicle pickup.
                 It only takes 2 minutes!
@@ -982,10 +1022,10 @@ export default function Home() {
                 href="/login/requestor"
                 className="
                   inline-block
-                  bg-white text-[#003478]
+                  bg-white text-[#1B4332]
                   px-10 py-4 rounded-xl
                   font-bold text-lg
-                  hover:bg-blue-50 shadow-xl
+                  hover:bg-green-50 shadow-xl
                   transform hover:scale-105
                   transition duration-300
                   mb-6 w-full text-center
@@ -1001,7 +1041,7 @@ export default function Home() {
                 border border-white/20
               ">
                 <p className="
-                  text-blue-200 text-xs
+                  text-green-300 text-xs
                   font-semibold uppercase tracking-wider
                   mb-2
                 ">
@@ -1020,7 +1060,7 @@ export default function Home() {
                   <a
                     href="tel:+12489127995"
                     className="
-                      text-blue-200 text-sm
+                      text-green-200 text-sm
                       hover:text-white transition
                     "
                   >
@@ -1032,7 +1072,7 @@ export default function Home() {
                   <a
                     href="mailto:fcscats@ford.com"
                     className="
-                      text-blue-200 text-sm
+                      text-green-200 text-sm
                       hover:text-white transition
                     "
                   >
@@ -1044,7 +1084,7 @@ export default function Home() {
                   <a
                     href="mailto:fcsmktg@ford.com"
                     className="
-                      text-blue-200 text-sm
+                      text-green-200 text-sm
                       hover:text-white transition
                     "
                   >
@@ -1061,7 +1101,7 @@ export default function Home() {
                 <Link
                   href="/login/admin"
                   className="
-                    text-blue-200 hover:text-white
+                    text-green-200 hover:text-white
                     text-sm font-medium transition
                   "
                 >
@@ -1077,19 +1117,30 @@ export default function Home() {
       {/* ── CTA BANNER ─────────────────────────────────── */}
       <section className="
         py-20
-        bg-gradient-to-r from-[#003478] to-[#0057a8]
+        bg-gradient-to-r
+        from-[#1B4332] to-[#2D6A4F]
         text-white
       ">
         <div className="
           max-w-4xl mx-auto
           px-4 sm:px-6 lg:px-8 text-center
         ">
+          {/* Decorative top icon */}
+          <div className="
+            w-16 h-16 bg-white/10
+            rounded-2xl flex items-center
+            justify-center text-3xl
+            mx-auto mb-6 border border-white/20
+          ">
+            🌿
+          </div>
+
           <h2 className="
             text-4xl md:text-5xl font-bold mb-6
           ">
             Ready to Schedule Your Pickup?
           </h2>
-          <p className="text-xl text-blue-100 mb-8">
+          <p className="text-xl text-green-100 mb-8">
             Login to your customer account to
             get started today!
           </p>
@@ -1097,10 +1148,10 @@ export default function Home() {
             href="/login/requestor"
             className="
               inline-block
-              bg-white text-[#003478]
+              bg-white text-[#1B4332]
               px-10 py-5 rounded-xl
               font-bold text-xl
-              hover:bg-blue-50 shadow-2xl
+              hover:bg-green-50 shadow-2xl
               transform hover:scale-105
               transition duration-300
             "
@@ -1111,8 +1162,12 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ─────────────────────────────────────── */}
-      <footer className="bg-gray-900 text-white pt-16 pb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <footer className="
+        bg-[#0D2B1F] text-white pt-16 pb-8
+      ">
+        <div className="
+          max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
+        ">
           <div className="
             grid grid-cols-1 md:grid-cols-4
             gap-10 mb-12
@@ -1134,17 +1189,33 @@ export default function Home() {
                 "
               />
               <p className="
-                text-gray-400 text-sm leading-relaxed
+                text-green-400/70 text-sm leading-relaxed
               ">
                 Professional scrap pickup service for
                 Ford vehicles across the United States.
                 Authorised and trusted Ford partner.
               </p>
+
+              {/* Green eco badge */}
+              <div className="
+                mt-4 inline-flex items-center gap-2
+                bg-green-900/50 border border-green-700
+                rounded-full px-3 py-1
+              ">
+                <span className="text-sm">🌿</span>
+                <span className="
+                  text-green-300 text-xs font-medium
+                ">
+                  Eco-Friendly Service
+                </span>
+              </div>
             </div>
 
             {/* Quick Links */}
             <div>
-              <h4 className="font-bold text-white mb-5 text-lg">
+              <h4 className="
+                font-bold text-white mb-5 text-lg
+              ">
                 Quick Links
               </h4>
               <ul className="space-y-3">
@@ -1158,9 +1229,10 @@ export default function Home() {
                     <Link
                       href={link.href}
                       className="
-                        text-gray-400 hover:text-white
+                        text-green-400/70 hover:text-white
                         text-sm transition duration-200
                         inline-block
+                        hover:translate-x-1
                       "
                     >
                       → {link.label}
@@ -1172,10 +1244,12 @@ export default function Home() {
 
             {/* Support */}
             <div>
-              <h4 className="font-bold text-white mb-5 text-lg">
+              <h4 className="
+                font-bold text-white mb-5 text-lg
+              ">
                 Support
               </h4>
-              <ul className="space-y-3 text-gray-400 text-sm">
+              <ul className="space-y-3 text-green-400/70 text-sm">
                 {[
                   'FAQ',
                   'Contact Us',
@@ -1197,13 +1271,19 @@ export default function Home() {
 
             {/* Contact */}
             <div>
-              <h4 className="font-bold text-white mb-5 text-lg">
+              <h4 className="
+                font-bold text-white mb-5 text-lg
+              ">
                 Contact
               </h4>
-              <ul className="space-y-3 text-gray-400 text-sm">
+              <ul className="
+                space-y-3 text-green-400/70 text-sm
+              ">
                 <li className="flex items-center gap-2">
                   <span>👤</span>
-                  <span className="text-white font-medium">
+                  <span className="
+                    text-white font-medium
+                  ">
                     Michelle Ridenour
                   </span>
                 </li>
@@ -1245,17 +1325,19 @@ export default function Home() {
 
           {/* Bottom Bar */}
           <div className="
-            border-t border-gray-800 pt-8
+            border-t border-green-900 pt-8
             flex flex-col md:flex-row
             justify-between items-center gap-4
           ">
-            <p className="text-gray-400 text-sm">
+            <p className="text-green-400/60 text-sm">
               © {new Date().getFullYear()} Ford Component Sales.
               All rights reserved.
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <FordOvalLogo className="h-6 w-auto opacity-60" />
-              <span className="text-gray-500 text-xs">
+              <span className="
+                text-green-400/60 text-xs
+              ">
                 An Authorised Ford Partner
               </span>
             </div>
