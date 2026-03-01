@@ -198,9 +198,8 @@ function StatsSection() {
 
 // ─── Main Page ────────────────────────────────────────────
 export default function Home() {
-  const [menuOpen,     setMenuOpen]     = useState(false)
-  const [scrolled,     setScrolled]     = useState(false)
-  const [activeTestim, setActiveTestim] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   // Sticky navbar shadow on scroll
   useEffect(() => {
@@ -209,43 +208,10 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const testimonials = [
-    {
-      name:    'Rajesh Kumar',
-      role:    'Fleet Manager, Delhi',
-      comment: 'Excellent service! They picked up our scrapped vehicles within 24 hours. Very professional team.',
-      rating:  5,
-      avatar:  'RK',
-    },
-    {
-      name:    'Priya Sharma',
-      role:    'Operations Head, Mumbai',
-      comment: 'The online booking process is so simple. Highly recommend Ford Component Sales for scrap pickups.',
-      rating:  5,
-      avatar:  'PS',
-    },
-    {
-      name:    'Amit Patel',
-      role:    'Logistics Manager, Pune',
-      comment: 'Outstanding support team. They handled everything professionally and on time!',
-      rating:  5,
-      avatar:  'AP',
-    },
-  ]
-
-  // Auto-rotate testimonials
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveTestim(prev => (prev + 1) % testimonials.length)
-    }, 4000)
-    return () => clearInterval(timer)
-  }, [])
-
   const navLinks = [
-    { label: 'How It Works',  href: '#how-it-works'  },
-    { label: 'Why Choose Us', href: '#why-us'        },
-    { label: 'Testimonials',  href: '#testimonials'  },
-    { label: 'Contact',       href: '#contact'       },
+    { label: 'How It Works',  href: '#how-it-works' },
+    { label: 'Why Choose Us', href: '#why-us'       },
+    { label: 'Contact',       href: '#contact'      },
   ]
 
   return (
@@ -311,7 +277,8 @@ export default function Home() {
 
             {/* Mobile Hamburger */}
             <button
-              className="md:hidden p-2 rounded-lg hover:bg-blue-800 transition"
+              className="md:hidden p-2 rounded-lg
+              hover:bg-blue-800 transition"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >
@@ -349,7 +316,10 @@ export default function Home() {
 
           {/* Mobile Menu Dropdown */}
           {menuOpen && (
-            <div className="md:hidden pb-4 space-y-2 border-t border-blue-700 pt-4">
+            <div className="
+              md:hidden pb-4 space-y-2
+              border-t border-blue-700 pt-4
+            ">
               {navLinks.map(link => (
                 <a
                   key={link.label}
@@ -406,8 +376,14 @@ export default function Home() {
           bg-white/5 rounded-full blur-3xl
         " />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
+        <div className="
+          relative max-w-7xl mx-auto
+          px-4 sm:px-6 lg:px-8
+        ">
+          <div className="
+            flex flex-col lg:flex-row
+            items-center gap-12
+          ">
 
             {/* ── Left Content ── */}
             <div className="flex-1 text-center lg:text-left">
@@ -425,7 +401,7 @@ export default function Home() {
                   w-2 h-2 bg-green-400
                   rounded-full animate-pulse
                 " />
-                Trusted by 500+ Customers Across India
+                Trusted by 500+ Customers Across the US
               </div>
 
               <h1 className="
@@ -446,12 +422,13 @@ export default function Home() {
                 max-w-xl mx-auto lg:mx-0
                 leading-relaxed
               ">
-                Fast, reliable, and eco-friendly scrap component
-                collection for Ford vehicles across India.
-                Login to schedule your pickup today!
+                Fast, reliable, and eco-friendly scrap
+                component collection for Ford vehicles
+                across the United States. Login to
+                schedule your pickup today!
               </p>
 
-              {/* ✅ Learn More + Contact Us only */}
+              {/* CTA Buttons */}
               <div className="
                 flex flex-col sm:flex-row gap-4
                 justify-center lg:justify-start
@@ -536,12 +513,14 @@ export default function Home() {
 
                 <div className="text-center mb-6">
                   <p className="
-                    text-blue-200 text-sm
-                    font-medium uppercase tracking-wider
+                    text-blue-200 text-sm font-medium
+                    uppercase tracking-wider
                   ">
                     Authorised Scrap Collection
                   </p>
-                  <h3 className="text-white text-2xl font-bold mt-1">
+                  <h3 className="
+                    text-white text-2xl font-bold mt-1
+                  ">
                     Ford Component Sales
                   </h3>
                 </div>
@@ -559,18 +538,21 @@ export default function Home() {
                       key={i}
                       className="
                         flex items-center gap-3
-                        bg-white/10 rounded-xl px-4 py-3
+                        bg-white/10 rounded-xl
+                        px-4 py-3
                       "
                     >
                       <span className="text-xl">{item.icon}</span>
-                      <span className="text-white text-sm font-medium">
+                      <span className="
+                        text-white text-sm font-medium
+                      ">
                         {item.text}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                {/* ✅ See How It Works — No login button */}
+                {/* See How It Works */}
                 <a
                   href="#how-it-works"
                   className="
@@ -667,13 +649,16 @@ export default function Home() {
 
                 <div className={`
                   w-20 h-20 ${item.iconBg}
-                  rounded-2xl flex items-center justify-center
-                  text-4xl mx-auto mb-6 shadow-lg
+                  rounded-2xl flex items-center
+                  justify-center text-4xl
+                  mx-auto mb-6 shadow-lg
                 `}>
                   {item.icon}
                 </div>
 
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                <h3 className="
+                  text-2xl font-bold text-gray-900 mb-4
+                ">
                   {item.title}
                 </h3>
                 <p className="text-gray-600 leading-relaxed mb-4">
@@ -712,11 +697,15 @@ export default function Home() {
               Why Choose Us?
             </h2>
             <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-              Professional and reliable scrap pickup service you can trust
+              Professional and reliable scrap pickup
+              service you can trust
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="
+            grid grid-cols-1 sm:grid-cols-2
+            lg:grid-cols-4 gap-6
+          ">
             {[
               {
                 icon:       '🚚',
@@ -804,7 +793,9 @@ export default function Home() {
                   {feature.badge}
                 </span>
                 <div className="text-5xl mb-4">{feature.icon}</div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="
+                  text-lg font-bold text-gray-900 mb-2
+                ">
                   {feature.title}
                 </h3>
                 <p className="text-gray-500 text-sm leading-relaxed">
@@ -812,98 +803,6 @@ export default function Home() {
                 </p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ───────────────────────────────── */}
-      <section
-        id="testimonials"
-        className="
-          py-24 bg-gradient-to-br
-          from-[#003478] to-[#001f5c] text-white
-        "
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="
-              inline-block bg-white/10
-              border border-white/20
-              text-blue-100 text-sm font-semibold
-              px-4 py-2 rounded-full mb-4
-            ">
-              Customer Reviews
-            </span>
-            <h2 className="text-4xl font-bold mb-4">
-              What Our Customers Say
-            </h2>
-            <p className="text-blue-200 text-xl max-w-2xl mx-auto">
-              Trusted by hundreds of fleet managers across India
-            </p>
-          </div>
-
-          <div className="max-w-3xl mx-auto">
-            <div className="
-              bg-white/10 backdrop-blur-sm
-              border border-white/20
-              rounded-3xl p-10 text-center
-              shadow-2xl transition-all duration-500
-            ">
-              {/* Stars */}
-              <div className="flex justify-center gap-1 mb-6">
-                {[...Array(testimonials[activeTestim].rating)].map((_, i) => (
-                  <span key={i} className="text-yellow-400 text-2xl">
-                    ⭐
-                  </span>
-                ))}
-              </div>
-
-              {/* Quote */}
-              <p className="
-                text-xl text-blue-100
-                leading-relaxed mb-8 italic
-              ">
-                "{testimonials[activeTestim].comment}"
-              </p>
-
-              {/* Avatar + Name */}
-              <div className="flex items-center justify-center gap-4">
-                <div className="
-                  w-14 h-14 rounded-full
-                  bg-blue-400/30 border-2 border-white/30
-                  flex items-center justify-center
-                  text-white font-bold text-lg
-                ">
-                  {testimonials[activeTestim].avatar}
-                </div>
-                <div className="text-left">
-                  <div className="font-bold text-white text-lg">
-                    {testimonials[activeTestim].name}
-                  </div>
-                  <div className="text-blue-300 text-sm">
-                    {testimonials[activeTestim].role}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Dots */}
-            <div className="flex justify-center gap-3 mt-8">
-              {testimonials.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveTestim(i)}
-                  className={`
-                    rounded-full transition-all duration-300
-                    ${i === activeTestim
-                      ? 'w-8 h-3 bg-white'
-                      : 'w-3 h-3 bg-white/40 hover:bg-white/60'
-                    }
-                  `}
-                  aria-label={`Testimonial ${i + 1}`}
-                />
-              ))}
-            </div>
           </div>
         </div>
       </section>
@@ -927,67 +826,136 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          <div className="
+            grid grid-cols-1 lg:grid-cols-2
+            gap-12 items-start
+          ">
 
-            {/* Contact Info Cards */}
+            {/* ── Contact Info Cards ── */}
             <div className="space-y-6">
-              {[
-                {
-                  icon:  '📞',
-                  title: 'Phone',
-                  info:  '+91 1800-XXX-XXXX',
-                  sub:   'Mon–Sat, 9am–6pm IST',
-                  bg:    'bg-blue-50 border-blue-200',
-                },
-                {
-                  icon:  '📧',
-                  title: 'Email',
-                  info:  'support@fordcomponentsales.in',
-                  sub:   'We reply within 2 hours',
-                  bg:    'bg-green-50 border-green-200',
-                },
-                {
-                  icon:  '📍',
-                  title: 'Location',
-                  info:  'Pan India Service',
-                  sub:   'All major cities covered',
-                  bg:    'bg-orange-50 border-orange-200',
-                },
-                {
-                  icon:  '🕐',
-                  title: 'Working Hours',
-                  info:  '24/7 Online Support',
-                  sub:   'Pickup: Mon–Sat',
-                  bg:    'bg-purple-50 border-purple-200',
-                },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className={`
-                    flex items-center gap-5
-                    ${item.bg} border-2 rounded-2xl p-5
-                    hover:shadow-md transition duration-300
-                  `}
-                >
-                  <div className="text-4xl">{item.icon}</div>
-                  <div>
-                    <div className="font-bold text-gray-900 text-lg">
-                      {item.title}
-                    </div>
-                    <div className="text-gray-700 font-medium">
-                      {item.info}
-                    </div>
-                    <div className="text-gray-500 text-sm">
-                      {item.sub}
-                    </div>
+
+              {/* Phone */}
+              <div className="
+                flex items-center gap-5
+                bg-blue-50 border-2 border-blue-200
+                rounded-2xl p-5
+                hover:shadow-md transition duration-300
+              ">
+                <div className="text-4xl">📞</div>
+                <div>
+                  <div className="
+                    font-bold text-gray-900 text-lg
+                  ">
+                    Phone
                   </div>
+                  <div className="
+                    text-gray-700 font-semibold text-base
+                  ">
+                    Michelle Ridenour
+                  </div>
+                  <a
+                    href="tel:+12489127995"
+                    className="
+                      text-[#003478] font-medium
+                      hover:text-blue-700 transition
+                      text-sm
+                    "
+                  >
+                    +1 (248) 912-7995
+                  </a>
                 </div>
-              ))}
+              </div>
+
+              {/* Email */}
+              <div className="
+                flex items-start gap-5
+                bg-green-50 border-2 border-green-200
+                rounded-2xl p-5
+                hover:shadow-md transition duration-300
+              ">
+                <div className="text-4xl">📧</div>
+                <div>
+                  <div className="
+                    font-bold text-gray-900 text-lg mb-1
+                  ">
+                    Email
+                  </div>
+                  <a
+                    href="mailto:fcscats@ford.com"
+                    className="
+                      block text-[#003478] font-medium
+                      hover:text-blue-700 transition
+                      text-sm
+                    "
+                  >
+                    fcscats@ford.com
+                  </a>
+                  <a
+                    href="mailto:fcsmktg@ford.com"
+                    className="
+                      block text-[#003478] font-medium
+                      hover:text-blue-700 transition
+                      text-sm mt-1
+                    "
+                  >
+                    fcsmktg@ford.com
+                  </a>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div className="
+                flex items-start gap-5
+                bg-orange-50 border-2 border-orange-200
+                rounded-2xl p-5
+                hover:shadow-md transition duration-300
+              ">
+                <div className="text-4xl">📍</div>
+                <div className="flex-1">
+                  <div className="
+                    font-bold text-gray-900 text-lg
+                  ">
+                    Location
+                  </div>
+                  <div className="
+                    text-gray-700 font-semibold mb-2
+                  ">
+                    Pan United States
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {[
+                      '🏙️ Michigan',
+                      '🌆 Texas',
+                      '🏛️ California',
+                      '🌇 Florida',
+                      '🏢 New York',
+                      '+ More States',
+                    ].map((state, i) => (
+                      <span
+                        key={i}
+                        className="
+                          bg-orange-100 text-orange-700
+                          text-xs font-semibold
+                          px-2 py-1 rounded-full
+                        "
+                      >
+                        {state}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    Serving all major Ford dealerships
+                    and fleet operators across the US
+                  </p>
+                </div>
+              </div>
+
             </div>
 
-            {/* ✅ Login CTA Card — Admin Login Only */}
+            {/* ── Login CTA Card ── */}
             <div className="
-              bg-gradient-to-br from-[#003478] to-[#001f5c]
+              bg-gradient-to-br
+              from-[#003478] to-[#001f5c]
               rounded-3xl p-10 text-white
               shadow-2xl text-center
             ">
@@ -1005,8 +973,9 @@ export default function Home() {
                 Ready to Get Started?
               </h3>
               <p className="text-blue-200 mb-8 leading-relaxed">
-                Login to your customer account to schedule a
-                scrap vehicle pickup. It only takes 2 minutes!
+                Login to your customer account to
+                schedule a scrap vehicle pickup.
+                It only takes 2 minutes!
               </p>
 
               <Link
@@ -1025,10 +994,69 @@ export default function Home() {
                 🔐 Login to Request Pickup
               </Link>
 
-              {/* ✅ Admin Login only */}
+              {/* Contact Details inside card */}
+              <div className="
+                bg-white/10 rounded-2xl p-5
+                text-left space-y-3
+                border border-white/20
+              ">
+                <p className="
+                  text-blue-200 text-xs
+                  font-semibold uppercase tracking-wider
+                  mb-2
+                ">
+                  Direct Contact
+                </p>
+                <div className="flex items-center gap-3">
+                  <span>👤</span>
+                  <span className="
+                    text-white text-sm font-semibold
+                  ">
+                    Michelle Ridenour
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span>📞</span>
+                  <a
+                    href="tel:+12489127995"
+                    className="
+                      text-blue-200 text-sm
+                      hover:text-white transition
+                    "
+                  >
+                    +1 (248) 912-7995
+                  </a>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span>📧</span>
+                  <a
+                    href="mailto:fcscats@ford.com"
+                    className="
+                      text-blue-200 text-sm
+                      hover:text-white transition
+                    "
+                  >
+                    fcscats@ford.com
+                  </a>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span>📧</span>
+                  <a
+                    href="mailto:fcsmktg@ford.com"
+                    className="
+                      text-blue-200 text-sm
+                      hover:text-white transition
+                    "
+                  >
+                    fcsmktg@ford.com
+                  </a>
+                </div>
+              </div>
+
+              {/* Admin Login link */}
               <div className="
                 flex justify-center
-                pt-6 border-t border-white/20
+                pt-6 border-t border-white/20 mt-6
               ">
                 <Link
                   href="/login/admin"
@@ -1041,6 +1069,7 @@ export default function Home() {
                 </Link>
               </div>
             </div>
+
           </div>
         </div>
       </section>
@@ -1053,16 +1082,17 @@ export default function Home() {
       ">
         <div className="
           max-w-4xl mx-auto
-          px-4 sm:px-6 lg:px-8
-          text-center
+          px-4 sm:px-6 lg:px-8 text-center
         ">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+          <h2 className="
+            text-4xl md:text-5xl font-bold mb-6
+          ">
             Ready to Schedule Your Pickup?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Login to your customer account to get started today!
+            Login to your customer account to
+            get started today!
           </p>
-          {/* ✅ Login button only */}
           <Link
             href="/login/requestor"
             className="
@@ -1083,7 +1113,10 @@ export default function Home() {
       {/* ── FOOTER ─────────────────────────────────────── */}
       <footer className="bg-gray-900 text-white pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+          <div className="
+            grid grid-cols-1 md:grid-cols-4
+            gap-10 mb-12
+          ">
 
             {/* Brand */}
             <div className="col-span-1">
@@ -1095,16 +1128,21 @@ export default function Home() {
                 alt="Ford Component Sales"
                 width={130}
                 height={50}
-                className="object-contain mb-4 brightness-0 invert"
+                className="
+                  object-contain mb-4
+                  brightness-0 invert
+                "
               />
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Professional scrap pickup service for Ford
-                vehicles across India. Authorised and
-                trusted since 2020.
+              <p className="
+                text-gray-400 text-sm leading-relaxed
+              ">
+                Professional scrap pickup service for
+                Ford vehicles across the United States.
+                Authorised and trusted Ford partner.
               </p>
             </div>
 
-            {/* Quick Links — ✅ No Customer Login */}
+            {/* Quick Links */}
             <div>
               <h4 className="font-bold text-white mb-5 text-lg">
                 Quick Links
@@ -1146,7 +1184,10 @@ export default function Home() {
                 ].map(item => (
                   <li
                     key={item}
-                    className="hover:text-white cursor-pointer transition"
+                    className="
+                      hover:text-white
+                      cursor-pointer transition
+                    "
                   >
                     → {item}
                   </li>
@@ -1161,19 +1202,45 @@ export default function Home() {
               </h4>
               <ul className="space-y-3 text-gray-400 text-sm">
                 <li className="flex items-center gap-2">
-                  <span>📞</span> +91 1800-XXX-XXXX
-                </li>
-                <li className="flex items-center gap-2 break-all">
-                  <span>📧</span> support@fordcomponentsales.in
-                </li>
-                <li className="flex items-center gap-2">
-                  <span>📍</span> Pan India
+                  <span>👤</span>
+                  <span className="text-white font-medium">
+                    Michelle Ridenour
+                  </span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span>🕐</span> Mon–Sat, 9am–6pm IST
+                  <span>📞</span>
+                  <a
+                    href="tel:+12489127995"
+                    className="hover:text-white transition"
+                  >
+                    +1 (248) 912-7995
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span>📧</span>
+                  <a
+                    href="mailto:fcscats@ford.com"
+                    className="hover:text-white transition"
+                  >
+                    fcscats@ford.com
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span>📧</span>
+                  <a
+                    href="mailto:fcsmktg@ford.com"
+                    className="hover:text-white transition"
+                  >
+                    fcsmktg@ford.com
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span>📍</span>
+                  <span>Pan United States</span>
                 </li>
               </ul>
             </div>
+
           </div>
 
           {/* Bottom Bar */}
