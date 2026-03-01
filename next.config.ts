@@ -1,19 +1,18 @@
-import { DefaultSession } from "next-auth"
+import type { NextConfig } from "next";
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string
-    } & DefaultSession["user"]
-  }
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "uploadthing.com",
+      },
+      {
+        protocol: "https",
+        hostname: "utfs.io",
+      },
+    ],
+  },
+};
 
-  interface User {
-    id: string
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string
-  }
-}
+export default nextConfig;

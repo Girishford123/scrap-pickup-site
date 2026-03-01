@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import Image from "next/image";
+import { getUserSession } from "@/lib/auth";
 
 interface PickupRequest {
   _id: string;
@@ -54,7 +55,6 @@ const statusConfig = {
 const steps = ["Pending", "Scheduled", "Confirmed", "Completed"];
 
 export default function TrackPickupPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const [requests, setRequests] = useState<PickupRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,16 +63,18 @@ export default function TrackPickupPage() {
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login/requestor");
-  }, [status, router]);
+    // Check if user is logged in via localStorage
+    const user = getUserSession();
+    if (!user) {
+      router.push("/login/requestor");
+      return;
+    }
+    fetchRequests(user.id);
+  }, []);
 
-  useEffect(() => {
-    if (status === "authenticated") fetchRequests();
-  }, [status]);
-
-  const fetchRequests = async () => {
+  const fetchRequests = async (userId: string) => {
     try {
-      const res = await fetch("/api/request/status");
+      const res = await fetch(`/api/request/status?userId=${userId}`);
       const data = await res.json();
       setRequests(data.requests || []);
     } catch {
@@ -87,19 +89,31 @@ export default function TrackPickupPage() {
       toast.error("Please enter a reason for cancellation");
       return;
     }
+
+    const user = getUserSession();
+    if (!user) {
+      toast.error("Session expired, please login again");
+      router.push("/login/requestor");
+      return;
+    }
+
     setCancelling(true);
     try {
       const res = await fetch("/api/request/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, cancelReason }),
+        body: JSON.stringify({
+          requestId,
+          cancelReason,
+          userId: user.id,
+        }),
       });
 
       if (res.ok) {
         toast.success("Pickup cancelled successfully");
         setCancelModal(null);
         setCancelReason("");
-        fetchRequests();
+        fetchRequests(user.id);
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to cancel pickup");
@@ -122,6 +136,7 @@ export default function TrackPickupPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-4xl mx-auto">
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
@@ -235,12 +250,17 @@ export default function TrackPickupPage() {
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         {request.vehiclePhotos.map((photo, idx) => (
-                          <img
+                          <div
                             key={idx}
-                            src={photo}
-                            alt={`Vehicle photo ${idx + 1}`}
-                            className="h-20 w-20 object-cover rounded-lg border border-gray-200"
-                          />
+                            className="relative h-20 w-20 rounded-lg border border-gray-200 overflow-hidden"
+                          >
+                            <Image
+                              src={photo}
+                              alt={`Vehicle photo ${idx + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
                         ))}
                       </div>
                     </div>

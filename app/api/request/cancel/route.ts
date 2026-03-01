@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongoose";
 import PickupRequest from "@/models/PickupRequest";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { sendStatusEmail } from "@/lib/emailService";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { requestId, cancelReason, userId } = await req.json();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized — userId is required" },
+        { status: 401 }
+      );
     }
 
-    const { requestId, cancelReason } = await req.json();
+    if (!requestId || !cancelReason) {
+      return NextResponse.json(
+        { error: "requestId and cancelReason are required" },
+        { status: 400 }
+      );
+    }
 
     await connectDB();
 
     const request = await PickupRequest.findOne({
       _id: requestId,
-      userId: session.user.id,
+      userId: userId,
     });
 
     if (!request) {
@@ -40,7 +47,7 @@ export async function POST(req: NextRequest) {
     request.cancelReason = cancelReason;
     await request.save();
 
-    // Send email notification only
+    // Send email notification
     await sendStatusEmail({
       to: request.email,
       name: request.name,
@@ -50,6 +57,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: "Pickup cancelled successfully" });
   } catch (error) {
+    console.error("Cancel error:", error);
     return NextResponse.json(
       { error: "Failed to cancel pickup" },
       { status: 500 }
