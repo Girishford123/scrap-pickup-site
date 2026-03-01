@@ -334,7 +334,47 @@ export default function Home() {
 
             {/* ── Left Content ── */}
             <div className="flex-1 text-center lg:text-left">
+            {/* ── Logos Row — Visible on ALL screens ── */}
+<div className="
+  flex items-center gap-4
+  justify-center lg:justify-start
+  mb-8
+">
+  {/* Ford Logo */}
+  <div className="
+    bg-white rounded-xl
+    px-4 py-2 shadow-lg
+    flex items-center justify-center
+  ">
+    <Image
+      src="/ford-Logo.PNG"
+      alt="Ford Logo"
+      width={100}
+      height={40}
+      className="object-contain h-10 w-auto"
+      priority
+    />
+  </div>
 
+  {/* Divider */}
+  <div className="h-10 w-px bg-white/40" />
+
+  {/* FCS Logo */}
+  <div className="
+    bg-white rounded-xl
+    px-4 py-2 shadow-lg
+    flex items-center justify-center
+  ">
+    <Image
+      src="/FCS-logo.png"
+      alt="Ford Component Sales"
+      width={140}
+      height={44}
+      className="object-contain h-10 w-auto"
+      priority
+    />
+  </div>
+</div>
               {/* Trusted Badge */}
               <div className="
                 inline-flex items-center gap-2
