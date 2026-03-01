@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useState, useEffect, useRef } from 'react'
 
 // ─── Animated Counter Hook ───────────────────────────────
@@ -111,12 +110,65 @@ function StatsSection() {
   )
 }
 
+// ─── Ford Logo Component ──────────────────────────────────
+function FordLogo({ height = 40 }: { height?: number }) {
+  return (
+    <div style={{
+      background:    'white',
+      borderRadius:  '12px',
+      padding:       '8px 16px',
+      boxShadow:     '0 4px 12px rgba(0,0,0,0.15)',
+      display:       'flex',
+      alignItems:    'center',
+      justifyContent:'center',
+      border:        '1px solid #f0f0f0',
+    }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/ford-logo.png"
+        alt="Ford Logo"
+        style={{
+          height:  `${height}px`,
+          width:   'auto',
+          display: 'block',
+        }}
+      />
+    </div>
+  )
+}
+
+// ─── FCS Logo Component ───────────────────────────────────
+function FCSLogo({ height = 40 }: { height?: number }) {
+  return (
+    <div style={{
+      background:    'white',
+      borderRadius:  '12px',
+      padding:       '8px 16px',
+      boxShadow:     '0 4px 12px rgba(0,0,0,0.15)',
+      display:       'flex',
+      alignItems:    'center',
+      justifyContent:'center',
+      border:        '1px solid #f0f0f0',
+    }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/FCS-logo.png"
+        alt="Ford Component Sales Logo"
+        style={{
+          height:  `${height}px`,
+          width:   'auto',
+          display: 'block',
+        }}
+      />
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
-  // Sticky navbar shadow on scroll
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
@@ -143,44 +195,10 @@ export default function Home() {
           <div className="flex justify-between items-center h-20">
 
             {/* ── Logos ── */}
-            <div className="flex items-center space-x-4">
-
-              {/* Ford Logo — Official Image */}
-              <div className="
-                bg-white rounded-xl
-                px-3 py-2
-                shadow-md
-                flex items-center justify-center
-              ">
-                <Image
-                  src="/ford-logo.png"
-                  alt="Ford Logo"
-                  width={90}
-                  height={38}
-                  className="object-contain h-9 w-auto"
-                  priority
-                />
-              </div>
-
-              {/* Divider */}
+            <div className="flex items-center gap-4">
+              <FordLogo height={36} />
               <div className="h-10 w-px bg-white/30" />
-
-              {/* FCS Logo */}
-              <div className="
-                bg-white rounded-xl
-                px-3 py-2
-                shadow-md
-                flex items-center justify-center
-              ">
-                <Image
-                  src="/FCS-logo.png"
-                  alt="Ford Component Sales Logo"
-                  width={150}
-                  height={48}
-                  className="object-contain h-9 w-auto"
-                  priority
-                />
-              </div>
+              <FCSLogo height={36} />
             </div>
 
             {/* Desktop Nav Links */}
@@ -201,7 +219,7 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Desktop — Admin Login Only */}
+            {/* Desktop Admin Login */}
             <div className="hidden md:flex items-center">
               <Link
                 href="/login/admin"
@@ -226,38 +244,24 @@ export default function Home() {
               aria-label="Toggle menu"
             >
               {menuOpen ? (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                <svg className="w-6 h-6" fill="none"
+                  stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round"
+                    strokeLinejoin="round" strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
+                <svg className="w-6 h-6" fill="none"
+                  stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round"
+                    strokeLinejoin="round" strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               )}
             </button>
           </div>
 
-          {/* Mobile Menu Dropdown */}
+          {/* Mobile Menu */}
           {menuOpen && (
             <div className="
               md:hidden pb-4 space-y-2
@@ -277,7 +281,6 @@ export default function Home() {
                   {link.label}
                 </a>
               ))}
-              {/* Mobile — Admin Login Only */}
               <div className="pt-2 px-4">
                 <Link
                   href="/login/admin"
@@ -303,7 +306,7 @@ export default function Home() {
         from-[#1B4332] via-[#2D6A4F] to-[#1B4332]
         text-white py-28 overflow-hidden
       ">
-        {/* Background decorative circles */}
+        {/* Background Circles */}
         <div className="
           absolute top-0 left-0 w-96 h-96
           bg-green-400/10 rounded-full
@@ -313,14 +316,6 @@ export default function Home() {
           absolute bottom-0 right-0 w-96 h-96
           bg-green-300/10 rounded-full
           translate-x-1/2 translate-y-1/2
-        " />
-        <div className="
-          absolute top-1/2 left-1/3 w-64 h-64
-          bg-white/5 rounded-full blur-3xl
-        " />
-        <div className="
-          absolute top-1/4 right-1/4 w-48 h-48
-          bg-[#52B788]/10 rounded-full blur-2xl
         " />
 
         <div className="
@@ -334,47 +329,18 @@ export default function Home() {
 
             {/* ── Left Content ── */}
             <div className="flex-1 text-center lg:text-left">
-            {/* ── Logos Row — Visible on ALL screens ── */}
-<div className="
-  flex items-center gap-4
-  justify-center lg:justify-start
-  mb-8
-">
-  {/* Ford Logo */}
-  <div className="
-    bg-white rounded-xl
-    px-4 py-2 shadow-lg
-    flex items-center justify-center
-  ">
-    <Image
-      src="/ford-logo.png"
-      alt="Ford Logo"
-      width={100}
-      height={40}
-      className="object-contain h-10 w-auto"
-      priority
-    />
-  </div>
 
-  {/* Divider */}
-  <div className="h-10 w-px bg-white/40" />
+              {/* ── Logos Row ── */}
+              <div className="
+                flex items-center gap-4
+                justify-center lg:justify-start
+                mb-8
+              ">
+                <FordLogo height={40} />
+                <div className="h-10 w-px bg-white/40" />
+                <FCSLogo height={40} />
+              </div>
 
-  {/* FCS Logo */}
-  <div className="
-    bg-white rounded-xl
-    px-4 py-2 shadow-lg
-    flex items-center justify-center
-  ">
-    <Image
-      src="/FCS-logo.png"
-      alt="Ford Component Sales"
-      width={140}
-      height={44}
-      className="object-contain h-10 w-auto"
-      priority
-    />
-  </div>
-</div>
               {/* Trusted Badge */}
               <div className="
                 inline-flex items-center gap-2
@@ -480,7 +446,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ── Right Content — Visual Card ── */}
+            {/* ── Right Content Card ── */}
             <div className="flex-1 w-full max-w-md">
               <div className="
                 bg-white/10 backdrop-blur-sm
@@ -488,40 +454,14 @@ export default function Home() {
                 rounded-3xl p-8 shadow-2xl
               ">
 
-                {/* Logos inside hero card */}
+                {/* Logos in Hero Card */}
                 <div className="
                   flex items-center justify-center
                   gap-4 mb-6
                 ">
-                  {/* Ford Logo */}
-                  <div className="
-                    bg-white rounded-xl
-                    px-3 py-2 shadow-md
-                  ">
-                    <Image
-                      src="ford-logo.png"
-                      alt="Ford Logo"
-                      width={80}
-                      height={32}
-                      className="object-contain h-8 w-auto"
-                    />
-                  </div>
-
+                  <FordLogo height={32} />
                   <div className="h-8 w-px bg-white/30" />
-
-                  {/* FCS Logo */}
-                  <div className="
-                    bg-white rounded-xl
-                    px-3 py-2 shadow-md
-                  ">
-                    <Image
-                      src="/FCS-logo.png"
-                      alt="Ford Component Sales"
-                      width={120}
-                      height={40}
-                      className="object-contain h-8 w-auto"
-                    />
-                  </div>
+                  <FCSLogo height={32} />
                 </div>
 
                 <div className="text-center mb-6">
@@ -558,16 +498,13 @@ export default function Home() {
                       "
                     >
                       <span className="text-xl">{item.icon}</span>
-                      <span className="
-                        text-white text-sm font-medium
-                      ">
+                      <span className="text-white text-sm font-medium">
                         {item.text}
                       </span>
                     </div>
                   ))}
                 </div>
 
-                {/* See How It Works */}
                 <a
                   href="#how-it-works"
                   className="
@@ -603,9 +540,7 @@ export default function Home() {
             ">
               Simple Process
             </span>
-            <h2 className="
-              text-4xl font-bold text-gray-900 mb-4
-            ">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
               How It Works
             </h2>
             <p className="text-xl text-gray-500 max-w-2xl mx-auto">
@@ -654,7 +589,6 @@ export default function Home() {
                   transform hover:-translate-y-2
                 `}
               >
-                {/* Step Number */}
                 <div className="
                   absolute -top-4 left-1/2 -translate-x-1/2
                   bg-white border-2 border-green-200
@@ -664,7 +598,6 @@ export default function Home() {
                 ">
                   {item.step}
                 </div>
-
                 <div className={`
                   w-20 h-20 ${item.iconBg}
                   rounded-2xl flex items-center
@@ -673,10 +606,7 @@ export default function Home() {
                 `}>
                   {item.icon}
                 </div>
-
-                <h3 className="
-                  text-2xl font-bold text-gray-900 mb-4
-                ">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">
                   {item.title}
                 </h3>
                 <p className="text-gray-600 leading-relaxed mb-4">
@@ -711,14 +641,11 @@ export default function Home() {
             ">
               Our Advantages
             </span>
-            <h2 className="
-              text-4xl font-bold text-gray-900 mb-4
-            ">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
               Why Choose Us?
             </h2>
             <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-              Professional and reliable scrap pickup
-              service you can trust
+              Professional and reliable scrap pickup service you can trust
             </p>
           </div>
 
@@ -813,9 +740,7 @@ export default function Home() {
                   {feature.badge}
                 </span>
                 <div className="text-5xl mb-4">{feature.icon}</div>
-                <h3 className="
-                  text-lg font-bold text-gray-900 mb-2
-                ">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
                   {feature.title}
                 </h3>
                 <p className="text-gray-500 text-sm leading-relaxed">
@@ -838,9 +763,7 @@ export default function Home() {
             ">
               Get In Touch
             </span>
-            <h2 className="
-              text-4xl font-bold text-gray-900 mb-4
-            ">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
               Contact Us
             </h2>
             <p className="text-xl text-gray-500 max-w-2xl mx-auto">
@@ -848,10 +771,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="
-            grid grid-cols-1 lg:grid-cols-2
-            gap-12 items-start
-          ">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
 
             {/* ── Contact Info Cards ── */}
             <div className="space-y-6">
@@ -872,9 +792,7 @@ export default function Home() {
                   📞
                 </div>
                 <div>
-                  <div className="font-bold text-gray-900 text-lg">
-                    Phone
-                  </div>
+                  <div className="font-bold text-gray-900 text-lg">Phone</div>
                   <div className="text-[#1B4332] font-semibold text-base">
                     Michelle Ridenour
                   </div>
@@ -922,8 +840,7 @@ export default function Home() {
                     href="mailto:fcsmktg@ford.com"
                     className="
                       block text-[#1B4332] font-medium
-                      hover:text-[#2D6A4F] transition
-                      text-sm mt-1
+                      hover:text-[#2D6A4F] transition text-sm mt-1
                     "
                   >
                     fcsmktg@ford.com
@@ -980,7 +897,6 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-
             </div>
 
             {/* ── Login CTA Card ── */}
@@ -991,36 +907,14 @@ export default function Home() {
               shadow-2xl text-center
             ">
 
-              {/* Both Logos in Card */}
+              {/* Logos in Contact Card */}
               <div className="
                 flex items-center justify-center
                 gap-4 mb-6
               ">
-                <div className="
-                  bg-white rounded-xl
-                  px-3 py-2 shadow-md
-                ">
-                  <Image
-                    src="/ford-ford-logo.png"
-                    alt="Ford Logo"
-                    width={70}
-                    height={28}
-                    className="object-contain h-7 w-auto"
-                  />
-                </div>
+                <FordLogo height={28} />
                 <div className="h-7 w-px bg-white/30" />
-                <div className="
-                  bg-white rounded-xl
-                  px-3 py-2 shadow-md
-                ">
-                  <Image
-                    src="/FCS-logo.png"
-                    alt="FCS Logo"
-                    width={110}
-                    height={36}
-                    className="object-contain h-7 w-auto"
-                  />
-                </div>
+                <FCSLogo height={28} />
               </div>
 
               <h3 className="text-3xl font-bold mb-4">
@@ -1048,7 +942,6 @@ export default function Home() {
                 🔐 Login to Request Pickup
               </Link>
 
-              {/* Contact Details inside card */}
               <div className="
                 bg-white/10 rounded-2xl p-5
                 text-left space-y-3
@@ -1070,10 +963,7 @@ export default function Home() {
                   <span>📞</span>
                   <a
                     href="tel:+12489127995"
-                    className="
-                      text-green-200 text-sm
-                      hover:text-white transition
-                    "
+                    className="text-green-200 text-sm hover:text-white transition"
                   >
                     +1 (248) 912-7995
                   </a>
@@ -1082,10 +972,7 @@ export default function Home() {
                   <span>📧</span>
                   <a
                     href="mailto:fcscats@ford.com"
-                    className="
-                      text-green-200 text-sm
-                      hover:text-white transition
-                    "
+                    className="text-green-200 text-sm hover:text-white transition"
                   >
                     fcscats@ford.com
                   </a>
@@ -1094,17 +981,13 @@ export default function Home() {
                   <span>📧</span>
                   <a
                     href="mailto:fcsmktg@ford.com"
-                    className="
-                      text-green-200 text-sm
-                      hover:text-white transition
-                    "
+                    className="text-green-200 text-sm hover:text-white transition"
                   >
                     fcsmktg@ford.com
                   </a>
                 </div>
               </div>
 
-              {/* Admin Login link */}
               <div className="
                 flex justify-center
                 pt-6 border-t border-white/20 mt-6
@@ -1144,15 +1027,11 @@ export default function Home() {
           ">
             🌿
           </div>
-
-          <h2 className="
-            text-4xl md:text-5xl font-bold mb-6
-          ">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Ready to Schedule Your Pickup?
           </h2>
           <p className="text-xl text-green-100 mb-8">
-            Login to your customer account to
-            get started today!
+            Login to your customer account to get started today!
           </p>
           <Link
             href="/login/requestor"
@@ -1174,63 +1053,27 @@ export default function Home() {
       {/* ── FOOTER ─────────────────────────────────────── */}
       <footer className="bg-[#0D2B1F] text-white pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="
-            grid grid-cols-1 md:grid-cols-4
-            gap-10 mb-12
-          ">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
 
             {/* Brand */}
             <div className="col-span-1">
-
-              {/* Both logos in footer */}
-              <div className="
-                flex items-center gap-3 mb-5
-              ">
-                <div className="
-                  bg-white rounded-xl
-                  px-2 py-1.5 shadow-md
-                ">
-                  <Image
-                    src="/ford-logo.png"
-                    alt="Ford Logo"
-                    width={60}
-                    height={24}
-                    className="object-contain h-7 w-auto"
-                  />
-                </div>
+              <div className="flex items-center gap-3 mb-5">
+                <FordLogo height={28} />
                 <div className="h-7 w-px bg-white/20" />
-                <div className="
-                  bg-white rounded-xl
-                  px-2 py-1.5 shadow-md
-                ">
-                  <Image
-                    src="/FCS-logo.png"
-                    alt="Ford Component Sales"
-                    width={100}
-                    height={32}
-                    className="object-contain h-7 w-auto"
-                  />
-                </div>
+                <FCSLogo height={28} />
               </div>
-
-              <p className="
-                text-green-400/70 text-sm leading-relaxed
-              ">
+              <p className="text-green-400/70 text-sm leading-relaxed">
                 Professional scrap pickup service for
                 Ford vehicles across the United States.
                 Authorised and trusted Ford partner.
               </p>
-
-              {/* Eco badge */}
               <div className="
                 mt-4 inline-flex items-center gap-2
                 bg-green-900/50 border border-green-700
                 rounded-full px-3 py-1
               ">
                 <span className="text-sm">🌿</span>
-                <span className="
-                  text-green-300 text-xs font-medium
-                ">
+                <span className="text-green-300 text-xs font-medium">
                   Eco-Friendly Service
                 </span>
               </div>
@@ -1300,28 +1143,22 @@ export default function Home() {
                 </li>
                 <li className="flex items-center gap-2">
                   <span>📞</span>
-                  <a
-                    href="tel:+12489127995"
-                    className="hover:text-white transition"
-                  >
+                  <a href="tel:+12489127995"
+                    className="hover:text-white transition">
                     +1 (248) 912-7995
                   </a>
                 </li>
                 <li className="flex items-center gap-2">
                   <span>📧</span>
-                  <a
-                    href="mailto:fcscats@ford.com"
-                    className="hover:text-white transition"
-                  >
+                  <a href="mailto:fcscats@ford.com"
+                    className="hover:text-white transition">
                     fcscats@ford.com
                   </a>
                 </li>
                 <li className="flex items-center gap-2">
                   <span>📧</span>
-                  <a
-                    href="mailto:fcsmktg@ford.com"
-                    className="hover:text-white transition"
-                  >
+                  <a href="mailto:fcsmktg@ford.com"
+                    className="hover:text-white transition">
                     fcsmktg@ford.com
                   </a>
                 </li>
@@ -1345,17 +1182,7 @@ export default function Home() {
               All rights reserved.
             </p>
             <div className="flex items-center gap-3">
-              <div className="
-                bg-white/10 rounded-lg px-2 py-1
-              ">
-                <Image
-                  src="/ford-logo.png"
-                  alt="Ford Logo"
-                  width={50}
-                  height={20}
-                  className="object-contain h-5 w-auto opacity-80"
-                />
-              </div>
+              <FordLogo height={20} />
               <span className="text-green-400/60 text-xs">
                 An Authorised Ford Partner
               </span>
