@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
-import ProgressBar      from './components/ProgressBar'
-import PageTransition   from './components/PageTransition'
-import FloatingButtons  from './components/FloatingButtons'
+import ProgressBar     from './components/ProgressBar'
+import PageTransition  from './components/PageTransition'
+import FloatingButtons from './components/FloatingButtons'
+import Navbar          from './components/Navbar'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -37,6 +38,9 @@ export default function RootLayout({
       `}>
         {/* Progress Bar */}
         <ProgressBar />
+
+        {/* Role Based Navbar */}
+        <Navbar />
 
         {/* Page Content with Transitions */}
         <PageTransition>
