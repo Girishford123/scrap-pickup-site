@@ -1,28 +1,50 @@
-import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { Providers } from './providers'
+import { Geist, Geist_Mono } from 'next/font/google'
+import './globals.css'
+import ProgressBar      from './components/ProgressBar'
+import PageTransition   from './components/PageTransition'
+import FloatingButtons  from './components/FloatingButtons'
 
-const inter = Inter({ subsets: ['latin'] })
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets:  ['latin'],
+})
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets:  ['latin'],
+})
 
 export const metadata: Metadata = {
-  title: 'Ford Component Sales | Scrap Vehicle Pickup Service',
-  description: 'Professional scrap component collection for Ford vehicles.',
-  keywords: 'Ford, scrap pickup, component sales, vehicle recycling, India',
-  icons: {
-    icon: '/FCS-logo.png',
-  },
+  title:       'Ford Component Sales | Scrap Vehicle Pickup',
+  description: 'Professional scrap vehicle pickup service for Ford vehicles across the United States.',
+  keywords:    'Ford, scrap vehicle, pickup, FCS, components',
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className={inter.className}>
-        <Providers>{children}</Providers>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`
+        ${geistSans.variable}
+        ${geistMono.variable}
+        antialiased
+        bg-white dark:bg-[#0a0a0a]
+        transition-colors duration-200
+      `}>
+        {/* Progress Bar */}
+        <ProgressBar />
+
+        {/* Page Content with Transitions */}
+        <PageTransition>
+          {children}
+        </PageTransition>
+
+        {/* Floating Contact Buttons */}
+        <FloatingButtons />
       </body>
     </html>
   )
