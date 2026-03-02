@@ -30,12 +30,12 @@ export async function GET() {
     })
 
     const { data, error } = await supabase
-      .from('pickup_requests')
+      .from('pickup_request')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('❌ Supabase error:', error)
+      console.error('Supabase error:', error)
       return NextResponse.json(
         {
           success: false,
@@ -50,15 +50,22 @@ export async function GET() {
     const counts = {
       all:       data?.length || 0,
       new:       data?.filter(r =>
-                   r.status === 'new' || r.status === 'NEW'
+                   r.status === 'new' ||
+                   r.status === 'NEW'
                  ).length || 0,
-      pending:   data?.filter(r => r.status === 'pending').length   || 0,
-      approved:  data?.filter(r => r.status === 'approved').length  || 0,
-      rejected:  data?.filter(r => r.status === 'rejected').length  || 0,
-      completed: data?.filter(r => r.status === 'completed').length || 0,
+      pending:   data?.filter(r =>
+                   r.status === 'pending'
+                 ).length || 0,
+      approved:  data?.filter(r =>
+                   r.status === 'approved'
+                 ).length || 0,
+      rejected:  data?.filter(r =>
+                   r.status === 'rejected'
+                 ).length || 0,
+      completed: data?.filter(r =>
+                   r.status === 'completed'
+                 ).length || 0,
     }
-
-    console.log(`✅ Fetched ${data?.length} requests from Supabase`)
 
     return NextResponse.json(
       { success: true, data, counts },
@@ -66,9 +73,12 @@ export async function GET() {
     )
 
   } catch (err: any) {
-    console.error('❌ Unexpected error:', err)
+    console.error('Server error:', err)
     return NextResponse.json(
-      { success: false, error: err?.message || 'Unknown error' },
+      {
+        success: false,
+        error: err?.message || 'Unknown error',
+      },
       { status: 500 }
     )
   }
@@ -117,7 +127,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('pickup_requests')
+      .from('pickup_request')
       .update({
         status,
         updated_at: new Date().toISOString(),
@@ -127,12 +137,14 @@ export async function PATCH(req: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { success: false, error: error.message, code: error.code },
+        {
+          success: false,
+          error:   error.message,
+          code:    error.code,
+        },
         { status: 500 }
       )
     }
-
-    console.log(`✅ Updated request ${id} → ${status}`)
 
     return NextResponse.json(
       { success: true, data },
@@ -141,7 +153,10 @@ export async function PATCH(req: NextRequest) {
 
   } catch (err: any) {
     return NextResponse.json(
-      { success: false, error: err?.message || 'Unknown error' },
+      {
+        success: false,
+        error: err?.message || 'Unknown error',
+      },
       { status: 500 }
     )
   }
