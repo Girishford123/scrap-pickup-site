@@ -8,22 +8,16 @@ export const ourFileRouter = {
       maxFileSize: '4MB',
       maxFileCount: 3
     },
-    'application/vnd.ms-excel': {
-      maxFileSize: '4MB',
-      maxFileCount: 3
-    },
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+    blob: {
       maxFileSize: '4MB',
       maxFileCount: 3
     }
   })
     .middleware(async () => {
-      // No auth required here
-      // Auth is handled by our own login system
-      return {}
+      return { success: true }
     })
     .onUploadComplete(async ({ file }) => {
-      console.log('✅ Upload complete:', file.name, file.url)
+      console.log('✅ Upload complete:', file.name)
       return {
         url: file.url,
         name: file.name
