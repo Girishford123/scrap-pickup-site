@@ -1,39 +1,32 @@
 // lib/auth.ts
-
-// ✅ UserSession interface
-export interface UserSession {
+export interface User {
   id: string
   email: string
   full_name: string
-  role: string
+  role: 'admin' | 'requestor'
 }
 
-// ✅ User type alias
-// (used by Navbar.tsx)
-export type User = UserSession
+const SESSION_KEY = 'user_session'
 
-// ✅ Save session to localStorage
-export function setUserSession(user: UserSession): void {
+export function saveUserSession(user: User): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('user_session', JSON.stringify(user))
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user))
   }
 }
 
-// ✅ Get session from localStorage
-export function getUserSession(): UserSession | null {
+export function getUserSession(): User | null {
   if (typeof window === 'undefined') return null
   try {
-    const session = localStorage.getItem('user_session')
-    if (!session) return null
-    return JSON.parse(session) as UserSession
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as User
   } catch {
     return null
   }
 }
 
-// ✅ Clear session from localStorage
 export function clearUserSession(): void {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('user_session')
+    localStorage.removeItem(SESSION_KEY)
   }
 }
