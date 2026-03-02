@@ -15,7 +15,6 @@ interface Attachment {
   name: string
 }
 
-// ✅ NEW CORRECT INTERFACE
 interface PickupRequest {
   id: number
   created_at: string
@@ -24,7 +23,6 @@ interface PickupRequest {
   phone: string
   email: string
   user_id?: string
-  // ✅ Correct address fields
   address1?: string
   address2?: string
   city?: string
@@ -32,10 +30,8 @@ interface PickupRequest {
   zip?: string
   preferred_date?: string
   time_window?: string
-  // ✅ Correct scrap fields
   scrap_category?: string
   description?: string
-  // ✅ RCRC fields
   rcrc_number?: string
   rcrc_name?: string
   rcrc_contact_person?: string
@@ -53,6 +49,7 @@ interface PickupRequest {
   cancel_reason?: string
   cancelled_at?: string
 }
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -103,7 +100,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       const { data, error } = await supabase
-        .from('pickup_requests')
+        .from('pickup_request')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -122,10 +119,10 @@ export default function AdminDashboard() {
     fetchRequests()
 
     const channel = supabase
-      .channel('pickup_requests_changes')
+      .channel('pickup_request_changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'pickup_requests' },
+        { event: '*', schema: 'public', table: 'pickup_request' },
         () => { fetchRequests() }
       )
       .subscribe()
@@ -169,7 +166,7 @@ export default function AdminDashboard() {
     try {
       setActionLoading(id)
       const { error } = await supabase
-        .from('pickup_requests')
+        .from('pickup_request')
         .update({
           status: newStatus,
           updated_at: new Date().toISOString()
@@ -212,7 +209,7 @@ export default function AdminDashboard() {
 
     const headers = [
       'ID', 'Customer Name', 'Email', 'Phone', 'Address',
-      'Scrap Type', 'Quantity', 'Status', 'Submitted Date'
+      'Scrap Category', 'Description', 'Status', 'Submitted Date'
     ]
 
     let csvContent = ''
@@ -242,14 +239,17 @@ export default function AdminDashboard() {
     })
 
     sortedData.forEach(r => {
+      const fullAddress = [r.address1, r.address2, r.city, r.state, r.zip]
+        .filter(Boolean)
+        .join(', ')
       const row = [
         r.id,
         r.customer_name || '',
         r.email || '',
         r.phone || '',
-        r.address || '',
-        r.scrap_type || '',
-        r.quantity || '',
+        fullAddress,
+        r.scrap_category || '',
+        r.description || '',
         r.status.toUpperCase(),
         new Date(r.created_at).toLocaleDateString('en-IN', {
           day: '2-digit', month: 'short', year: 'numeric'
@@ -263,14 +263,17 @@ export default function AdminDashboard() {
       csvContent += `\n"--- ${status} REQUESTS (${items.length}) ---"\n`
       csvContent += headers.map(h => `"${h}"`).join(',') + '\n'
       items.forEach(r => {
+        const fullAddress = [r.address1, r.address2, r.city, r.state, r.zip]
+          .filter(Boolean)
+          .join(', ')
         const row = [
           r.id,
           r.customer_name || '',
           r.email || '',
           r.phone || '',
-          r.address || '',
-          r.scrap_type || '',
-          r.quantity || '',
+          fullAddress,
+          r.scrap_category || '',
+          r.description || '',
           r.status.toUpperCase(),
           new Date(r.created_at).toLocaleDateString('en-IN', {
             day: '2-digit', month: 'short', year: 'numeric'
@@ -332,18 +335,18 @@ export default function AdminDashboard() {
     })
     .filter(req => applyDateFilter(req))
     .filter(req => {
-  if (!searchQuery) return true
-  const q = searchQuery.toLowerCase()
-  return (
-    req.customer_name?.toLowerCase().includes(q)    ||
-    req.email?.toLowerCase().includes(q)             ||
-    req.phone?.includes(q)                            ||
-    req.rcrc_number?.toLowerCase().includes(q)       ||
-    req.rcrc_name?.toLowerCase().includes(q)         ||
-    req.scrap_category?.toLowerCase().includes(q)    ||
-    req.address1?.toLowerCase().includes(q)
-  )
-})
+      if (!searchQuery) return true
+      const q = searchQuery.toLowerCase()
+      return (
+        req.customer_name?.toLowerCase().includes(q) ||
+        req.email?.toLowerCase().includes(q)          ||
+        req.phone?.includes(q)                         ||
+        req.rcrc_number?.toLowerCase().includes(q)    ||
+        req.rcrc_name?.toLowerCase().includes(q)      ||
+        req.scrap_category?.toLowerCase().includes(q) ||
+        req.address1?.toLowerCase().includes(q)
+      )
+    })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime()
       const dateB = new Date(b.created_at).getTime()
@@ -377,7 +380,6 @@ export default function AdminDashboard() {
     rejected: requests.filter(r => r.status === 'rejected').length
   }
 
-  // ✅ Helper to render attachments
   const renderAttachments = (attachments?: Attachment[]) => {
     if (!attachments || attachments.length === 0) return null
     return (
@@ -394,13 +396,11 @@ export default function AdminDashboard() {
               <div
                 key={idx}
                 className="flex items-center justify-between
-                bg-gray-50 border border-gray-200 rounded-lg
-                px-3 py-2"
+                bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
               >
                 <div className="flex items-center gap-2">
                   <span>{isImage ? '🖼️' : '📊'}</span>
-                  <span className="text-sm text-gray-700 truncate
-                  max-w-[200px]">
+                  <span className="text-sm text-gray-700 truncate max-w-[200px]">
                     {file.name || `File ${idx + 1}`}
                   </span>
                 </div>
@@ -423,8 +423,7 @@ export default function AdminDashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center
-      justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12
           border-b-2 border-blue-600 mx-auto mb-4"/>
@@ -436,8 +435,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center
-      justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12
           border-b-2 border-blue-600 mx-auto mb-4"/>
@@ -464,8 +462,7 @@ export default function AdminDashboard() {
       {showExportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40
         flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl
-          max-w-md w-full p-6">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
@@ -477,15 +474,13 @@ export default function AdminDashboard() {
               </div>
               <button
                 onClick={() => setShowExportModal(false)}
-                className="text-gray-400 hover:text-gray-600
-                text-2xl font-light"
+                className="text-gray-400 hover:text-gray-600 text-2xl font-light"
               >✕</button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold
-                text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Filter by Status
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -512,17 +507,14 @@ export default function AdminDashboard() {
                       }`}
                     >
                       <div>{option.label}</div>
-                      <div className="text-lg font-bold mt-1">
-                        {option.count}
-                      </div>
+                      <div className="text-lg font-bold mt-1">{option.count}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold
-                text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Filter by Date
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -619,7 +611,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ✅ View Details Modal — WITH ATTACHMENTS */}
+      {/* View Details Modal */}
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40
         flex items-center justify-center p-4">
@@ -635,7 +627,6 @@ export default function AdminDashboard() {
               >✕</button>
             </div>
 
-            {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase font-medium">
@@ -658,44 +649,45 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-500 uppercase font-medium">
                   Email
                 </p>
-                <p className="text-sm text-gray-900">
-                  {selectedRequest.email}
-                </p>
+                <p className="text-sm text-gray-900">{selectedRequest.email}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase font-medium">
                   Phone
                 </p>
-                <p className="text-sm text-gray-900">
-                  {selectedRequest.phone}
-                </p>
+                <p className="text-sm text-gray-900">{selectedRequest.phone}</p>
               </div>
               <div className="col-span-2">
-  <p className="text-xs text-gray-500 uppercase font-medium">Address</p>
-  <p className="text-sm text-gray-900">
-    {[
-      selectedRequest.address1,
-      selectedRequest.address2,
-      selectedRequest.city,
-      selectedRequest.state,
-      selectedRequest.zip,
-    ].filter(Boolean).join(', ')}
-  </p>
-</div>
-<div>
-  <p className="text-xs text-gray-500 uppercase font-medium">Scrap Category</p>
-  <p className="text-sm text-gray-900">
-    {selectedRequest.scrap_category || '—'}
-  </p>
-</div>
-<div>
-  <p className="text-xs text-gray-500 uppercase font-medium">Description</p>
-  <p className="text-sm text-gray-900">
-    {selectedRequest.description || '—'}
-  </p>
-</div>
+                <p className="text-xs text-gray-500 uppercase font-medium">
+                  Address
+                </p>
+                <p className="text-sm text-gray-900">
+                  {[
+                    selectedRequest.address1,
+                    selectedRequest.address2,
+                    selectedRequest.city,
+                    selectedRequest.state,
+                    selectedRequest.zip,
+                  ].filter(Boolean).join(', ') || '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase font-medium">
+                  Scrap Category
+                </p>
+                <p className="text-sm text-gray-900">
+                  {selectedRequest.scrap_category || '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase font-medium">
+                  Description
+                </p>
+                <p className="text-sm text-gray-900">
+                  {selectedRequest.description || '—'}
+                </p>
+              </div>
 
-              {/* RCRC Details */}
               {selectedRequest.rcrc_number && (
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-medium">
@@ -776,10 +768,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* ✅ Attachments Section in Modal */}
             {renderAttachments(selectedRequest.attachments)}
 
-            {/* Action Buttons */}
             <div className="mt-6 flex gap-3 flex-wrap">
               {(isNewStatus(selectedRequest.status) ||
                 selectedRequest.status === 'pending') && (
@@ -792,9 +782,7 @@ export default function AdminDashboard() {
                     className="flex-1 px-4 py-2 bg-blue-600 text-white
                     rounded-lg hover:bg-blue-700 transition font-medium"
                   >
-                    {actionLoading === selectedRequest.id
-                      ? '...'
-                      : '✓ Approve'}
+                    {actionLoading === selectedRequest.id ? '...' : '✓ Approve'}
                   </button>
                   <button
                     onClick={() =>
@@ -804,9 +792,7 @@ export default function AdminDashboard() {
                     className="flex-1 px-4 py-2 bg-red-600 text-white
                     rounded-lg hover:bg-red-700 transition font-medium"
                   >
-                    {actionLoading === selectedRequest.id
-                      ? '...'
-                      : '✕ Reject'}
+                    {actionLoading === selectedRequest.id ? '...' : '✕ Reject'}
                   </button>
                 </>
               )}
@@ -892,9 +878,7 @@ export default function AdminDashboard() {
                 <div className="w-px h-10 bg-blue-400 opacity-50 mx-1"/>
                 <div className="w-8 h-8 bg-[#c9a84c] rounded-full
                 flex items-center justify-center">
-                  <span className="text-[#003478] font-bold text-xs">
-                    CS
-                  </span>
+                  <span className="text-[#003478] font-bold text-xs">CS</span>
                 </div>
               </div>
 
@@ -988,8 +972,7 @@ export default function AdminDashboard() {
                 setDateFilter(e.target.value as typeof dateFilter)
               }
               className="px-3 py-2 border border-gray-300 rounded-lg
-              text-sm focus:ring-2 focus:ring-blue-500 outline-none
-              min-w-[140px]"
+              text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px]"
             >
               <option value="all">📅 All Dates</option>
               <option value="today">📅 Today</option>
@@ -1002,8 +985,7 @@ export default function AdminDashboard() {
                 setSortOrder(e.target.value as 'newest' | 'oldest')
               }
               className="px-3 py-2 border border-gray-300 rounded-lg
-              text-sm focus:ring-2 focus:ring-blue-500 outline-none
-              min-w-[150px]"
+              text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[150px]"
             >
               <option value="newest">🔽 Newest First</option>
               <option value="oldest">🔼 Oldest First</option>
@@ -1072,7 +1054,6 @@ export default function AdminDashboard() {
                   text-white uppercase">Date</th>
                   <th className="px-4 py-3 text-left text-xs font-medium
                   text-white uppercase">Status</th>
-                  {/* ✅ New Attachments Column */}
                   <th className="px-4 py-3 text-left text-xs font-medium
                   text-white uppercase">Files</th>
                   <th className="px-4 py-3 text-left text-xs font-medium
@@ -1093,9 +1074,7 @@ export default function AdminDashboard() {
                         <div className="w-9 h-9 bg-[#003478] rounded-full
                         flex items-center justify-center flex-shrink-0">
                           <span className="text-white font-bold text-sm">
-                            {request.customer_name
-                              ?.charAt(0)
-                              ?.toUpperCase() || '?'}
+                            {request.customer_name?.charAt(0)?.toUpperCase() || '?'}
                           </span>
                         </div>
                         <div className="ml-3">
@@ -1103,8 +1082,10 @@ export default function AdminDashboard() {
                             {request.customer_name}
                           </p>
                           <p className="text-xs text-gray-500 max-w-[150px] truncate">
-  {[request.city, request.state].filter(Boolean).join(', ') || '—'}
-</p>
+                            {[request.city, request.state]
+                              .filter(Boolean)
+                              .join(', ') || '—'}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -1112,17 +1093,15 @@ export default function AdminDashboard() {
                       <p className="text-sm text-gray-900">{request.email}</p>
                       <p className="text-sm text-gray-500">{request.phone}</p>
                     </td>
-                    // ✅ NEW TABLE CELLS
-<td className="px-4 py-4">
-  <p className="text-sm font-medium text-gray-900">
-    {request.scrap_category || '—'}   // ✅ correct
-  </p>
-  <p className="text-sm text-gray-500">
-    {request.description || '—'}      // ✅ correct
-  </p>
-</td>
-                    <td className="px-4 py-4 text-sm text-gray-500
-                    whitespace-nowrap">
+                    <td className="px-4 py-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        {request.scrap_category || '—'}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {request.description || '—'}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-500 whitespace-nowrap">
                       {new Date(request.created_at).toLocaleDateString(
                         'en-IN',
                         { day: '2-digit', month: 'short', year: 'numeric' }
@@ -1130,16 +1109,14 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-4 py-4">
                       <span className={`px-3 py-1 inline-flex text-xs
-                      font-semibold rounded-full
-                      ${getStatusBadge(request.status)}`}>
+                      font-semibold rounded-full ${getStatusBadge(request.status)}`}>
                         {request.status}
                       </span>
                     </td>
 
-                    {/* ✅ Attachments Column */}
+                    {/* Attachments Column */}
                     <td className="px-4 py-4">
-                      {request.attachments &&
-                      request.attachments.length > 0 ? (
+                      {request.attachments && request.attachments.length > 0 ? (
                         <div className="flex flex-col gap-1">
                           {request.attachments.map((file, idx) => {
                             const isImage =
@@ -1151,9 +1128,8 @@ export default function AdminDashboard() {
                                 href={file.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1
-                                text-xs text-blue-600 hover:text-blue-800
-                                hover:underline"
+                                className="flex items-center gap-1 text-xs
+                                text-blue-600 hover:text-blue-800 hover:underline"
                               >
                                 <span>{isImage ? '🖼️' : '📊'}</span>
                                 <span className="truncate max-w-[80px]">
@@ -1164,9 +1140,7 @@ export default function AdminDashboard() {
                           })}
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400 italic">
-                          None
-                        </span>
+                        <span className="text-xs text-gray-400 italic">None</span>
                       )}
                     </td>
 
@@ -1195,9 +1169,7 @@ export default function AdminDashboard() {
                               bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded
                               text-xs transition disabled:opacity-50"
                             >
-                              {actionLoading === request.id
-                                ? '...'
-                                : '✓ Approve'}
+                              {actionLoading === request.id ? '...' : '✓ Approve'}
                             </button>
                             <button
                               onClick={() =>
@@ -1208,9 +1180,7 @@ export default function AdminDashboard() {
                               bg-red-50 hover:bg-red-100 px-2 py-1 rounded
                               text-xs transition disabled:opacity-50"
                             >
-                              {actionLoading === request.id
-                                ? '...'
-                                : '✕ Reject'}
+                              {actionLoading === request.id ? '...' : '✕ Reject'}
                             </button>
                           </>
                         )}
@@ -1224,9 +1194,7 @@ export default function AdminDashboard() {
                             bg-green-50 hover:bg-green-100 px-2 py-1 rounded
                             text-xs transition disabled:opacity-50"
                           >
-                            {actionLoading === request.id
-                              ? '...'
-                              : '✅ Complete'}
+                            {actionLoading === request.id ? '...' : '✅ Complete'}
                           </button>
                         )}
                         {(request.status === 'completed' ||
