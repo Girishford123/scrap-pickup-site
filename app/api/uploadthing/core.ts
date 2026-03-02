@@ -14,10 +14,10 @@ export const ourFileRouter = {
     }
   })
     .middleware(async () => {
-      return { success: true }
+      return {}
     })
     .onUploadComplete(async ({ file }) => {
-      console.log('✅ Upload complete:', file.name)
+      console.log('✅ File uploaded:', file.name, file.url)
       return {
         url: file.url,
         name: file.name
