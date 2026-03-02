@@ -282,7 +282,7 @@ export default function AdminDashboard() {
         : exportStatusFilter.toLowerCase()
     const dateLabel =
       exportDateFilter === 'all' ? 'all-dates' : exportDateFilter
-    a.download = `ford-pickup-requests-${statusLabel}-${dateLabel}-${
+    a.download = `ford-pickup-request-${statusLabel}-${dateLabel}-${
       new Date().toISOString().split('T')[0]
     }.csv`
     a.click()
