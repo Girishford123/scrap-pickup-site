@@ -1,14 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
-import Image from 'next/image'
+import { useState, useEffect } from 'react'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Attachment {
   url: string
@@ -20,800 +14,721 @@ interface PickupRequest {
   created_at: string
   updated_at?: string
   customer_name: string
-  phone: string
+  phone: string | null
   email: string
   user_id?: string
-  address1?: string
-  address2?: string
-  city?: string
-  state?: string
-  zip?: string
-  preferred_date?: string
-  time_window?: string
-  scrap_category?: string
-  description?: string
-  rcrc_number?: string
-  rcrc_name?: string
-  rcrc_contact_person?: string
-  rcrc_email?: string
-  rcrc_phone_number?: string
-  rcrc_address?: string
-  rcrc_address2?: string
-  rcrc_zip_code?: string
-  pallet_quantity?: number
-  total_pieces_quantity?: number
-  special_instructions?: string
-  notes?: string
+  address1?: string | null
+  address2?: string | null
+  city?: string | null
+  state?: string | null
+  zip?: string | null
+  preferred_date?: string | null
+  time_window?: string | null
+  scrap_category?: string | null
+  description?: string | null
+  rcrc_number?: string | null
+  rcrc_name?: string | null
+  rcrc_contact_person?: string | null
+  rcrc_email?: string | null
+  rcrc_phone_number?: string | null
+  rcrc_address?: string | null
+  rcrc_address2?: string | null
+  rcrc_zip_code?: string | null
+  pallet_quantity?: number | null
+  total_pieces_quantity?: number | null
+  special_instructions?: string | null
+  notes?: string | null
   status: 'new' | 'NEW' | 'pending' | 'approved' | 'rejected' | 'completed'
   attachments?: Attachment[]
-  cancel_reason?: string
-  cancelled_at?: string
+  cancel_reason?: string | null
+  cancelled_at?: string | null
 }
 
-export default function AdminDashboard() {
-  const router = useRouter()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [requests, setRequests] = useState<PickupRequest[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<
-    'all' | 'NEW' | 'new' | 'pending' | 'approved' | 'rejected' | 'completed'
-  >('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [dateFilter, setDateFilter] = useState<
-    'all' | 'today' | 'week' | 'month'
-  >('all')
-  const [selectedRequest, setSelectedRequest] =
-    useState<PickupRequest | null>(null)
-  const [showModal, setShowModal] = useState(false)
-  const [showExportModal, setShowExportModal] = useState(false)
-  const [actionLoading, setActionLoading] = useState<number | null>(null)
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
-  const [toast, setToast] = useState<{
-    message: string
-    type: 'success' | 'error'
-  } | null>(null)
-  const [fordLogoError, setFordLogoError] = useState(false)
+interface Counts {
+  all: number
+  new: number
+  pending: number
+  approved: number
+  rejected: number
+  completed: number
+}
 
-  const [exportStatusFilter, setExportStatusFilter] = useState<
-    'all' | 'NEW' | 'pending' | 'approved' | 'rejected' | 'completed'
-  >('all')
-  const [exportDateFilter, setExportDateFilter] = useState<
-    'all' | 'today' | 'week' | 'month'
-  >('all')
-  const [exportPreview, setExportPreview] = useState<PickupRequest[]>([])
+// ─── Status Config ────────────────────────────────────────────────────────────
 
-  const showToast = (message: string, type: 'success' | 'error') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
+const STATUS_STYLES: Record<string, string> = {
+  new:       'bg-blue-100 text-blue-800',
+  NEW:       'bg-blue-100 text-blue-800',
+  pending:   'bg-yellow-100 text-yellow-800',
+  approved:  'bg-green-100 text-green-800',
+  rejected:  'bg-red-100 text-red-800',
+  completed: 'bg-gray-100 text-gray-800',
+}
+
+const STATUS_OPTIONS = ['pending', 'approved', 'rejected', 'completed']
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      year:  'numeric',
+      month: 'short',
+      day:   'numeric',
+    })
+  } catch {
+    return dateStr
   }
+}
 
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isAdminLoggedIn')
-    if (isLoggedIn !== 'true') {
-      router.push('/login/admin')
-      return
-    }
-    setIsAuthenticated(true)
-  }, [router])
+function formatDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  try {
+    return new Date(dateStr).toLocaleString('en-US', {
+      year:   'numeric',
+      month:  'short',
+      day:    'numeric',
+      hour:   '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return dateStr
+  }
+}
 
-  const fetchRequests = useCallback(async () => {
+function fullAddress(r: PickupRequest): string {
+  return [r.address1, r.address2, r.city, r.state, r.zip]
+    .filter(Boolean)
+    .join(', ') || '—'
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function AdminDashboard() {
+  const [requests, setRequests]             = useState<PickupRequest[]>([])
+  const [counts, setCounts]                 = useState<Counts>({
+    all: 0, new: 0, pending: 0, approved: 0, rejected: 0, completed: 0,
+  })
+  const [loading, setLoading]               = useState(true)
+  const [error, setError]                   = useState<string | null>(null)
+  const [activeTab, setActiveTab]           = useState<string>('all')
+  const [searchQuery, setSearchQuery]       = useState('')
+  const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null)
+  const [updatingId, setUpdatingId]         = useState<number | null>(null)
+  const [updateMessage, setUpdateMessage]   = useState<string | null>(null)
+
+  // ── Fetch ────────────────────────────────────────────────────────────────
+
+  async function fetchRequests() {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('pickup_request')
-        .select('*')
-        .order('created_at', { ascending: false })
+      setError(null)
 
-      if (error) throw error
-      setRequests(data || [])
-    } catch (error) {
-      console.error('Error fetching requests:', error)
-      showToast('Failed to load requests', 'error')
+      const res = await fetch('/api/admin/requests', { cache: 'no-store' })
+      const json = await res.json()
+
+      if (!json.success) {
+        setError(json.error || 'Failed to load requests')
+        return
+      }
+
+      setRequests(json.data || [])
+      setCounts(json.counts || {
+        all: 0, new: 0, pending: 0,
+        approved: 0, rejected: 0, completed: 0,
+      })
+    } catch (err: any) {
+      setError(err?.message || 'Network error — could not reach API')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  useEffect(() => {
-    if (!isAuthenticated) return
-    fetchRequests()
+  useEffect(() => { fetchRequests() }, [])
 
-    const channel = supabase
-      .channel('pickup_request_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'pickup_request' },
-        () => { fetchRequests() }
-      )
-      .subscribe()
+  // ── Update Status ────────────────────────────────────────────────────────
 
-    return () => { supabase.removeChannel(channel) }
-  }, [isAuthenticated, fetchRequests])
-
-  useEffect(() => {
-    const now = new Date()
-    const filtered = requests.filter(req => {
-      if (exportStatusFilter !== 'all') {
-        if (exportStatusFilter === 'NEW') {
-          if (!isNewStatus(req.status)) return false
-        } else {
-          if (req.status !== exportStatusFilter) return false
-        }
-      }
-      const created = new Date(req.created_at)
-      if (exportDateFilter === 'today') {
-        return created.toDateString() === now.toDateString()
-      }
-      if (exportDateFilter === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        return created >= weekAgo
-      }
-      if (exportDateFilter === 'month') {
-        return (
-          created.getMonth() === now.getMonth() &&
-          created.getFullYear() === now.getFullYear()
-        )
-      }
-      return true
-    })
-    setExportPreview(filtered)
-  }, [exportStatusFilter, exportDateFilter, requests])
-
-  const handleStatusChange = async (
-    id: number,
-    newStatus: 'approved' | 'rejected' | 'completed' | 'pending'
-  ) => {
+  async function updateStatus(id: number, status: string) {
     try {
-      setActionLoading(id)
-      const { error } = await supabase
-        .from('pickup_request')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
+      setUpdatingId(id)
+      setUpdateMessage(null)
 
-      if (error) throw error
-
-      setRequests(prev =>
-        prev.map(req =>
-          req.id === id ? { ...req, status: newStatus } : req
-        )
-      )
-
-      showToast(`Request ${newStatus} successfully!`, 'success')
-      if (showModal) setShowModal(false)
-    } catch (error) {
-      console.error('Error updating status:', error)
-      showToast('Failed to update status', 'error')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const exportToCSV = () => {
-    if (exportPreview.length === 0) {
-      showToast('No data to export with selected filters', 'error')
-      return
-    }
-
-    const grouped = exportPreview.reduce(
-      (acc, req) => {
-        const status = req.status.toUpperCase()
-        if (!acc[status]) acc[status] = []
-        acc[status].push(req)
-        return acc
-      },
-      {} as Record<string, PickupRequest[]>
-    )
-
-    const headers = [
-      'ID', 'Customer Name', 'Email', 'Phone', 'Address',
-      'Scrap Category', 'Description', 'Status', 'Submitted Date'
-    ]
-
-    let csvContent = ''
-    csvContent += `"FORD COMPONENT SALES - SCRAP PICKUP REQUESTS EXPORT"\n`
-    csvContent += `"Exported On:","${new Date().toLocaleString()}"\n`
-    csvContent += `"Total Records:","${exportPreview.length}"\n`
-    csvContent += `"Status Filter:","${
-      exportStatusFilter === 'all' ? 'All Statuses' : exportStatusFilter
-    }"\n`
-    csvContent += `"Date Filter:","${
-      exportDateFilter === 'all' ? 'All Dates' : exportDateFilter
-    }"\n\n`
-
-    csvContent += '"STATUS SUMMARY"\n"Status","Count"\n'
-    Object.entries(grouped).forEach(([status, items]) => {
-      csvContent += `"${status}","${items.length}"\n`
-    })
-    csvContent += '\n"ALL REQUESTS DATA"\n'
-    csvContent += headers.map(h => `"${h}"`).join(',') + '\n'
-
-    const sortedData = [...exportPreview].sort((a, b) => {
-      if (a.status < b.status) return -1
-      if (a.status > b.status) return 1
-      return (
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-    })
-
-    sortedData.forEach(r => {
-      const fullAddress = [r.address1, r.address2, r.city, r.state, r.zip]
-        .filter(Boolean)
-        .join(', ')
-      const row = [
-        r.id,
-        r.customer_name || '',
-        r.email || '',
-        r.phone || '',
-        fullAddress,
-        r.scrap_category || '',
-        r.description || '',
-        r.status.toUpperCase(),
-        new Date(r.created_at).toLocaleDateString('en-IN', {
-          day: '2-digit', month: 'short', year: 'numeric'
-        })
-      ]
-      csvContent += row.map(cell => `"${cell}"`).join(',') + '\n'
-    })
-
-    csvContent += '\n"SECTION-WISE BREAKDOWN"\n'
-    Object.entries(grouped).forEach(([status, items]) => {
-      csvContent += `\n"--- ${status} REQUESTS (${items.length}) ---"\n`
-      csvContent += headers.map(h => `"${h}"`).join(',') + '\n'
-      items.forEach(r => {
-        const fullAddress = [r.address1, r.address2, r.city, r.state, r.zip]
-          .filter(Boolean)
-          .join(', ')
-        const row = [
-          r.id,
-          r.customer_name || '',
-          r.email || '',
-          r.phone || '',
-          fullAddress,
-          r.scrap_category || '',
-          r.description || '',
-          r.status.toUpperCase(),
-          new Date(r.created_at).toLocaleDateString('en-IN', {
-            day: '2-digit', month: 'short', year: 'numeric'
-          })
-        ]
-        csvContent += row.map(cell => `"${cell}"`).join(',') + '\n'
+      const res = await fetch('/api/admin/requests', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, status }),
       })
-    })
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const statusLabel =
-      exportStatusFilter === 'all'
-        ? 'all-statuses'
-        : exportStatusFilter.toLowerCase()
-    const dateLabel =
-      exportDateFilter === 'all' ? 'all-dates' : exportDateFilter
-    a.download = `ford-pickup-request-${statusLabel}-${dateLabel}-${
-      new Date().toISOString().split('T')[0]
-    }.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-    setShowExportModal(false)
-    showToast(
-      `Exported ${exportPreview.length} records successfully!`,
-      'success'
-    )
+      const json = await res.json()
+
+      if (!json.success) {
+        setUpdateMessage(`Error: ${json.error}`)
+        return
+      }
+
+      setUpdateMessage(`Request #${id} updated to "${status}"`)
+      await fetchRequests()
+
+      if (selectedRequest?.id === id) {
+        setSelectedRequest(prev =>
+          prev ? { ...prev, status: status as PickupRequest['status'] } : null
+        )
+      }
+
+      setTimeout(() => setUpdateMessage(null), 3000)
+    } catch (err: any) {
+      setUpdateMessage(`Error: ${err?.message || 'Unknown error'}`)
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
-  const applyDateFilter = (req: PickupRequest) => {
-    if (dateFilter === 'all') return true
-    const created = new Date(req.created_at)
-    const now = new Date()
-    if (dateFilter === 'today')
-      return created.toDateString() === now.toDateString()
-    if (dateFilter === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      return created >= weekAgo
-    }
-    if (dateFilter === 'month') {
-      return (
-        created.getMonth() === now.getMonth() &&
-        created.getFullYear() === now.getFullYear()
-      )
-    }
-    return true
-  }
+  // ── Filter ───────────────────────────────────────────────────────────────
 
-  const isNewStatus = (status: string) =>
-    status === 'NEW' || status === 'new'
-
-  const filteredRequests = requests
-    .filter(req => {
-      if (filter === 'all') return true
-      if (filter === 'NEW') return isNewStatus(req.status)
-      return req.status === filter
+  const filtered = requests
+    .filter(r => {
+      if (activeTab === 'all') return true
+      if (activeTab === 'new') return r.status === 'new' || r.status === 'NEW'
+      return r.status === activeTab
     })
-    .filter(req => applyDateFilter(req))
-    .filter(req => {
+    .filter(r => {
       if (!searchQuery) return true
       const q = searchQuery.toLowerCase()
       return (
-        req.customer_name?.toLowerCase().includes(q) ||
-        req.email?.toLowerCase().includes(q)          ||
-        req.phone?.includes(q)                         ||
-        req.rcrc_number?.toLowerCase().includes(q)    ||
-        req.rcrc_name?.toLowerCase().includes(q)      ||
-        req.scrap_category?.toLowerCase().includes(q) ||
-        req.address1?.toLowerCase().includes(q)
+        r.customer_name?.toLowerCase().includes(q)  ||
+        r.email?.toLowerCase().includes(q)           ||
+        r.phone?.includes(q)                         ||
+        r.rcrc_number?.toLowerCase().includes(q)    ||
+        r.rcrc_name?.toLowerCase().includes(q)      ||
+        r.scrap_category?.toLowerCase().includes(q) ||
+        r.city?.toLowerCase().includes(q)           ||
+        r.address1?.toLowerCase().includes(q)
       )
     })
-    .sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime()
-      const dateB = new Date(b.created_at).getTime()
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
-    })
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAdminLoggedIn')
-    localStorage.removeItem('adminEmail')
-    router.push('/')
-  }
+  // ── Tabs ─────────────────────────────────────────────────────────────────
 
-  const getStatusBadge = (status: string) => {
-    const badges: Record<string, string> = {
-      new: 'bg-purple-100 text-purple-800',
-      NEW: 'bg-purple-100 text-purple-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-blue-100 text-blue-800',
-      rejected: 'bg-red-100 text-red-800',
-      completed: 'bg-green-100 text-green-800'
-    }
-    return badges[status] || 'bg-gray-100 text-gray-800'
-  }
+  const tabs = [
+    { key: 'all',       label: 'All',       count: counts.all       },
+    { key: 'new',       label: 'New',       count: counts.new       },
+    { key: 'pending',   label: 'Pending',   count: counts.pending   },
+    { key: 'approved',  label: 'Approved',  count: counts.approved  },
+    { key: 'rejected',  label: 'Rejected',  count: counts.rejected  },
+    { key: 'completed', label: 'Completed', count: counts.completed },
+  ]
 
-  const stats = {
-    total: requests.length,
-    new: requests.filter(r => isNewStatus(r.status)).length,
-    pending: requests.filter(r => r.status === 'pending').length,
-    approved: requests.filter(r => r.status === 'approved').length,
-    completed: requests.filter(r => r.status === 'completed').length,
-    rejected: requests.filter(r => r.status === 'rejected').length
-  }
-
-  const renderAttachments = (attachments?: Attachment[]) => {
-    if (!attachments || attachments.length === 0) return null
-    return (
-      <div className="mt-4">
-        <p className="text-xs text-gray-500 uppercase font-medium mb-2">
-          📎 Attachments ({attachments.length})
-        </p>
-        <div className="space-y-2">
-          {attachments.map((file, idx) => {
-            const isImage =
-              file.name?.match(/\.(jpg|jpeg|png)$/i) ||
-              file.url?.includes('image')
-            return (
-              <div
-                key={idx}
-                className="flex items-center justify-between
-                bg-gray-50 border border-gray-200 rounded-lg px-3 py-2"
-              >
-                <div className="flex items-center gap-2">
-                  <span>{isImage ? '🖼️' : '📊'}</span>
-                  <span className="text-sm text-gray-700 truncate max-w-[200px]">
-                    {file.name || `File ${idx + 1}`}
-                  </span>
-                </div>
-                <a
-                  href={file.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:text-blue-800
-                  hover:underline font-medium flex-shrink-0 ml-2"
-                >
-                  View ↗
-                </a>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12
-          border-b-2 border-blue-600 mx-auto mb-4"/>
-          <p className="text-gray-600">Checking authentication...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12
-          border-b-2 border-blue-600 mx-auto mb-4"/>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    )
-  }
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3
-        rounded-lg shadow-lg text-white font-medium transition-all ${
-          toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-        }`}>
-          {toast.message}
-        </div>
-      )}
-
-      {/* Export Modal */}
-      {showExportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40
-        flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  📊 Export to CSV
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Choose filters before downloading
-                </p>
-              </div>
-              <button
-                onClick={() => setShowExportModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-light"
-              >✕</button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Filter by Status
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'all', label: '📋 All', count: stats.total },
-                    { value: 'NEW', label: '🆕 New', count: stats.new },
-                    { value: 'pending', label: '⏳ Pending', count: stats.pending },
-                    { value: 'approved', label: '✓ Approved', count: stats.approved },
-                    { value: 'rejected', label: '✕ Rejected', count: stats.rejected },
-                    { value: 'completed', label: '✅ Done', count: stats.completed },
-                  ].map(option => (
-                    <button
-                      key={option.value}
-                      onClick={() =>
-                        setExportStatusFilter(
-                          option.value as typeof exportStatusFilter
-                        )
-                      }
-                      className={`p-2 rounded-lg border-2 text-xs
-                      font-medium transition text-center ${
-                        exportStatusFilter === option.value
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
-                    >
-                      <div>{option.label}</div>
-                      <div className="text-lg font-bold mt-1">{option.count}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Filter by Date
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { value: 'all', label: 'All Time' },
-                    { value: 'today', label: 'Today' },
-                    { value: 'week', label: 'This Week' },
-                    { value: 'month', label: 'This Month' },
-                  ].map(option => (
-                    <button
-                      key={option.value}
-                      onClick={() =>
-                        setExportDateFilter(
-                          option.value as typeof exportDateFilter
-                        )
-                      }
-                      className={`p-2 rounded-lg border-2 text-xs
-                      font-medium transition text-center ${
-                        exportDateFilter === option.value
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className={`rounded-xl p-4 border-2 ${
-                exportPreview.length > 0
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-red-50 border-red-200'
-              }`}>
-                <p className="text-sm font-semibold text-gray-700 mb-2">
-                  📋 Export Preview
-                </p>
-                {exportPreview.length > 0 ? (
-                  <div>
-                    <p className="text-green-700 font-bold text-lg">
-                      {exportPreview.length} records will be exported
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {Object.entries(
-                        exportPreview.reduce(
-                          (acc, req) => {
-                            const s = req.status.toUpperCase()
-                            acc[s] = (acc[s] || 0) + 1
-                            return acc
-                          },
-                          {} as Record<string, number>
-                        )
-                      ).map(([status, count]) => (
-                        <span
-                          key={status}
-                          className={`px-2 py-1 text-xs rounded-full
-                          font-medium ${getStatusBadge(status)}`}
-                        >
-                          {status}: {count}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-red-600 font-medium">
-                    ⚠️ No records match selected filters
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setShowExportModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700
-                rounded-xl hover:bg-gray-200 transition font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={exportToCSV}
-                disabled={exportPreview.length === 0}
-                className={`flex-1 px-4 py-3 rounded-xl font-medium
-                transition ${
-                  exportPreview.length > 0
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                📥 Download ({exportPreview.length})
-              </button>
-            </div>
+      {/* ── Header ── */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Admin Dashboard
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Scrap Pickup Requests Management
+            </p>
           </div>
+          <button
+            onClick={fetchRequests}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white
+                       rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm
+                       font-medium transition-colors"
+          >
+            {loading ? 'Refreshing...' : '↻ Refresh'}
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* View Details Modal */}
-      {showModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40
-        flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl
-          w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
-                Request Details
-              </h2>
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+        {/* ── Update Message ── */}
+        {updateMessage && (
+          <div className={`px-4 py-3 rounded-lg text-sm font-medium
+            ${updateMessage.startsWith('Error')
+              ? 'bg-red-50 text-red-700 border border-red-200'
+              : 'bg-green-50 text-green-700 border border-green-200'}`}>
+            {updateMessage}
+          </div>
+        )}
+
+        {/* ── Error ── */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-700 font-medium">Error loading requests</p>
+            <p className="text-red-600 text-sm mt-1">{error}</p>
+            <button
+              onClick={fetchRequests}
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg
+                         text-sm hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* ── Stats Cards ── */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`p-4 rounded-xl border-2 text-left transition-all
+                ${activeTab === tab.key
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 bg-white hover:border-blue-300'}`}
+            >
+              <p className="text-2xl font-bold text-gray-900">{tab.count}</p>
+              <p className="text-xs text-gray-500 mt-1">{tab.label}</p>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Search + Tabs ── */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+          {/* Tabs Row */}
+          <div className="flex border-b border-gray-200 overflow-x-auto">
+            {tabs.map(tab => (
               <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >✕</button>
-            </div>
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-3 text-sm font-medium whitespace-nowrap
+                  border-b-2 transition-colors
+                  ${activeTab === tab.key
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                {tab.label}
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs
+                  ${activeTab === tab.key
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'bg-gray-100 text-gray-500'}`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
+          {/* Search Row */}
+          <div className="p-4 border-b border-gray-100">
+            <input
+              type="text"
+              placeholder="Search by name, email, phone, city, RCRC, scrap category..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg
+                         text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* ── Table ── */}
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="inline-block w-8 h-8 border-4 border-blue-500
+                              border-t-transparent rounded-full animate-spin" />
+              <p className="text-gray-500 mt-3">Loading requests...</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-gray-400 text-lg">No requests found</p>
+              <p className="text-gray-400 text-sm mt-1">
+                {searchQuery ? 'Try a different search term' : 'No requests in this category'}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">RCRC</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scrap Category</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pickup Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pallets / Pieces</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map(req => (
+                    <tr
+                      key={req.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      {/* ID */}
+                      <td className="px-4 py-4 font-mono text-gray-500">
+                        #{req.id}
+                      </td>
+
+                      {/* Customer */}
+                      <td className="px-4 py-4">
+                        <p className="font-medium text-gray-900">
+                          {req.customer_name || '—'}
+                        </p>
+                        <p className="text-xs text-gray-500">{req.email}</p>
+                        <p className="text-xs text-gray-400">{req.phone || '—'}</p>
+                        <p className="text-xs text-gray-400 truncate max-w-[160px]">
+                          {[req.city, req.state].filter(Boolean).join(', ') || '—'}
+                        </p>
+                      </td>
+
+                      {/* RCRC */}
+                      <td className="px-4 py-4">
+                        <p className="font-medium text-gray-900">
+                          {req.rcrc_name || '—'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          #{req.rcrc_number || '—'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {req.rcrc_contact_person || '—'}
+                        </p>
+                      </td>
+
+                      {/* Scrap Category */}
+                      <td className="px-4 py-4">
+                        <p className="font-medium text-gray-900">
+                          {req.scrap_category || '—'}
+                        </p>
+                        <p className="text-xs text-gray-500 max-w-[140px] truncate">
+                          {req.description || '—'}
+                        </p>
+                      </td>
+
+                      {/* Pickup Date */}
+                      <td className="px-4 py-4">
+                        <p className="text-gray-900">
+                          {formatDate(req.preferred_date)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {req.time_window || '—'}
+                        </p>
+                      </td>
+
+                      {/* Pallets / Pieces */}
+                      <td className="px-4 py-4">
+                        <p className="text-gray-900">
+                          {req.pallet_quantity ?? 0} pallets
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {req.total_pieces_quantity ?? 0} pieces
+                        </p>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="px-4 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium
+                          ${STATUS_STYLES[req.status] || 'bg-gray-100 text-gray-800'}`}>
+                          {req.status}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={() => setSelectedRequest(req)}
+                            className="px-3 py-1 bg-blue-600 text-white rounded
+                                       text-xs hover:bg-blue-700 transition-colors"
+                          >
+                            View
+                          </button>
+                          <select
+                            value={req.status}
+                            disabled={updatingId === req.id}
+                            onChange={e => updateStatus(req.id, e.target.value)}
+                            className="px-2 py-1 border border-gray-200 rounded
+                                       text-xs focus:outline-none focus:ring-1
+                                       focus:ring-blue-500 disabled:opacity-50"
+                          >
+                            {STATUS_OPTIONS.map(s => (
+                              <option key={s} value={s}>
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                          {updatingId === req.id && (
+                            <span className="text-xs text-blue-500">Saving...</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Table Footer */}
+          {!loading && filtered.length > 0 && (
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
+              Showing {filtered.length} of {counts.all} total requests
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Detail Modal ─────────────────────────────────────────────────────── */}
+      {selectedRequest && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-start
+                     justify-center p-4 overflow-y-auto"
+          onClick={e => {
+            if (e.target === e.currentTarget) setSelectedRequest(null)
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl
+                          my-8 overflow-hidden">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4
+                            border-b border-gray-200 bg-gray-50">
               <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Customer
-                </p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {selectedRequest.customer_name}
+                <h2 className="text-lg font-bold text-gray-900">
+                  Request #{selectedRequest.id}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Submitted {formatDateTime(selectedRequest.created_at)}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Status
-                </p>
-                <span className={`px-2 py-1 text-xs font-semibold
-                rounded-full ${getStatusBadge(selectedRequest.status)}`}>
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium
+                  ${STATUS_STYLES[selectedRequest.status] || 'bg-gray-100 text-gray-800'}`}>
                   {selectedRequest.status}
                 </span>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Email
-                </p>
-                <p className="text-sm text-gray-900">{selectedRequest.email}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Phone
-                </p>
-                <p className="text-sm text-gray-900">{selectedRequest.phone}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Address
-                </p>
-                <p className="text-sm text-gray-900">
-                  {[
-                    selectedRequest.address1,
-                    selectedRequest.address2,
-                    selectedRequest.city,
-                    selectedRequest.state,
-                    selectedRequest.zip,
-                  ].filter(Boolean).join(', ') || '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Scrap Category
-                </p>
-                <p className="text-sm text-gray-900">
-                  {selectedRequest.scrap_category || '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Description
-                </p>
-                <p className="text-sm text-gray-900">
-                  {selectedRequest.description || '—'}
-                </p>
-              </div>
-
-              {selectedRequest.rcrc_number && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">
-                    RCRC Number
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    {selectedRequest.rcrc_number}
-                  </p>
-                </div>
-              )}
-              {selectedRequest.rcrc_name && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">
-                    RCRC Name
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    {selectedRequest.rcrc_name}
-                  </p>
-                </div>
-              )}
-              {selectedRequest.preferred_date && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">
-                    Preferred Date
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    {selectedRequest.preferred_date}
-                  </p>
-                </div>
-              )}
-              {selectedRequest.time_window && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">
-                    Pickup Hours
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    {selectedRequest.time_window}
-                  </p>
-                </div>
-              )}
-              {selectedRequest.pallet_quantity !== undefined && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">
-                    Pallet Quantity
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    {selectedRequest.pallet_quantity}
-                  </p>
-                </div>
-              )}
-              {selectedRequest.total_pieces_quantity !== undefined && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">
-                    Total Pieces
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    {selectedRequest.total_pieces_quantity}
-                  </p>
-                </div>
-              )}
-              {selectedRequest.special_instructions && (
-                <div className="col-span-2">
-                  <p className="text-xs text-gray-500 uppercase font-medium">
-                    Notes
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    {selectedRequest.special_instructions}
-                  </p>
-                </div>
-              )}
-              <div className="col-span-2">
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Submitted On
-                </p>
-                <p className="text-sm text-gray-900">
-                  {new Date(selectedRequest.created_at).toLocaleString()}
-                </p>
+                <button
+                  onClick={() => setSelectedRequest(null)}
+                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                >
+                  ×
+                </button>
               </div>
             </div>
 
-            {renderAttachments(selectedRequest.attachments)}
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
 
-            <div className="mt-6 flex gap-3 flex-wrap">
-              {(isNewStatus(selectedRequest.status) ||
-                selectedRequest.status === 'pending') && (
-                <>
-                  <button
-                    onClick={() =>
-                      handleStatusChange(selectedRequest.id, 'approved')
-                    }
-                    disabled={actionLoading === selectedRequest.id}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white
-                    rounded-lg hover:bg-blue-700 transition font-medium"
-                  >
-                    {actionLoading === selectedRequest.id ? '...' : '✓ Approve'}
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleStatusChange(selectedRequest.id, 'rejected')
-                    }
-                    disabled={actionLoading === selectedRequest.id}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white
-                    rounded-lg hover:bg-red-700 transition font-medium"
-                  >
-                    {actionLoading === selectedRequest.id ? '...' : '✕ Reject'}
-                  </button>
-                </>
+              {/* Customer Info */}
+              <section>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase
+                               tracking-wide mb-3 pb-1 border-b border-gray-100">
+                  Customer Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Name</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.customer_name || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Email</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.email || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Phone</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.phone || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Address</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {fullAddress(selectedRequest)}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Pickup Details */}
+              <section>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase
+                               tracking-wide mb-3 pb-1 border-b border-gray-100">
+                  Pickup Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Preferred Date</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {formatDate(selectedRequest.preferred_date)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Time Window</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.time_window || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Scrap Category</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.scrap_category || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Description</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.description || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Pallet Quantity</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.pallet_quantity ?? 0}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Total Pieces</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.total_pieces_quantity ?? 0}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500 uppercase font-medium">
+                      Special Instructions
+                    </p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.special_instructions || '—'}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* RCRC Info */}
+              <section>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase
+                               tracking-wide mb-3 pb-1 border-b border-gray-100">
+                  RCRC Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Name</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.rcrc_name || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Number</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.rcrc_number || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Contact Person</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.rcrc_contact_person || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Email</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.rcrc_email || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Phone</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {selectedRequest.rcrc_phone_number || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Address</p>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {[
+                        selectedRequest.rcrc_address,
+                        selectedRequest.rcrc_address2,
+                        selectedRequest.rcrc_zip_code,
+                      ].filter(Boolean).join(', ') || '—'}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Attachments */}
+              {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
+                <section>
+                  <h3 className="text-sm font-semibold text-gray-700 uppercase
+                                 tracking-wide mb-3 pb-1 border-b border-gray-100">
+                    Attachments ({selectedRequest.attachments.length})
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                    {selectedRequest.attachments.map((att, i) => (
+                      <a
+                        key={i}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-50
+                                   border border-blue-200 rounded-lg text-blue-700
+                                   text-sm hover:bg-blue-100 transition-colors"
+                      >
+                        📎 {att.name || `Attachment ${i + 1}`}
+                      </a>
+                    ))}
+                  </div>
+                </section>
               )}
-              {selectedRequest.status === 'approved' && (
-                <button
-                  onClick={() =>
-                    handleStatusChange(selectedRequest.id, 'completed')
-                  }
-                  disabled={actionLoading === selectedRequest.id}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white
-                  rounded-lg hover:bg-green-700 transition font-medium"
-                >
-                  {actionLoading === selectedRequest.id
-                    ? '...'
-                    : '✅ Mark Complete'}
-                </button>
+
+              {/* Notes */}
+              {selectedRequest.notes && (
+                <section>
+                  <h3 className="text-sm font-semibold text-gray-700 uppercase
+                                 tracking-wide mb-3 pb-1 border-b border-gray-100">
+                    Notes
+                  </h3>
+                  <p className="text-sm text-gray-700 bg-yellow-50 border
+                                border-yellow-200 rounded-lg p-3">
+                    {selectedRequest.notes}
+                  </p>
+                </section>
               )}
+
+              {/* Update Status */}
+              <section>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase
+                               tracking-wide mb-3 pb-1 border-b border-gray-100">
+                  Update Status
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => updateStatus(selectedRequest.id, s)}
+                      disabled={
+                        updatingId === selectedRequest.id ||
+                        selectedRequest.status === s
+                      }
+                      className={`px-4 py-2 rounded-lg text-sm font-medium
+                        transition-colors disabled:opacity-50
+                        ${selectedRequest.status === s
+                          ? 'bg-gray-800 text-white cursor-default'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    >
+                      {updatingId === selectedRequest.id
+                        ? 'Saving...'
+                        : s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50
+                            flex justify-end">
               <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700
-                rounded-lg hover:bg-gray-200 transition font-medium"
+                onClick={() => setSelectedRequest(null)}
+                className="px-5 py-2 bg-gray-800 text-white rounded-lg
+                           text-sm hover:bg-gray-900 transition-colors"
               >
                 Close
               </button>
@@ -821,420 +736,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="bg-[#003478] px-4 sm:px-6 lg:px-8 py-1">
-          <p className="text-white text-xs text-center tracking-widest
-          font-medium uppercase">
-            Ford Motor Company – Component Sales Division
-          </p>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              {!fordLogoError ? (
-                <Image
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ford_logo_flat.svg/2560px-Ford_logo_flat.svg.png"
-                  alt="Ford Logo"
-                  width={80}
-                  height={32}
-                  className="object-contain"
-                  onError={() => setFordLogoError(true)}
-                  unoptimized
-                />
-              ) : (
-                <div className="w-20 h-10 bg-[#003478] rounded-full
-                flex items-center justify-center border-4
-                border-[#003478] shadow-md">
-                  <span className="text-white font-bold text-lg italic">
-                    Ford
-                  </span>
-                </div>
-              )}
-              <div className="w-px h-10 bg-gray-300"/>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                  Admin Dashboard
-                </h1>
-                <p className="text-xs text-gray-500">
-                  Scrap Pickup Management
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2
-              bg-[#003478] px-4 py-2 rounded-lg shadow">
-                <div className="flex flex-col items-center">
-                  <span className="text-white text-xs font-light
-                  tracking-widest uppercase">Ford</span>
-                  <span className="text-[#c9a84c] text-sm font-bold
-                  tracking-wide uppercase leading-tight">Component</span>
-                  <span className="text-[#c9a84c] text-sm font-bold
-                  tracking-wide uppercase leading-tight">Sales</span>
-                </div>
-                <div className="w-px h-10 bg-blue-400 opacity-50 mx-1"/>
-                <div className="w-8 h-8 bg-[#c9a84c] rounded-full
-                flex items-center justify-center">
-                  <span className="text-[#003478] font-bold text-xs">CS</span>
-                </div>
-              </div>
-
-              <button
-                onClick={fetchRequests}
-                className="px-3 py-2 bg-gray-100 text-gray-700
-                rounded-lg hover:bg-gray-200 transition text-sm font-medium"
-              >
-                🔄 Refresh
-              </button>
-              <button
-                onClick={() => {
-                  setExportStatusFilter('all')
-                  setExportDateFilter('all')
-                  setShowExportModal(true)
-                }}
-                className="px-3 py-2 bg-green-600 text-white
-                rounded-lg hover:bg-green-700 transition text-sm font-medium"
-              >
-                📊 Export CSV
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2 bg-red-600 text-white
-                rounded-lg hover:bg-red-700 transition text-sm font-medium"
-              >
-                🚪 Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-          {[
-            { label: 'Total', value: stats.total, color: 'text-gray-900', bg: 'bg-gray-100', icon: '📋' },
-            { label: 'New', value: stats.new, color: 'text-purple-600', bg: 'bg-purple-100', icon: '🆕' },
-            { label: 'Pending', value: stats.pending, color: 'text-yellow-600', bg: 'bg-yellow-100', icon: '⏳' },
-            { label: 'Approved', value: stats.approved, color: 'text-blue-600', bg: 'bg-blue-100', icon: '✓' },
-            { label: 'Completed', value: stats.completed, color: 'text-green-600', bg: 'bg-green-100', icon: '✅' },
-            { label: 'Rejected', value: stats.rejected, color: 'text-red-600', bg: 'bg-red-100', icon: '❌' },
-          ].map(stat => (
-            <div key={stat.label} className="bg-white rounded-xl shadow-sm p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-500">
-                    {stat.label}
-                  </p>
-                  <p className={`text-2xl font-bold mt-1 ${stat.color}`}>
-                    {stat.value}
-                  </p>
-                </div>
-                <div className={`w-10 h-10 ${stat.bg} rounded-lg
-                flex items-center justify-center text-lg`}>
-                  {stat.icon}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Search + Date Filter + Sort */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex-1 relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2
-              text-gray-400 text-sm">🔍</span>
-              <input
-                type="text"
-                placeholder="Search by name, email, phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-9 py-2 border border-gray-300
-                rounded-lg text-sm focus:ring-2 focus:ring-blue-500
-                focus:border-transparent outline-none"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2
-                  text-gray-400 hover:text-gray-600 text-sm"
-                >✕</button>
-              )}
-            </div>
-            <select
-              value={dateFilter}
-              onChange={(e) =>
-                setDateFilter(e.target.value as typeof dateFilter)
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg
-              text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px]"
-            >
-              <option value="all">📅 All Dates</option>
-              <option value="today">📅 Today</option>
-              <option value="week">📅 This Week</option>
-              <option value="month">📅 This Month</option>
-            </select>
-            <select
-              value={sortOrder}
-              onChange={(e) =>
-                setSortOrder(e.target.value as 'newest' | 'oldest')
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg
-              text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[150px]"
-            >
-              <option value="newest">🔽 Newest First</option>
-              <option value="oldest">🔼 Oldest First</option>
-            </select>
-          </div>
-          <p className="text-xs text-gray-500 mt-3">
-            Showing{' '}
-            <span className="font-bold text-gray-700">
-              {filteredRequests.length}
-            </span>{' '}
-            of {requests.length} requests
-            {searchQuery && (
-              <span> matching &quot;<strong>{searchQuery}</strong>&quot;</span>
-            )}
-          </p>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="bg-white rounded-xl shadow-sm mb-6 overflow-x-auto">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-2 px-4 min-w-max">
-              {[
-                { key: 'all', label: 'All', count: stats.total },
-                { key: 'NEW', label: 'New', count: stats.new },
-                { key: 'pending', label: 'Pending', count: stats.pending },
-                { key: 'approved', label: 'Approved', count: stats.approved },
-                { key: 'rejected', label: 'Rejected', count: stats.rejected },
-                { key: 'completed', label: 'Completed', count: stats.completed },
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key as typeof filter)}
-                  className={`py-4 px-3 border-b-2 font-medium text-sm
-                  whitespace-nowrap transition ${
-                    filter === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {tab.label}
-                  <span className="ml-2 py-0.5 px-2 rounded-full text-xs
-                  bg-gray-100 text-gray-600">
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-
-        {/* Requests Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#003478]">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">#</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">Customer</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">Scrap Details</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">Files</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium
-                  text-white uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredRequests.map((request, index) => (
-                  <tr
-                    key={request.id}
-                    className="hover:bg-blue-50 transition"
-                  >
-                    <td className="px-4 py-4 text-sm text-gray-400">
-                      {index + 1}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center">
-                        <div className="w-9 h-9 bg-[#003478] rounded-full
-                        flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-bold text-sm">
-                            {request.customer_name?.charAt(0)?.toUpperCase() || '?'}
-                          </span>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {request.customer_name}
-                          </p>
-                          <p className="text-xs text-gray-500 max-w-[150px] truncate">
-                            {[request.city, request.state]
-                              .filter(Boolean)
-                              .join(', ') || '—'}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-sm text-gray-900">{request.email}</p>
-                      <p className="text-sm text-gray-500">{request.phone}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-medium text-gray-900">
-                        {request.scrap_category || '—'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {request.description || '—'}
-                      </p>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-500 whitespace-nowrap">
-                      {new Date(request.created_at).toLocaleDateString(
-                        'en-IN',
-                        { day: '2-digit', month: 'short', year: 'numeric' }
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={`px-3 py-1 inline-flex text-xs
-                      font-semibold rounded-full ${getStatusBadge(request.status)}`}>
-                        {request.status}
-                      </span>
-                    </td>
-
-                    {/* Attachments Column */}
-                    <td className="px-4 py-4">
-                      {request.attachments && request.attachments.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {request.attachments.map((file, idx) => {
-                            const isImage =
-                              file.name?.match(/\.(jpg|jpeg|png)$/i) ||
-                              file.url?.includes('image')
-                            return (
-                              <a
-                                key={idx}
-                                href={file.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs
-                                text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                <span>{isImage ? '🖼️' : '📊'}</span>
-                                <span className="truncate max-w-[80px]">
-                                  {file.name || `File ${idx + 1}`}
-                                </span>
-                              </a>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">None</span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={() => {
-                            setSelectedRequest(request)
-                            setShowModal(true)
-                          }}
-                          className="text-gray-600 hover:text-gray-900
-                          bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded
-                          text-xs transition"
-                        >
-                          👁️ View
-                        </button>
-                        {(isNewStatus(request.status) ||
-                          request.status === 'pending') && (
-                          <>
-                            <button
-                              onClick={() =>
-                                handleStatusChange(request.id, 'approved')
-                              }
-                              disabled={actionLoading === request.id}
-                              className="text-blue-600 hover:text-blue-900
-                              bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded
-                              text-xs transition disabled:opacity-50"
-                            >
-                              {actionLoading === request.id ? '...' : '✓ Approve'}
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleStatusChange(request.id, 'rejected')
-                              }
-                              disabled={actionLoading === request.id}
-                              className="text-red-600 hover:text-red-900
-                              bg-red-50 hover:bg-red-100 px-2 py-1 rounded
-                              text-xs transition disabled:opacity-50"
-                            >
-                              {actionLoading === request.id ? '...' : '✕ Reject'}
-                            </button>
-                          </>
-                        )}
-                        {request.status === 'approved' && (
-                          <button
-                            onClick={() =>
-                              handleStatusChange(request.id, 'completed')
-                            }
-                            disabled={actionLoading === request.id}
-                            className="text-green-600 hover:text-green-900
-                            bg-green-50 hover:bg-green-100 px-2 py-1 rounded
-                            text-xs transition disabled:opacity-50"
-                          >
-                            {actionLoading === request.id ? '...' : '✅ Complete'}
-                          </button>
-                        )}
-                        {(request.status === 'completed' ||
-                          request.status === 'rejected') && (
-                          <span className="text-gray-400 text-xs italic">
-                            No actions
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredRequests.length === 0 && (
-            <div className="text-center py-16">
-              <span className="text-6xl mb-4 block">📭</span>
-              <p className="text-gray-500 font-medium">No requests found</p>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="mt-3 text-blue-600 text-sm hover:underline"
-                >
-                  Clear search
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-xs text-gray-400">
-            © {new Date().getFullYear()} Ford Motor Company –
-            Component Sales Division. All rights reserved.
-          </p>
-        </div>
-
-      </main>
     </div>
   )
 }
