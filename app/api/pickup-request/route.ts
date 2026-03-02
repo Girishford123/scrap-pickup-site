@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     // ── Insert into Supabase ────────────────────
     const { data, error } = await supabase
-      .from('pickup_requests')
+      .from('pickup_request')
       .insert([payload])
       .select()
 
