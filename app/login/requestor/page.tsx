@@ -4,8 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useUploadThing } from '@/lib/uploadthing'
 import { supabase } from '@/lib/supabase'
-import { setUserSession } from '@/lib/auth'
-
+import { setUserSession, getUserSession, clearUserSession } from '@/lib/auth'
 export default function RequestorLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -102,29 +101,30 @@ export default function RequestorLogin() {
   }
 
   const handleLogout = () => {
-    setIsLoggedIn(false)
-    setUserData(null)
-    setEmail('')
-    setPassword('')
-    setSelectedFiles([])
-    setFormData({
-      rcrcNumber: '',
-      rcrcName: '',
-      rcrcContactPerson: '',
-      rcrcEmail: '',
-      rcrcPhoneNumber: '',
-      rcrcAddress: '',
-      rcrcAddress2: '',
-      state: '',
-      rcrcZipCode: '',
-      preferredDate: '',
-      pickupHours: '',
-      palletQuantity: '',
-      totalPiecesQuantity: '',
-      notes: ''
-    })
-    setSubmitSuccess(false)
-  }
+  clearUserSession() // ✅ clears localStorage
+  setIsLoggedIn(false)
+  setUserData(null)
+  setEmail('')
+  setPassword('')
+  setSelectedFiles([])
+  setFormData({
+    rcrcNumber: '',
+    rcrcName: '',
+    rcrcContactPerson: '',
+    rcrcEmail: '',
+    rcrcPhoneNumber: '',
+    rcrcAddress: '',
+    rcrcAddress2: '',
+    state: '',
+    rcrcZipCode: '',
+    preferredDate: '',
+    pickupHours: '',
+    palletQuantity: '',
+    totalPiecesQuantity: '',
+    notes: ''
+  })
+  setSubmitSuccess(false)
+}
 
   const handleChange = (
     e: React.ChangeEvent<

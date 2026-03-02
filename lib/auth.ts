@@ -1,90 +1,34 @@
-import { createClient } from '@supabase/supabase-js'
-import bcrypt from 'bcryptjs'
+// lib/auth.ts
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-export interface User {
+export interface UserSession {
   id: string
   email: string
   full_name: string
-  role: 'admin' | 'requestor'
+  role: string
 }
 
-export function getSupabaseClient() {
-  return createClient(supabaseUrl, supabaseKey)
+// ✅ Save session to localStorage
+export function setUserSession(user: UserSession): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('user_session', JSON.stringify(user))
+  }
 }
 
-export async function loginUser(email: string, password: string): Promise<User | null> {
-  const supabase = getSupabaseClient()
-
+// ✅ Get session from localStorage
+export function getUserSession(): UserSession | null {
+  if (typeof window === 'undefined') return null
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single()
-
-    if (error || !user) {
-      console.error('User not found')
-      return null
-    }
-
-    // Check if password is bcrypt hash or plain text
-    let isValidPassword = false
-    
-    if (user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$')) {
-      // It's a bcrypt hash
-      isValidPassword = await bcrypt.compare(password, user.password_hash)
-    } else {
-      // It's plain text (ONLY for development/testing)
-      isValidPassword = password === user.password_hash
-      console.warn('⚠️ WARNING: Using plain text password comparison. This is NOT secure for production!')
-    }
-
-    if (!isValidPassword) {
-      console.error('Invalid password')
-      return null
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      full_name: user.full_name,
-      role: user.role
-    }
-  } catch (error) {
-    console.error('Login error:', error)
+    const session = localStorage.getItem('user_session')
+    if (!session) return null
+    return JSON.parse(session) as UserSession
+  } catch {
     return null
   }
 }
 
-export function saveUserSession(user: User) {
+// ✅ Clear session from localStorage
+export function clearUserSession(): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('user', JSON.stringify(user))
+    localStorage.removeItem('user_session')
   }
-}
-
-export function getUserSession(): User | null {
-  if (typeof window !== 'undefined') {
-    const userJson = localStorage.getItem('user')
-    if (userJson) {
-      return JSON.parse(userJson)
-    }
-  }
-  return null
-}
-
-export function clearUserSession() {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('user')
-  }
-}
-
-export function isAdmin(user: User): boolean {
-  return user.role === 'admin'
-}
-
-export function isRequestor(user: User): boolean {
-  return user.role === 'requestor'
 }
