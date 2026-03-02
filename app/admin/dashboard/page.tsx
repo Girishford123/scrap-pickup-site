@@ -15,17 +15,26 @@ interface Attachment {
   name: string
 }
 
+// ✅ NEW CORRECT INTERFACE
 interface PickupRequest {
   id: number
-  customer_name: string
-  email: string
-  phone: string
-  address: string
-  scrap_type: string
-  quantity: string
-  status: 'NEW' | 'new' | 'pending' | 'approved' | 'rejected' | 'completed'
   created_at: string
-  notes?: string
+  updated_at?: string
+  customer_name: string
+  phone: string
+  email: string
+  user_id?: string
+  // ✅ Correct address fields
+  address1?: string
+  address2?: string
+  city?: string
+  state?: string
+  zip?: string
+  preferred_date?: string
+  time_window?: string
+  // ✅ Correct scrap fields
+  scrap_category?: string
+  description?: string
   // ✅ RCRC fields
   rcrc_number?: string
   rcrc_name?: string
@@ -35,16 +44,15 @@ interface PickupRequest {
   rcrc_address?: string
   rcrc_address2?: string
   rcrc_zip_code?: string
-  preferred_date?: string
-  time_window?: string
   pallet_quantity?: number
   total_pieces_quantity?: number
   special_instructions?: string
-  state?: string
-  // ✅ Attachments
+  notes?: string
+  status: 'new' | 'NEW' | 'pending' | 'approved' | 'rejected' | 'completed'
   attachments?: Attachment[]
+  cancel_reason?: string
+  cancelled_at?: string
 }
-
 export default function AdminDashboard() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -324,16 +332,18 @@ export default function AdminDashboard() {
     })
     .filter(req => applyDateFilter(req))
     .filter(req => {
-      if (!searchQuery) return true
-      const q = searchQuery.toLowerCase()
-      return (
-        req.customer_name?.toLowerCase().includes(q) ||
-        req.email?.toLowerCase().includes(q) ||
-        req.phone?.includes(q) ||
-        req.scrap_type?.toLowerCase().includes(q) ||
-        req.address?.toLowerCase().includes(q)
-      )
-    })
+  if (!searchQuery) return true
+  const q = searchQuery.toLowerCase()
+  return (
+    req.customer_name?.toLowerCase().includes(q)    ||
+    req.email?.toLowerCase().includes(q)             ||
+    req.phone?.includes(q)                            ||
+    req.rcrc_number?.toLowerCase().includes(q)       ||
+    req.rcrc_name?.toLowerCase().includes(q)         ||
+    req.scrap_category?.toLowerCase().includes(q)    ||
+    req.address1?.toLowerCase().includes(q)
+  )
+})
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime()
       const dateB = new Date(b.created_at).getTime()
@@ -661,29 +671,29 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div className="col-span-2">
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Address
-                </p>
-                <p className="text-sm text-gray-900">
-                  {selectedRequest.address}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Scrap Type
-                </p>
-                <p className="text-sm text-gray-900">
-                  {selectedRequest.scrap_type}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">
-                  Quantity
-                </p>
-                <p className="text-sm text-gray-900">
-                  {selectedRequest.quantity}
-                </p>
-              </div>
+  <p className="text-xs text-gray-500 uppercase font-medium">Address</p>
+  <p className="text-sm text-gray-900">
+    {[
+      selectedRequest.address1,
+      selectedRequest.address2,
+      selectedRequest.city,
+      selectedRequest.state,
+      selectedRequest.zip,
+    ].filter(Boolean).join(', ')}
+  </p>
+</div>
+<div>
+  <p className="text-xs text-gray-500 uppercase font-medium">Scrap Category</p>
+  <p className="text-sm text-gray-900">
+    {selectedRequest.scrap_category || '—'}
+  </p>
+</div>
+<div>
+  <p className="text-xs text-gray-500 uppercase font-medium">Description</p>
+  <p className="text-sm text-gray-900">
+    {selectedRequest.description || '—'}
+  </p>
+</div>
 
               {/* RCRC Details */}
               {selectedRequest.rcrc_number && (
@@ -1092,10 +1102,9 @@ export default function AdminDashboard() {
                           <p className="text-sm font-semibold text-gray-900">
                             {request.customer_name}
                           </p>
-                          <p className="text-xs text-gray-500 max-w-[150px]
-                          truncate">
-                            {request.address}
-                          </p>
+                          <p className="text-xs text-gray-500 max-w-[150px] truncate">
+  {[request.city, request.state].filter(Boolean).join(', ') || '—'}
+</p>
                         </div>
                       </div>
                     </td>
@@ -1103,14 +1112,15 @@ export default function AdminDashboard() {
                       <p className="text-sm text-gray-900">{request.email}</p>
                       <p className="text-sm text-gray-500">{request.phone}</p>
                     </td>
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-medium text-gray-900">
-                        {request.scrap_type}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {request.quantity}
-                      </p>
-                    </td>
+                    // ✅ NEW TABLE CELLS
+<td className="px-4 py-4">
+  <p className="text-sm font-medium text-gray-900">
+    {request.scrap_category || '—'}   // ✅ correct
+  </p>
+  <p className="text-sm text-gray-500">
+    {request.description || '—'}      // ✅ correct
+  </p>
+</td>
                     <td className="px-4 py-4 text-sm text-gray-500
                     whitespace-nowrap">
                       {new Date(request.created_at).toLocaleDateString(
