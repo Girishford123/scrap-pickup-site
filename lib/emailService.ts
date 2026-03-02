@@ -45,7 +45,7 @@ export async function sendStatusEmail(params: EmailParams) {
   const { subject, message, color } = statusMessages[status];
 
   await resend.emails.send({
-    from: "ScrapPickup <noreply@yourdomain.com>",
+    from: "ScrapPickup <fcsmktg@ford.com>",
     to,
     subject,
     html: `
