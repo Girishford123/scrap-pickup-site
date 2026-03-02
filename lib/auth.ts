@@ -1,11 +1,16 @@
 // lib/auth.ts
 
+// ✅ UserSession interface
 export interface UserSession {
   id: string
   email: string
   full_name: string
   role: string
 }
+
+// ✅ User type alias
+// (used by Navbar.tsx)
+export type User = UserSession
 
 // ✅ Save session to localStorage
 export function setUserSession(user: UserSession): void {
