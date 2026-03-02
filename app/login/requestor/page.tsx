@@ -3,9 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
-// ✅ REMOVED: import { supabase } from '@/lib/supabase'
-// We no longer call Supabase directly from browser!
-
 export default function RequestorLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,7 +12,6 @@ export default function RequestorLogin() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userData, setUserData] = useState<any>(null)
 
-  // Pickup form states
   const [submitLoading, setSubmitLoading] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
@@ -36,7 +32,6 @@ export default function RequestorLogin() {
     notes: ''
   })
 
-  // US States list
   const states = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
     'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -45,14 +40,12 @@ export default function RequestorLogin() {
     'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
   ]
 
-  // ✅ FIXED handleLogin — calls API instead of Supabase directly
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      // ✅ Call your secure API endpoint
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -63,21 +56,18 @@ export default function RequestorLogin() {
 
       const result = await response.json()
 
-      // ✅ Check if login failed
       if (!response.ok) {
         setError(result.error || 'Invalid email or password')
         setLoading(false)
         return
       }
 
-      // ✅ Check if user is a requestor
       if (result.user.role !== 'requestor') {
         setError('Access denied. This login is for requestors only.')
         setLoading(false)
         return
       }
 
-      // ✅ Login success!
       setIsLoggedIn(true)
       setUserData(result.user)
       setFormData(prev => ({
@@ -128,63 +118,57 @@ export default function RequestorLogin() {
     }))
   }
 
-  // ✅ FIXED handlePickupSubmit — calls API instead of Supabase directly
   const handlePickupSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitLoading(true)
     setError('')
 
     try {
-      // ✅ Call your secure API endpoint
-      const response = await fetch('/api/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          customer_name: formData.rcrcContactPerson || userData.full_name,
-          phone: formData.rcrcPhoneNumber || '0000000000',
-          email: formData.rcrcEmail || userData.email,
-          address1: formData.rcrcAddress || 'N/A',
-          address2: formData.rcrcAddress2,
-          city: formData.rcrcName || 'N/A',
-          state: formData.state || 'N/A',
-          zip: formData.rcrcZipCode || '00000',
-          preferred_date: formData.preferredDate,
-          time_window: formData.pickupHours || 'TBD',
-          scrap_category: 'Components',
-          description: formData.notes,
-          status: 'pending',
-          user_id: userData.id,
-          rcrc_number: formData.rcrcNumber,
-          rcrc_name: formData.rcrcName,
-          rcrc_contact_person: formData.rcrcContactPerson,
-          rcrc_email: formData.rcrcEmail,
-          rcrc_phone_number: formData.rcrcPhoneNumber,
-          rcrc_address: formData.rcrcAddress,
-          rcrc_address2: formData.rcrcAddress2,
-          rcrc_zip_code: formData.rcrcZipCode,
-          pallet_quantity: formData.palletQuantity
-            ? parseInt(formData.palletQuantity)
-            : 0,
-          total_pieces_quantity: formData.totalPiecesQuantity
-            ? parseInt(formData.totalPiecesQuantity)
-            : 0,
-          special_instructions: formData.notes
-        })
-      })
+      const { data, error: submitError } = await (await import('@/lib/supabase')).supabase
+        .from('pickup_requests')
+        .insert([
+          {
+            customer_name: formData.rcrcContactPerson || userData.full_name,
+            phone: formData.rcrcPhoneNumber || '0000000000',
+            email: formData.rcrcEmail || userData.email,
+            address1: formData.rcrcAddress || 'N/A',
+            address2: formData.rcrcAddress2,
+            city: formData.rcrcName || 'N/A',
+            state: formData.state || 'N/A',
+            zip: formData.rcrcZipCode || '00000',
+            preferred_date: formData.preferredDate,
+            time_window: formData.pickupHours || 'TBD',
+            scrap_category: 'Components',
+            description: formData.notes,
+            status: 'pending',
+            user_id: userData.id,
+            rcrc_number: formData.rcrcNumber,
+            rcrc_name: formData.rcrcName,
+            rcrc_contact_person: formData.rcrcContactPerson,
+            rcrc_email: formData.rcrcEmail,
+            rcrc_phone_number: formData.rcrcPhoneNumber,
+            rcrc_address: formData.rcrcAddress,
+            rcrc_address2: formData.rcrcAddress2,
+            rcrc_zip_code: formData.rcrcZipCode,
+            pallet_quantity: formData.palletQuantity
+              ? parseInt(formData.palletQuantity)
+              : 0,
+            total_pieces_quantity: formData.totalPiecesQuantity
+              ? parseInt(formData.totalPiecesQuantity)
+              : 0,
+            special_instructions: formData.notes
+          }
+        ])
+        .select()
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        setError(`Error: ${result.error || 'Failed to submit request'}`)
+      if (submitError) {
+        setError(`Error: ${submitError.message}`)
         setSubmitLoading(false)
         return
       }
 
-      const requestId = result.data ? result.data.id : 'N/A'
+      const requestId = data && data[0] ? data[0].id : 'N/A'
 
-      // Send email to requestor
       try {
         await fetch('/api/pickup-notification', {
           method: 'POST',
@@ -214,7 +198,6 @@ export default function RequestorLogin() {
         console.error('Failed to send requestor email:', emailError)
       }
 
-      // Send email to admin
       try {
         await fetch('/api/pickup-notification', {
           method: 'POST',
@@ -273,16 +256,12 @@ export default function RequestorLogin() {
     }
   }
 
-  // ============================================
-  // LOGIN FORM VIEW
-  // ============================================
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 
       via-white to-blue-50 flex flex-col items-center 
       justify-center p-4">
 
-        {/* Ford Header Banner */}
         <div className="w-full max-w-md">
           <div className="bg-[#003478] rounded-t-2xl px-6 py-3 
           text-center">
@@ -293,11 +272,9 @@ export default function RequestorLogin() {
           </div>
         </div>
 
-        {/* Main Card */}
         <div className="w-full max-w-md bg-white rounded-b-2xl 
         shadow-xl p-8">
 
-          {/* Icon */}
           <div className="flex justify-center mb-4">
             <div className="w-20 h-20 bg-blue-100 rounded-full 
             flex items-center justify-center shadow-inner">
@@ -313,7 +290,6 @@ export default function RequestorLogin() {
             </div>
           </div>
 
-          {/* Title */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-1">
               Requestor Login
@@ -323,7 +299,6 @@ export default function RequestorLogin() {
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 
             rounded-xl p-4 flex items-start gap-3">
@@ -339,10 +314,8 @@ export default function RequestorLogin() {
             </div>
           )}
 
-          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-5">
 
-            {/* Email Field */}
             <div>
               <label
                 htmlFor="email"
@@ -388,7 +361,6 @@ export default function RequestorLogin() {
               </div>
             </div>
 
-            {/* Password Field */}
             <div>
               <label
                 htmlFor="password"
@@ -470,7 +442,6 @@ export default function RequestorLogin() {
               </div>
             </div>
 
-            {/* Sign In Button */}
             <button
               type="submit"
               disabled={loading}
@@ -479,9 +450,7 @@ export default function RequestorLogin() {
               shadow-md ${
                 loading
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-[#003478] to-blue-600 \
-                     hover:from-blue-800 hover:to-blue-700 \
-                     hover:shadow-lg active:scale-95'
+                  : 'bg-gradient-to-r from-[#003478] to-blue-600 hover:from-blue-800 hover:to-blue-700 hover:shadow-lg active:scale-95'
               }`}
             >
               {loading ? (
@@ -503,7 +472,6 @@ export default function RequestorLogin() {
               )}
             </button>
 
-            {/* Forgot Password Link */}
             <div className="text-center">
               <Link
                 href="/forgot-password"
@@ -515,7 +483,6 @@ export default function RequestorLogin() {
               </Link>
             </div>
 
-            {/* Divider */}
             <div className="relative my-1">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"/>
@@ -525,7 +492,6 @@ export default function RequestorLogin() {
               </div>
             </div>
 
-            {/* Admin Login Link */}
             <div className="text-center space-y-3">
               <p className="text-sm text-gray-500">
                 Are you an Admin?{' '}
@@ -550,18 +516,452 @@ export default function RequestorLogin() {
           </form>
         </div>
 
-        {/* Footer */}
         <div className="mt-4 text-center">
           <p className="text-xs text-gray-300 mt-3">
             © {new Date().getFullYear()} Ford Motor Company. 
             All rights reserved.
           </p>
         </div>
+
       </div>
     )
   }
 
-  // REST OF YOUR FILE STAYS EXACTLY THE SAME
-  // (The pickup form JSX below login view)
-  // KEEP EVERYTHING FROM "PICKUP REQUEST FORM VIEW"
-  // ONWARDS EXACTLY AS IT WAS!
+  return (
+    <div className="min-h-screen bg-gradient-to-br 
+    from-blue-50 to-blue-100">
+
+      <header className="bg-white shadow">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 
+        lg:px-8 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Welcome, {userData?.full_name}!
+            </h2>
+            <p className="text-sm text-gray-600">
+              {userData?.email}
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-5 py-2 
+            rounded-lg hover:bg-red-700 transition-all 
+            shadow-md hover:shadow-lg font-medium"
+          >
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 
+      lg:px-8 py-12">
+        <div className="bg-white rounded-2xl shadow-xl 
+        overflow-hidden">
+
+          <div className="bg-gradient-to-r from-blue-900 
+          to-blue-700 px-8 py-6">
+            <h1 className="text-3xl font-bold text-white">
+              Scrap Pickup Request
+            </h1>
+            <p className="text-blue-100 mt-2">
+              Fill out the details below to schedule your pickup
+            </p>
+          </div>
+
+          <form onSubmit={handlePickupSubmit} className="p-8">
+
+            {error && (
+              <div className="mb-6 bg-red-50 border-l-4 
+              border-red-500 p-4 rounded">
+                <p className="text-red-700">{error}</p>
+              </div>
+            )}
+
+            {submitSuccess && (
+              <div className="mb-6 bg-green-50 border-l-4 
+              border-green-500 p-4 rounded">
+                <p className="text-green-700 font-semibold">
+                  ✅ Pickup request submitted successfully! 
+                  Check your email for confirmation.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-8">
+
+              <div>
+                <h3 className="text-lg font-semibold 
+                text-gray-900 mb-6 flex items-center">
+                  <span className="w-8 h-8 bg-blue-900 
+                  text-white rounded-full flex items-center 
+                  justify-center mr-3 text-sm">1</span>
+                  RCRC Information
+                </h3>
+                <div className="space-y-6 ml-11">
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm 
+                      font-medium text-gray-700 mb-2">
+                        RCRC Number
+                      </label>
+                      <input
+                        type="text"
+                        name="rcrcNumber"
+                        value={formData.rcrcNumber}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border 
+                        border-gray-300 rounded-lg focus:ring-2 
+                        focus:ring-blue-500 
+                        focus:border-transparent transition"
+                        placeholder="RCRC-12345"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm 
+                      font-medium text-gray-700 mb-2">
+                        RCRC Name
+                      </label>
+                      <input
+                        type="text"
+                        name="rcrcName"
+                        value={formData.rcrcName}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border 
+                        border-gray-300 rounded-lg focus:ring-2 
+                        focus:ring-blue-500 
+                        focus:border-transparent transition"
+                        placeholder="Center Name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm 
+                      font-medium text-gray-700 mb-2">
+                        RCRC Contact Person Name
+                      </label>
+                      <input
+                        type="text"
+                        name="rcrcContactPerson"
+                        value={formData.rcrcContactPerson}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border 
+                        border-gray-300 rounded-lg focus:ring-2 
+                        focus:ring-blue-500 
+                        focus:border-transparent transition"
+                        placeholder="Contact Person"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm 
+                      font-medium text-gray-700 mb-2">
+                        RCRC Email
+                      </label>
+                      <input
+                        type="email"
+                        name="rcrcEmail"
+                        value={formData.rcrcEmail}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border 
+                        border-gray-300 rounded-lg focus:ring-2 
+                        focus:ring-blue-500 
+                        focus:border-transparent transition"
+                        placeholder="rcrc@example.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm 
+                      font-medium text-gray-700 mb-2">
+                        RCRC Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        name="rcrcPhoneNumber"
+                        value={formData.rcrcPhoneNumber}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border 
+                        border-gray-300 rounded-lg focus:ring-2 
+                        focus:ring-blue-500 
+                        focus:border-transparent transition"
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm 
+                    font-medium text-gray-700 mb-2">
+                      RCRC Address 1
+                    </label>
+                    <input
+                      type="text"
+                      name="rcrcAddress"
+                      value={formData.rcrcAddress}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border 
+                      border-gray-300 rounded-lg focus:ring-2 
+                      focus:ring-blue-500 
+                      focus:border-transparent transition"
+                      placeholder="Street Address"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm 
+                    font-medium text-gray-700 mb-2">
+                      RCRC Address 2
+                    </label>
+                    <input
+                      type="text"
+                      name="rcrcAddress2"
+                      value={formData.rcrcAddress2}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border 
+                      border-gray-300 rounded-lg focus:ring-2 
+                      focus:ring-blue-500 
+                      focus:border-transparent transition"
+                      placeholder="Apt, Suite, Unit (optional)"
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm 
+                      font-medium text-gray-700 mb-2">
+                        State
+                      </label>
+                      <select
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border 
+                        border-gray-300 rounded-lg focus:ring-2 
+                        focus:ring-blue-500 
+                        focus:border-transparent transition"
+                      >
+                        <option value="">Select State</option>
+                        {states.map(state => (
+                          <option key={state} value={state}>
+                            {state}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm 
+                      font-medium text-gray-700 mb-2">
+                        RCRC Zip Code
+                      </label>
+                      <input
+                        type="text"
+                        name="rcrcZipCode"
+                        value={formData.rcrcZipCode}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border 
+                        border-gray-300 rounded-lg focus:ring-2 
+                        focus:ring-blue-500 
+                        focus:border-transparent transition"
+                        placeholder="12345"
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-semibold 
+                text-gray-900 mb-6 flex items-center">
+                  <span className="w-8 h-8 bg-blue-900 
+                  text-white rounded-full flex items-center 
+                  justify-center mr-3 text-sm">2</span>
+                  Pickup Schedule
+                </h3>
+                <div className="grid md:grid-cols-2 gap-6 ml-11">
+                  <div>
+                    <label className="block text-sm 
+                    font-medium text-gray-700 mb-2">
+                      Preferred Date to Pickup
+                    </label>
+                    <input
+                      type="date"
+                      name="preferredDate"
+                      value={formData.preferredDate}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border 
+                      border-gray-300 rounded-lg focus:ring-2 
+                      focus:ring-blue-500 
+                      focus:border-transparent transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm 
+                    font-medium text-gray-700 mb-2">
+                      Pickup Hours
+                    </label>
+                    <select
+                      name="pickupHours"
+                      value={formData.pickupHours}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border 
+                      border-gray-300 rounded-lg focus:ring-2 
+                      focus:ring-blue-500 
+                      focus:border-transparent transition"
+                    >
+                      <option value="">Select time slot</option>
+                      <option value="8:00 AM - 10:00 AM">
+                        8:00 AM - 10:00 AM
+                      </option>
+                      <option value="10:00 AM - 12:00 PM">
+                        10:00 AM - 12:00 PM
+                      </option>
+                      <option value="12:00 PM - 2:00 PM">
+                        12:00 PM - 2:00 PM
+                      </option>
+                      <option value="2:00 PM - 4:00 PM">
+                        2:00 PM - 4:00 PM
+                      </option>
+                      <option value="4:00 PM - 6:00 PM">
+                        4:00 PM - 6:00 PM
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-semibold 
+                text-gray-900 mb-6 flex items-center">
+                  <span className="w-8 h-8 bg-blue-900 
+                  text-white rounded-full flex items-center 
+                  justify-center mr-3 text-sm">3</span>
+                  Quantities
+                </h3>
+                <div className="grid md:grid-cols-2 gap-6 ml-11">
+                  <div>
+                    <label className="block text-sm 
+                    font-medium text-gray-700 mb-2">
+                      Pallet Quantity
+                    </label>
+                    <input
+                      type="number"
+                      name="palletQuantity"
+                      min="0"
+                      value={formData.palletQuantity}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border 
+                      border-gray-300 rounded-lg focus:ring-2 
+                      focus:ring-blue-500 
+                      focus:border-transparent transition"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm 
+                    font-medium text-gray-700 mb-2">
+                      Total Pieces Quantity
+                    </label>
+                    <input
+                      type="number"
+                      name="totalPiecesQuantity"
+                      min="0"
+                      value={formData.totalPiecesQuantity}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border 
+                      border-gray-300 rounded-lg focus:ring-2 
+                      focus:ring-blue-500 
+                      focus:border-transparent transition"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-semibold 
+                text-gray-900 mb-6 flex items-center">
+                  <span className="w-8 h-8 bg-blue-900 
+                  text-white rounded-full flex items-center 
+                  justify-center mr-3 text-sm">4</span>
+                  Additional Information
+                </h3>
+                <div className="ml-11">
+                  <label className="block text-sm 
+                  font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    rows={5}
+                    className="w-full px-4 py-3 border 
+                    border-gray-300 rounded-lg focus:ring-2 
+                    focus:ring-blue-500 focus:border-transparent 
+                    transition resize-none"
+                    placeholder="Any special instructions, 
+                    access codes, or additional details..."
+                  />
+                </div>
+              </div>
+
+            </div>
+
+            <div className="mt-8 pt-6 border-t">
+              <button
+                type="submit"
+                disabled={submitLoading}
+                className="w-full bg-blue-900 text-white py-4 
+                px-6 rounded-lg font-semibold text-lg 
+                hover:bg-blue-800 focus:outline-none 
+                focus:ring-4 focus:ring-blue-300 
+                disabled:opacity-50 disabled:cursor-not-allowed 
+                transform hover:scale-[1.02] transition-all 
+                duration-200 shadow-lg"
+              >
+                {submitLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 
+                      text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 
+                        5.373 0 12h4zm2 5.291A7.962 7.962 
+                        0 014 12H0c0 3.042 1.135 5.824 3 
+                        7.938l3-2.647z"
+                      />
+                    </svg>
+                    Submitting Request...
+                  </span>
+                ) : (
+                  'Submit Pickup Request'
+                )}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
