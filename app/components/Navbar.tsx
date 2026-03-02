@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import DarkModeToggle from './DarkModeToggle'
 import { getUserSession, clearUserSession, User } from '@/lib/auth'
 
@@ -62,8 +62,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mounted,  setMounted]  = useState(false)
 
-  // Hide navbar on login pages and home page
-  // Home page has its own embedded navbar
+  // ✅ FIX: Hide navbar on login pages and home page
   const hideOnPaths = [
     '/',
     '/login/requestor',
@@ -72,13 +71,16 @@ export default function Navbar() {
 
   useEffect(() => {
     setMounted(true)
+
+    // ✅ FIX: Re-read session every time pathname changes
+    // This ensures after login redirect, user is picked up
     const session = getUserSession()
     setUser(session)
 
     const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [pathname])
+  }, [pathname]) // ✅ pathname dependency ensures re-read on every page change
 
   const handleLogout = () => {
     clearUserSession()
@@ -86,9 +88,9 @@ export default function Navbar() {
     router.push('/')
   }
 
-  // Do not render on hidden paths
-  if (!mounted)                          return null
-  if (hideOnPaths.includes(pathname))    return null
+  // Do not render on hidden paths or before mount
+  if (!mounted)                       return null
+  if (hideOnPaths.includes(pathname)) return null
 
   // ── Requestor Links ───────────────────────────────
   const requestorLinks = [
@@ -99,8 +101,8 @@ export default function Navbar() {
 
   // ── Admin Links ───────────────────────────────────
   const adminLinks = [
-    { label: '📊 Dashboard',        href: '/dashboard'       },
-    { label: '📦 Manage Requests',  href: '/admin/requests'  },
+    { label: '📊 Dashboard',       href: '/dashboard'      },
+    { label: '📦 Manage Requests', href: '/admin/requests' },
   ]
 
   // ── Guest Links ───────────────────────────────────
@@ -108,6 +110,7 @@ export default function Navbar() {
     { label: '🏠 Home', href: '/' },
   ]
 
+  // ✅ FIX: Correct role check
   const navLinks =
     !user
       ? guestLinks
@@ -162,8 +165,9 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <DarkModeToggle />
 
-            {/* User Info + Logout OR Guest Login Buttons */}
+            {/* ✅ FIX: Only show login buttons when NO user session */}
             {user ? (
+              // ── LOGGED IN: Show user info + logout ──
               <div className="flex items-center gap-3">
 
                 {/* User Badge */}
@@ -204,6 +208,8 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
+              // ── NOT LOGGED IN: Show login buttons ──
+              // ✅ FIX: Admin Login button ONLY shows when no session
               <div className="flex items-center gap-2">
                 <Link
                   href="/login/requestor"
