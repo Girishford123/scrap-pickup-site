@@ -264,33 +264,45 @@ export default function RequestorPage() {
 
     // ── Step 3: Send to server API (NOT direct Supabase) ──
     try {
-      console.log('📦 Submitting via API:', insertPayload)
+      // ── Submit via server API ───────────────────────────
+console.log('📦 Submitting via API:', insertPayload)
 
-      const res = await fetch('/api/pickup-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(insertPayload),
-      })
+const res = await fetch('/api/pickup-request', {  // ✅ singular
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(insertPayload),
+})
 
-      const result = await res.json()
+// ✅ Safe JSON parse — won't crash on empty responses
+let result: any = {}
+try {
+  result = await res.json()
+} catch {
+  console.error('❌ Non-JSON response. HTTP Status:', res.status)
+  setError(
+    `Server error (${res.status}): API route not found or ` +
+    `returned no JSON. Check /api/pickup-request/route.ts exists.`
+  )
+  setSubmitLoading(false)
+  return
+}
 
-      if (!res.ok || !result.success) {
-        console.error('❌ Insert failed:', result)
-        setError(
-          `Database Error: ${result.error || 'Unknown error'}`
-        )
-        setSubmitLoading(false)
-        return
-      }
+if (!res.ok || !result.success) {
+  console.error('❌ Insert failed:', result)
+  setError(
+    `Database Error (${res.status}): ${result.error || 'Unknown error'}`
+  )
+  setSubmitLoading(false)
+  return
+}
 
-      console.log('✅ Insert success:', result.data)
+console.log('✅ Insert success:', result.data)
 
-      // ✅ Fix: requestId properly declared from API result
-      const submittedRecord = result.data?.[0]
-      const requestId: string = submittedRecord?.id
-        ? String(submittedRecord.id)
-        : 'N/A'
-
+// ✅ Safely extract requestId
+const submittedRecord = result.data?.[0]
+const requestId: string = submittedRecord?.id
+  ? String(submittedRecord.id)
+  : 'N/A'
       // ── Step 4: Send requestor confirmation email ──
       try {
         await fetch('/api/pickup-notification', {
