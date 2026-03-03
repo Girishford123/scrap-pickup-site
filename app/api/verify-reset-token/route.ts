@@ -1,3 +1,4 @@
+// app/api/verify-reset-token/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -17,24 +18,24 @@ export async function POST(request: Request) {
       )
     }
 
-    // Look up token in database
-    const { data, error } = await supabase
+    // ── Check token in database ───────────────────
+    const { data: tokenData, error } = await supabase
       .from('password_reset_tokens')
       .select('*')
       .eq('token', token)
       .eq('used', false)
       .single()
 
-    if (error || !data) {
+    if (error || !tokenData) {
       return NextResponse.json(
         { valid: false, error: 'Invalid token' },
         { status: 200 }
       )
     }
 
-    // Check if token has expired
-    const now = new Date()
-    const expiresAt = new Date(data.expires_at)
+    // ── Check expiry ──────────────────────────────
+    const now       = new Date()
+    const expiresAt = new Date(tokenData.expires_at)
 
     if (now > expiresAt) {
       return NextResponse.json(
@@ -43,9 +44,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Token is valid
+    // ── Token is valid ────────────────────────────
     return NextResponse.json(
-      { valid: true, email: data.email },
+      {
+        valid: true,
+        email: tokenData.email,
+      },
       { status: 200 }
     )
 
