@@ -18,9 +18,12 @@ export type EmailData = {
 
 export async function sendAdminNotificationEmail(data: EmailData) {
   try {
+    // ✅ Read admin email from environment variable
+    const adminEmail = process.env.ADMIN_EMAIL || 'gkulkara@ford.com'
+
     const { error } = await resend.emails.send({
       from:    'FCS Scrap Pickup <onboarding@resend.dev>',
-      to:      ['fcsmktg@ford.com'],
+      to:      [adminEmail],   // ✅ FIXED — reads from env var
       subject: `New Pickup Request - ${data.rcrcName || data.customerName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -102,6 +105,8 @@ export async function sendAdminNotificationEmail(data: EmailData) {
       console.error('Admin email error:', error)
       return { success: false, error }
     }
+
+    console.log('✅ Admin email sent to:', adminEmail)
     return { success: true }
 
   } catch (err) {
@@ -175,6 +180,8 @@ export async function sendRequestorConfirmationEmail(data: EmailData) {
       console.error('Requestor email error:', error)
       return { success: false, error }
     }
+
+    console.log('✅ Requestor email sent to:', data.customerEmail)
     return { success: true }
 
   } catch (err) {
