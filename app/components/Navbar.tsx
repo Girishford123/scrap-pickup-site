@@ -1,10 +1,10 @@
 'use client'
 
-import Link from 'next/link'
-import { useState, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import { motion } from 'framer-motion'
-import DarkModeToggle from './DarkModeToggle'
+import Link                                    from 'next/link'
+import { useState, useEffect }                 from 'react'
+import { useRouter, usePathname }              from 'next/navigation'
+import { motion }                              from 'framer-motion'
+import DarkModeToggle                          from './DarkModeToggle'
 import { getUserSession, clearUserSession, User } from '@/lib/auth'
 
 // ─── Ford Logo ────────────────────────────────────────
@@ -24,7 +24,11 @@ function FordLogo({ height = 36 }: { height?: number }) {
       <img
         src="/ford-logo.png"
         alt="Ford Logo"
-        style={{ height: `${height}px`, width: 'auto', display: 'block' }}
+        style={{
+          height:  `${height}px`,
+          width:   'auto',
+          display: 'block',
+        }}
       />
     </div>
   )
@@ -47,14 +51,18 @@ function FCSLogo({ height = 36 }: { height?: number }) {
       <img
         src="/FCS-logo.png"
         alt="FCS Logo"
-        style={{ height: `${height}px`, width: 'auto', display: 'block' }}
+        style={{
+          height:  `${height}px`,
+          width:   'auto',
+          display: 'block',
+        }}
       />
     </div>
   )
 }
 
-// ─── Main r ──────────────────────────────────────
-export default function r() {
+// ─── Main Navbar Component ────────────────────────────
+export default function Navbar() {
   const router   = useRouter()
   const pathname = usePathname()
 
@@ -62,7 +70,7 @@ export default function r() {
   const [scrolled, setScrolled] = useState(false)
   const [mounted,  setMounted]  = useState(false)
 
-  // ✅ FIX: Hide r on login pages and home page
+  // Hide Navbar on these pages
   const hideOnPaths = [
     '/',
     '/login/requestor',
@@ -72,15 +80,14 @@ export default function r() {
   useEffect(() => {
     setMounted(true)
 
-    // ✅ FIX: Re-read session every time pathname changes
-    // This ensures after login redirect, user is picked up
+    // Re-read session every time pathname changes
     const session = getUserSession()
     setUser(session)
 
     const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [pathname]) // ✅ pathname dependency ensures re-read on every page change
+  }, [pathname])
 
   const handleLogout = () => {
     clearUserSession()
@@ -101,8 +108,14 @@ export default function r() {
 
   // ── Admin Links ───────────────────────────────────
   const adminLinks = [
-    { label: '📊 Dashboard',       href: '/dashboard'      },
-    { label: '📦 Manage Requests', href: '/admin/requests' },
+    {
+      label: '📊 Dashboard',
+      href:  '/admin/dashboard',   // ✅ FIXED — was /dashboard
+    },
+    {
+      label: '📦 Manage Requests',
+      href:  '/admin/dashboard',   // ✅ FIXED — was /admin/requests (404!)
+    },
   ]
 
   // ── Guest Links ───────────────────────────────────
@@ -110,7 +123,6 @@ export default function r() {
     { label: '🏠 Home', href: '/' },
   ]
 
-  // ✅ FIX: Correct role check
   const navLinks =
     !user
       ? guestLinks
@@ -165,9 +177,8 @@ export default function r() {
           <div className="flex items-center gap-4">
             <DarkModeToggle />
 
-            {/* ✅ FIX: Only show login buttons when NO user session */}
             {user ? (
-              // ── LOGGED IN: Show user info + logout ──
+              // ── LOGGED IN ──────────────────────────
               <div className="flex items-center gap-3">
 
                 {/* User Badge */}
@@ -179,7 +190,8 @@ export default function r() {
                   <span className="text-xs">
                     {user.role === 'admin' ? '🛡️' : '👤'}
                   </span>
-                  <span className="text-green-100 text-xs font-medium">
+                  <span className="text-green-100 text-xs
+                                   font-medium">
                     {user.full_name?.split(' ')[0] || user.email}
                   </span>
                   <span className={`
@@ -207,9 +219,9 @@ export default function r() {
                   Logout
                 </button>
               </div>
+
             ) : (
-              // ── NOT LOGGED IN: Show login buttons ──
-              // ✅ FIX: Admin Login button ONLY shows when no session
+              // ── NOT LOGGED IN ──────────────────────
               <div className="flex items-center gap-2">
                 <Link
                   href="/login/requestor"

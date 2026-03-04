@@ -1296,7 +1296,7 @@ export default function AdminDashboard() {
             </h3>
             <p className="text-gray-400 text-sm">
               {searchQuery
-                ? `No results for "${searchQuery}"`
+                ? {`No results for `}&ldquo;{searchQuery}&rdquo;
                 : 'No requests in this category yet'}
             </p>
             {searchQuery && (
