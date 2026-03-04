@@ -53,8 +53,8 @@ function FCSLogo({ height = 36 }: { height?: number }) {
   )
 }
 
-// ─── Main Navbar ──────────────────────────────────────
-export default function Navbar() {
+// ─── Main r ──────────────────────────────────────
+export default function r() {
   const router   = useRouter()
   const pathname = usePathname()
 
@@ -62,7 +62,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mounted,  setMounted]  = useState(false)
 
-  // ✅ FIX: Hide navbar on login pages and home page
+  // ✅ FIX: Hide r on login pages and home page
   const hideOnPaths = [
     '/',
     '/login/requestor',
