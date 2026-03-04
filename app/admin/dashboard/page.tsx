@@ -606,42 +606,55 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleAdminUpdate = async (id: number, form: AdminEditForm) => {
-    try {
-      const res  = await fetch('/api/admin/update-request', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, ...form }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setRequests(prev =>
-          prev.map(r =>
-            r.id === id
-              ? {
-                  ...r,
-                  mcl_number:                 form.mcl_number              || undefined,
-                  fcsd_offer_amount:          form.fcsd_offer_amount       ? Number(form.fcsd_offer_amount) : undefined,
-                  vendor_request_received_at: form.vendor_request_received_at || undefined,
-                  techemet_request_sent_at:   form.techemet_request_sent_at   || undefined,
-                  requested_pickup_date:      form.requested_pickup_date      || undefined,
-                  scheduled_pickup_date:      form.scheduled_pickup_date      || undefined,
-                  actual_pickup_date:         form.actual_pickup_date         || undefined,
-                  admin_notes:                form.admin_notes                || undefined,
-                  status:                     form.status,
-                }
-              : r
-          )
-        )
-        showToast('✅ Admin details saved!')
-      } else {
-        showToast('❌ Failed to save')
-      }
-    } catch {
-      showToast('❌ Network error')
-    }
-  }
+ const handleAdminUpdate = async (id: number, form: AdminEditForm) => {
+  try {
+    console.log('💾 Saving admin update for ID:', id, form)
 
+    const res  = await fetch('/api/admin/update-request', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id, ...form }),
+    })
+
+    const data = await res.json()
+    console.log('💾 Save response:', data)
+
+    if (data.success) {
+      // Update local state immediately so card refreshes
+      setRequests(prev =>
+        prev.map(r =>
+          r.id === id
+            ? {
+                ...r,
+                mcl_number:                 form.mcl_number              || r.mcl_number,
+                fcsd_offer_amount:          form.fcsd_offer_amount
+                                              ? Number(form.fcsd_offer_amount)
+                                              : r.fcsd_offer_amount,
+                vendor_request_received_at: form.vendor_request_received_at || r.vendor_request_received_at,
+                techemet_request_sent_at:   form.techemet_request_sent_at   || r.techemet_request_sent_at,
+                requested_pickup_date:      form.requested_pickup_date      || r.requested_pickup_date,
+                scheduled_pickup_date:      form.scheduled_pickup_date      || r.scheduled_pickup_date,
+                actual_pickup_date:         form.actual_pickup_date         || r.actual_pickup_date,
+                admin_notes:                form.admin_notes                || r.admin_notes,
+                status:                     form.status,
+              }
+            : r
+        )
+      )
+      showToast('✅ Admin details saved successfully!')
+
+      // Also refresh from database to confirm
+      setTimeout(() => fetchRequests(), 1000)
+
+    } else {
+      console.error('Save failed:', data.error)
+      showToast(`❌ Failed to save: ${data.error}`)
+    }
+  } catch (err) {
+    console.error('Save error:', err)
+    showToast('❌ Network error — could not save')
+  }
+}
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login/admin')
