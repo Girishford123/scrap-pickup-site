@@ -1,741 +1,1416 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter }                         from 'next/navigation'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────
+type TabKey =
+  | 'total_requests'
+  | 'sent_for_pickup'
+  | 'in_transit'
+  | 'shipment_arrived'
 
-interface Attachment {
-  url: string
-  name: string
+type Request = {
+  id:                           number
+  // Requestor filled
+  rcrc_number?:                 string
+  rcrc_name?:                   string
+  customer_name?:               string
+  rcrc_contact_person?:         string
+  email?:                       string
+  phone?:                       string
+  rcrc_phone_number?:           string
+  address1?:                    string
+  address2?:                    string
+  city?:                        string
+  state?:                       string
+  zip?:                         string
+  preferred_date?:              string
+  time_window?:                 string
+  pallet_quantity?:             number
+  total_pieces_quantity?:       number
+  special_instructions?:        string
+  // Admin filled
+  mcl_number?:                  string
+  fcsd_offer_amount?:           number
+  vendor_request_received_at?:  string
+  techemet_request_sent_at?:    string
+  requested_pickup_date?:       string
+  scheduled_pickup_date?:       string
+  actual_pickup_date?:          string
+  admin_notes?:                 string
+  // System
+  status:                       TabKey
+  status_updated_at?:           string
+  created_at:                   string
 }
 
-interface PickupRequest {
-  id: number
-  created_at: string
-  updated_at?: string
-  customer_name: string
-  phone: string | null
-  email: string
-  user_id?: string
-  address1?: string | null
-  address2?: string | null
-  city?: string | null
-  state?: string | null
-  zip?: string | null
-  preferred_date?: string | null
-  time_window?: string | null
-  scrap_category?: string | null
-  description?: string | null
-  rcrc_number?: string | null
-  rcrc_name?: string | null
-  rcrc_contact_person?: string | null
-  rcrc_email?: string | null
-  rcrc_phone_number?: string | null
-  rcrc_address?: string | null
-  rcrc_address2?: string | null
-  rcrc_zip_code?: string | null
-  pallet_quantity?: number | null
-  total_pieces_quantity?: number | null
-  special_instructions?: string | null
-  notes?: string | null
-  status: 'new' | 'NEW' | 'pending' | 'approved' | 'rejected' | 'completed'
-  attachments?: Attachment[]
-  cancel_reason?: string | null
-  cancelled_at?: string | null
+type AdminEditForm = {
+  mcl_number:                   string
+  fcsd_offer_amount:            string
+  vendor_request_received_at:   string
+  techemet_request_sent_at:     string
+  requested_pickup_date:        string
+  scheduled_pickup_date:        string
+  actual_pickup_date:           string
+  admin_notes:                  string
+  status:                       TabKey
 }
 
-interface Counts {
-  all: number
-  new: number
-  pending: number
-  approved: number
-  rejected: number
-  completed: number
-}
+// ── Tab Config ─────────────────────────────────────────────
+const TABS: {
+  key:    TabKey
+  label:  string
+  icon:   string
+  color:  string
+  bg:     string
+  border: string
+  desc:   string
+}[] = [
+  {
+    key:    'total_requests',
+    label:  'Total Requests',
+    icon:   '📋',
+    color:  'text-blue-700',
+    bg:     'bg-blue-50',
+    border: 'border-blue-300',
+    desc:   'All new incoming requests',
+  },
+  {
+    key:    'sent_for_pickup',
+    label:  'Sent for Pickup',
+    icon:   '🚚',
+    color:  'text-yellow-700',
+    bg:     'bg-yellow-50',
+    border: 'border-yellow-300',
+    desc:   'Dispatched to Techemet',
+  },
+  {
+    key:    'in_transit',
+    label:  'In Transit',
+    icon:   '🔄',
+    color:  'text-purple-700',
+    bg:     'bg-purple-50',
+    border: 'border-purple-300',
+    desc:   'Pickup completed, in transit',
+  },
+  {
+    key:    'shipment_arrived',
+    label:  'Shipment Arrived',
+    icon:   '✅',
+    color:  'text-green-700',
+    bg:     'bg-green-50',
+    border: 'border-green-300',
+    desc:   'Arrived at destination',
+  },
+]
 
-// ─── Status Config ────────────────────────────────────────────────────────────
-
-const STATUS_STYLES: Record<string, string> = {
-  new:       'bg-blue-100 text-blue-800',
-  NEW:       'bg-blue-100 text-blue-800',
-  pending:   'bg-yellow-100 text-yellow-800',
-  approved:  'bg-green-100 text-green-800',
-  rejected:  'bg-red-100 text-red-800',
-  completed: 'bg-gray-100 text-gray-800',
-}
-
-const STATUS_OPTIONS = ['pending', 'approved', 'rejected', 'completed']
-
-// ─── Helper ───────────────────────────────────────────────────────────────────
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year:  'numeric',
-      month: 'short',
-      day:   'numeric',
-    })
-  } catch {
-    return dateStr
+// ── Status Badge ───────────────────────────────────────────
+function StatusBadge({ status }: { status: TabKey }) {
+  const map: Record<TabKey, {
+    label: string
+    icon:  string
+    bg:    string
+    text:  string
+  }> = {
+    total_requests:   {
+      label: 'New Request',
+      icon:  '📋',
+      bg:    'bg-blue-100',
+      text:  'text-blue-700',
+    },
+    sent_for_pickup:  {
+      label: 'Sent for Pickup',
+      icon:  '🚚',
+      bg:    'bg-yellow-100',
+      text:  'text-yellow-700',
+    },
+    in_transit:       {
+      label: 'In Transit',
+      icon:  '🔄',
+      bg:    'bg-purple-100',
+      text:  'text-purple-700',
+    },
+    shipment_arrived: {
+      label: 'Shipment Arrived',
+      icon:  '✅',
+      bg:    'bg-green-100',
+      text:  'text-green-700',
+    },
   }
+  const s = map[status] || map.total_requests
+  return (
+    <span className={`inline-flex items-center gap-1
+                      px-2.5 py-1 rounded-full text-xs
+                      font-semibold ${s.bg} ${s.text}`}>
+      {s.icon} {s.label}
+    </span>
+  )
 }
 
-function formatDateTime(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleString('en-US', {
-      year:   'numeric',
-      month:  'short',
-      day:    'numeric',
-      hour:   '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return dateStr
-  }
-}
-
-function fullAddress(r: PickupRequest): string {
-  return [r.address1, r.address2, r.city, r.state, r.zip]
-    .filter(Boolean)
-    .join(', ') || '—'
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-export default function AdminDashboard() {
-  const [requests, setRequests]             = useState<PickupRequest[]>([])
-  const [counts, setCounts]                 = useState<Counts>({
-    all: 0, new: 0, pending: 0, approved: 0, rejected: 0, completed: 0,
+// ── Format Date Helper ─────────────────────────────────────
+function fmtDate(val?: string | null) {
+  if (!val) return 'Not set'
+  return new Date(val).toLocaleDateString('en-IN', {
+    day:   '2-digit',
+    month: 'short',
+    year:  'numeric',
   })
-  const [loading, setLoading]               = useState(true)
-  const [error, setError]                   = useState<string | null>(null)
-  const [activeTab, setActiveTab]           = useState<string>('all')
-  const [searchQuery, setSearchQuery]       = useState('')
-  const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null)
-  const [updatingId, setUpdatingId]         = useState<number | null>(null)
-  const [updateMessage, setUpdateMessage]   = useState<string | null>(null)
+}
 
-  // ── Fetch ────────────────────────────────────────────────────────────────
+function fmtDateTime(val?: string | null) {
+  if (!val) return 'Not set'
+  return new Date(val).toLocaleString('en-IN', {
+    day:    '2-digit',
+    month:  'short',
+    year:   'numeric',
+    hour:   '2-digit',
+    minute: '2-digit',
+  })
+}
 
-  async function fetchRequests() {
-    try {
-      setLoading(true)
-      setError(null)
+// ── Request Card ───────────────────────────────────────────
+function RequestCard({
+  req,
+  onView,
+  onStatusChange,
+}: {
+  req:            Request
+  onView:         (r: Request) => void
+  onStatusChange: (id: number, s: TabKey) => void
+}) {
+  const contact = req.rcrc_contact_person
+                || req.customer_name
+                || 'N/A'
+  const phone   = req.rcrc_phone_number || req.phone || 'N/A'
+  const days    = Math.floor(
+    (Date.now() - new Date(req.created_at).getTime())
+    / (1000 * 60 * 60 * 24)
+  )
 
-      const res = await fetch('/api/admin/requests', { cache: 'no-store' })
-      const json = await res.json()
-
-      if (!json.success) {
-        setError(json.error || 'Failed to load requests')
-        return
-      }
-
-      setRequests(json.data || [])
-      setCounts(json.counts || {
-        all: 0, new: 0, pending: 0,
-        approved: 0, rejected: 0, completed: 0,
-      })
-    } catch (err: any) {
-      setError(err?.message || 'Network error — could not reach API')
-    } finally {
-      setLoading(false)
-    }
+  const nextMap: Record<TabKey, {
+    key: TabKey; label: string; icon: string
+  } | null> = {
+    total_requests:   {
+      key:   'sent_for_pickup',
+      label: 'Send for Pickup',
+      icon:  '🚚',
+    },
+    sent_for_pickup:  {
+      key:   'in_transit',
+      label: 'Mark In Transit',
+      icon:  '🔄',
+    },
+    in_transit:       {
+      key:   'shipment_arrived',
+      label: 'Mark Arrived',
+      icon:  '✅',
+    },
+    shipment_arrived: null,
   }
 
-  useEffect(() => { fetchRequests() }, [])
-
-  // ── Update Status ────────────────────────────────────────────────────────
-
-  async function updateStatus(id: number, status: string) {
-    try {
-      setUpdatingId(id)
-      setUpdateMessage(null)
-
-      const res = await fetch('/api/admin/requests', {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, status }),
-      })
-
-      const json = await res.json()
-
-      if (!json.success) {
-        setUpdateMessage(`Error: ${json.error}`)
-        return
-      }
-
-      setUpdateMessage(`Request #${id} updated to "${status}"`)
-      await fetchRequests()
-
-      if (selectedRequest?.id === id) {
-        setSelectedRequest(prev =>
-          prev ? { ...prev, status: status as PickupRequest['status'] } : null
-        )
-      }
-
-      setTimeout(() => setUpdateMessage(null), 3000)
-    } catch (err: any) {
-      setUpdateMessage(`Error: ${err?.message || 'Unknown error'}`)
-    } finally {
-      setUpdatingId(null)
-    }
-  }
-
-  // ── Filter ───────────────────────────────────────────────────────────────
-
-  const filtered = requests
-    .filter(r => {
-      if (activeTab === 'all') return true
-      if (activeTab === 'new') return r.status === 'new' || r.status === 'NEW'
-      return r.status === activeTab
-    })
-    .filter(r => {
-      if (!searchQuery) return true
-      const q = searchQuery.toLowerCase()
-      return (
-        r.customer_name?.toLowerCase().includes(q)  ||
-        r.email?.toLowerCase().includes(q)           ||
-        r.phone?.includes(q)                         ||
-        r.rcrc_number?.toLowerCase().includes(q)    ||
-        r.rcrc_name?.toLowerCase().includes(q)      ||
-        r.scrap_category?.toLowerCase().includes(q) ||
-        r.city?.toLowerCase().includes(q)           ||
-        r.address1?.toLowerCase().includes(q)
-      )
-    })
-
-  // ── Tabs ─────────────────────────────────────────────────────────────────
-
-  const tabs = [
-    { key: 'all',       label: 'All',       count: counts.all       },
-    { key: 'new',       label: 'New',       count: counts.new       },
-    { key: 'pending',   label: 'Pending',   count: counts.pending   },
-    { key: 'approved',  label: 'Approved',  count: counts.approved  },
-    { key: 'rejected',  label: 'Rejected',  count: counts.rejected  },
-    { key: 'completed', label: 'Completed', count: counts.completed },
-  ]
-
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const next = nextMap[req.status]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-white rounded-2xl shadow-sm
+                    border border-gray-100 p-5
+                    hover:shadow-md transition-all
+                    duration-200 flex flex-col gap-4">
 
-      {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      {/* ── Card Header ── */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#003478] rounded-xl
+                          flex items-center justify-center
+                          text-white font-bold text-sm
+                          flex-shrink-0">
+            #{req.id}
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Admin Dashboard
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Scrap Pickup Requests Management
+            <h3 className="font-bold text-gray-900 text-sm
+                           leading-tight line-clamp-1">
+              {req.rcrc_name || 'N/A'}
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              RCRC: {req.rcrc_number || 'N/A'}
             </p>
           </div>
-          <button
-            onClick={fetchRequests}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white
-                       rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm
-                       font-medium transition-colors"
-          >
-            {loading ? 'Refreshing...' : '↻ Refresh'}
-          </button>
+        </div>
+        <StatusBadge status={req.status} />
+      </div>
+
+      {/* ── MCL & Offer (Admin Data) ── */}
+      <div className={`rounded-xl p-3 border ${
+        req.mcl_number
+          ? 'bg-blue-50 border-blue-100'
+          : 'bg-gray-50 border-gray-100'
+      }`}>
+        <div className="flex items-center
+                        justify-between flex-wrap gap-2">
+          <div>
+            <p className="text-xs text-gray-400">
+              MCL Number
+            </p>
+            <p className={`text-sm font-bold ${
+              req.mcl_number
+                ? 'text-blue-700'
+                : 'text-gray-400 italic'
+            }`}>
+              {req.mcl_number || 'Not assigned yet'}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-400">
+              FCSD Offer
+            </p>
+            <p className={`text-sm font-bold ${
+              req.fcsd_offer_amount
+                ? 'text-green-700'
+                : 'text-gray-400 italic'
+            }`}>
+              {req.fcsd_offer_amount
+                ? `$${Number(req.fcsd_offer_amount).toLocaleString()}`
+                : 'Not set'
+              }
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      {/* ── Requestor Info Grid ── */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-gray-50 rounded-xl p-2.5">
+          <p className="text-xs text-gray-400">👤 Contact</p>
+          <p className="text-xs font-semibold text-gray-800
+                        truncate mt-0.5">
+            {contact}
+          </p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-2.5">
+          <p className="text-xs text-gray-400">📞 Phone</p>
+          <p className="text-xs font-semibold text-gray-800
+                        mt-0.5">
+            {phone}
+          </p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-2.5">
+          <p className="text-xs text-gray-400">
+            📦 Pallets / Pieces
+          </p>
+          <p className="text-xs font-semibold text-gray-800
+                        mt-0.5">
+            {req.pallet_quantity ?? 0} / {req.total_pieces_quantity ?? 0}
+          </p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-2.5">
+          <p className="text-xs text-gray-400">
+            📅 Preferred Date
+          </p>
+          <p className="text-xs font-semibold text-gray-800
+                        mt-0.5">
+            {req.preferred_date || 'N/A'}
+          </p>
+        </div>
+      </div>
 
-        {/* ── Update Message ── */}
-        {updateMessage && (
-          <div className={`px-4 py-3 rounded-lg text-sm font-medium
-            ${updateMessage.startsWith('Error')
-              ? 'bg-red-50 text-red-700 border border-red-200'
-              : 'bg-green-50 text-green-700 border border-green-200'}`}>
-            {updateMessage}
-          </div>
+      {/* ── Key Timestamps ── */}
+      <div className="space-y-1.5">
+        <div className="flex items-center
+                        justify-between text-xs">
+          <span className="text-gray-400">
+            📥 Request Received
+          </span>
+          <span className={`font-semibold ${
+            req.vendor_request_received_at
+              ? 'text-gray-700' : 'text-gray-300'
+          }`}>
+            {fmtDate(req.vendor_request_received_at)}
+          </span>
+        </div>
+        <div className="flex items-center
+                        justify-between text-xs">
+          <span className="text-gray-400">
+            📤 Techemet Request Sent
+          </span>
+          <span className={`font-semibold ${
+            req.techemet_request_sent_at
+              ? 'text-gray-700' : 'text-gray-300'
+          }`}>
+            {fmtDate(req.techemet_request_sent_at)}
+          </span>
+        </div>
+        <div className="flex items-center
+                        justify-between text-xs">
+          <span className="text-gray-400">
+            📆 Scheduled Pickup
+          </span>
+          <span className={`font-semibold ${
+            req.scheduled_pickup_date
+              ? 'text-blue-700' : 'text-gray-300'
+          }`}>
+            {fmtDate(req.scheduled_pickup_date)}
+          </span>
+        </div>
+        <div className="flex items-center
+                        justify-between text-xs">
+          <span className="text-gray-400">
+            🚛 Actual Pickup
+          </span>
+          <span className={`font-semibold ${
+            req.actual_pickup_date
+              ? 'text-green-700' : 'text-gray-300'
+          }`}>
+            {fmtDate(req.actual_pickup_date)}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Submitted Age ── */}
+      <div className="flex items-center
+                      justify-between text-xs
+                      text-gray-400 pt-1
+                      border-t border-gray-100">
+        <span>
+          Submitted: {fmtDate(req.created_at)}
+        </span>
+        <span className={`font-semibold ${
+          days > 2 ? 'text-red-500' : 'text-gray-400'
+        }`}>
+          {days === 0 ? 'Today'
+            : days === 1 ? '1 day ago'
+            : `${days} days ago`}
+          {days > 2 && ' ⚠️'}
+        </span>
+      </div>
+
+      {/* ── Action Buttons ── */}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => onView(req)}
+          className="flex-1 py-2.5 px-3 rounded-xl
+                     border-2 border-[#003478]
+                     text-[#003478] text-xs font-semibold
+                     hover:bg-[#003478] hover:text-white
+                     transition-all duration-200"
+        >
+          👁️ View & Edit
+        </button>
+
+        {next && (
+          <button
+            onClick={() => onStatusChange(req.id, next.key)}
+            className="flex-1 py-2.5 px-3 rounded-xl
+                       bg-[#003478] text-white text-xs
+                       font-semibold hover:bg-blue-900
+                       transition-all duration-200 shadow-sm"
+          >
+            {next.icon} {next.label}
+          </button>
         )}
 
-        {/* ── Error ── */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-700 font-medium">Error loading requests</p>
-            <p className="text-red-600 text-sm mt-1">{error}</p>
+        {!next && (
+          <div className="flex-1 py-2.5 px-3 rounded-xl
+                          bg-green-50 text-green-700
+                          text-xs font-semibold text-center
+                          border border-green-200">
+            ✅ Completed
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── View & Edit Modal ──────────────────────────────────────
+function ViewModal({
+  req,
+  onClose,
+  onStatusChange,
+  onAdminUpdate,
+}: {
+  req:            Request
+  onClose:        () => void
+  onStatusChange: (id: number, s: TabKey) => void
+  onAdminUpdate:  (id: number, form: AdminEditForm) => Promise<void>
+}) {
+  const [saving,    setSaving]    = useState(false)
+  const [saved,     setSaved]     = useState(false)
+  const [adminForm, setAdminForm] = useState<AdminEditForm>({
+    mcl_number:                 req.mcl_number                  || '',
+    fcsd_offer_amount:          req.fcsd_offer_amount != null
+                                  ? String(req.fcsd_offer_amount)
+                                  : '',
+    vendor_request_received_at: req.vendor_request_received_at
+                                  ? req.vendor_request_received_at.slice(0, 16)
+                                  : '',
+    techemet_request_sent_at:   req.techemet_request_sent_at
+                                  ? req.techemet_request_sent_at.slice(0, 16)
+                                  : '',
+    requested_pickup_date:      req.requested_pickup_date       || '',
+    scheduled_pickup_date:      req.scheduled_pickup_date       || '',
+    actual_pickup_date:         req.actual_pickup_date          || '',
+    admin_notes:                req.admin_notes                 || '',
+    status:                     req.status,
+  })
+
+  const contact = req.rcrc_contact_person
+                || req.customer_name
+                || 'N/A'
+  const phone   = req.rcrc_phone_number || req.phone || 'N/A'
+  const address = [
+    req.address1, req.address2,
+    req.city,     req.state, req.zip,
+  ].filter(Boolean).join(', ') || 'N/A'
+
+  const STATUS_FLOW: {
+    key:   TabKey
+    label: string
+    icon:  string
+    color: string
+  }[] = [
+    {
+      key:   'total_requests',
+      label: 'New Request',
+      icon:  '📋',
+      color: 'bg-blue-500',
+    },
+    {
+      key:   'sent_for_pickup',
+      label: 'Sent for Pickup',
+      icon:  '🚚',
+      color: 'bg-yellow-500',
+    },
+    {
+      key:   'in_transit',
+      label: 'In Transit',
+      icon:  '🔄',
+      color: 'bg-purple-500',
+    },
+    {
+      key:   'shipment_arrived',
+      label: 'Arrived',
+      icon:  '✅',
+      color: 'bg-green-500',
+    },
+  ]
+
+  const currentIdx = STATUS_FLOW
+    .findIndex(s => s.key === adminForm.status)
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onAdminUpdate(req.id, adminForm)
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const inputCls = `w-full px-3 py-2.5 bg-white
+    border border-gray-200 rounded-xl text-sm
+    text-gray-800 focus:ring-2 focus:ring-[#003478]
+    focus:border-transparent outline-none
+    transition-all duration-200`
+
+  const labelCls = `block text-xs font-bold
+    text-gray-500 mb-1.5 uppercase tracking-wide`
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60
+                  backdrop-blur-sm z-50 flex
+                  items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl
+                    w-full max-w-3xl max-h-[92vh]
+                    overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+
+        {/* ── Modal Header ── */}
+        <div className="bg-[#003478] px-6 py-4
+                        rounded-t-2xl flex items-center
+                        justify-between sticky top-0 z-10">
+          <div>
+            <h2 className="text-white font-bold text-lg">
+              Request #{req.id} — Full Details
+            </h2>
+            <p className="text-blue-200 text-xs mt-0.5">
+              {req.rcrc_name || 'N/A'} •{' '}
+              {req.rcrc_number || 'N/A'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 bg-white/20 rounded-lg
+                       text-white hover:bg-white/30
+                       transition flex items-center
+                       justify-center font-bold text-lg"
+          >✕</button>
+        </div>
+
+        <div className="p-6 space-y-8">
+
+          {/* ── Progress Bar ── */}
+          <div>
+            <p className="text-sm font-bold text-gray-700
+                          mb-4">
+              📊 Shipment Progress
+            </p>
+            <div className="flex items-center">
+              {STATUS_FLOW.map((s, idx) => (
+                <div key={s.key}
+                     className="flex items-center flex-1">
+                  <div className="flex flex-col items-center
+                                  w-full">
+                    <button
+                      onClick={() => {
+                        setAdminForm(f => ({
+                          ...f, status: s.key
+                        }))
+                        onStatusChange(req.id, s.key)
+                      }}
+                      className={`w-10 h-10 rounded-full
+                        flex items-center justify-center
+                        text-sm font-bold transition-all
+                        hover:scale-110 ${
+                        idx <= currentIdx
+                          ? `${s.color} text-white shadow-md`
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}>
+                      {idx <= currentIdx ? s.icon : idx + 1}
+                    </button>
+                    <p className={`text-xs mt-1.5 text-center
+                                   leading-tight font-medium
+                                   max-w-16 ${
+                      idx <= currentIdx
+                        ? 'text-gray-800'
+                        : 'text-gray-400'
+                    }`}>
+                      {s.label}
+                    </p>
+                  </div>
+                  {idx < STATUS_FLOW.length - 1 && (
+                    <div className={`h-1.5 flex-1 mb-6
+                                     rounded-full transition-all ${
+                      idx < currentIdx
+                        ? 'bg-green-400'
+                        : 'bg-gray-200'
+                    }`} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── SECTION 1: Requestor Info ── */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-bold text-gray-400
+                               uppercase tracking-widest px-2">
+                📝 Requestor Information
+              </span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                ['RCRC Number',    req.rcrc_number  || 'N/A'],
+                ['RCRC Name',      req.rcrc_name    || 'N/A'],
+                ['Contact Person', contact],
+                ['Phone',          phone],
+                ['Email',          req.email        || 'N/A'],
+                ['Time Window',    req.time_window  || 'N/A'],
+              ].map(([label, value]) => (
+                <div key={label}
+                     className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-0.5">
+                    {label}
+                  </p>
+                  <p className="text-sm font-semibold
+                                text-gray-800 break-words">
+                    {value}
+                  </p>
+                </div>
+              ))}
+              <div className="bg-gray-50 rounded-xl p-3
+                              col-span-2">
+                <p className="text-xs text-gray-400 mb-0.5">
+                  📍 Pickup Address
+                </p>
+                <p className="text-sm font-semibold
+                              text-gray-800">
+                  {address}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* ── SECTION 2: Paycat Details ── */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-bold text-gray-400
+                               uppercase tracking-widest px-2">
+                📦 Paycat Details
+              </span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-400 mb-0.5">
+                  Preferred Date
+                </p>
+                <p className="text-sm font-semibold
+                              text-gray-800">
+                  {req.preferred_date || 'N/A'}
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-400 mb-0.5">
+                  Pallets
+                </p>
+                <p className="text-sm font-bold text-[#003478]">
+                  {req.pallet_quantity ?? 0}
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-400 mb-0.5">
+                  Total Pieces
+                </p>
+                <p className="text-sm font-bold text-[#003478]">
+                  {req.total_pieces_quantity ?? 0}
+                </p>
+              </div>
+            </div>
+            {req.special_instructions && (
+              <div className="bg-yellow-50 border
+                              border-yellow-200 rounded-xl
+                              p-3 mt-3">
+                <p className="text-xs font-bold
+                              text-yellow-700 mb-1">
+                  📝 Special Instructions
+                </p>
+                <p className="text-sm text-yellow-800">
+                  {req.special_instructions}
+                </p>
+              </div>
+            )}
+          </section>
+
+          {/* ── SECTION 3: Admin Fields ── */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-bold text-blue-500
+                               uppercase tracking-widest px-2">
+                🔐 Admin Fields (Editable)
+              </span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100
+                            rounded-2xl p-5 space-y-5">
+
+              {/* Row 1: MCL + Offer */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>
+                    🔖 MCL Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. MCL-2025-001"
+                    value={adminForm.mcl_number}
+                    onChange={e => setAdminForm(f => ({
+                      ...f, mcl_number: e.target.value
+                    }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    💰 FCSD Offer Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 1500.00"
+                    value={adminForm.fcsd_offer_amount}
+                    onChange={e => setAdminForm(f => ({
+                      ...f,
+                      fcsd_offer_amount: e.target.value,
+                    }))}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Timestamps */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>
+                    📥 Vendor Request Received by FCSD
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={adminForm.vendor_request_received_at}
+                    onChange={e => setAdminForm(f => ({
+                      ...f,
+                      vendor_request_received_at: e.target.value,
+                    }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    📤 Techemet Pickup Request Sent by FCSD
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={adminForm.techemet_request_sent_at}
+                    onChange={e => setAdminForm(f => ({
+                      ...f,
+                      techemet_request_sent_at: e.target.value,
+                    }))}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Pickup Dates */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className={labelCls}>
+                    📆 Requested Pickup Date (FCSD→Techemet)
+                  </label>
+                  <input
+                    type="date"
+                    value={adminForm.requested_pickup_date}
+                    onChange={e => setAdminForm(f => ({
+                      ...f,
+                      requested_pickup_date: e.target.value,
+                    }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    📅 Scheduled Pickup Date (by Techemet)
+                  </label>
+                  <input
+                    type="date"
+                    value={adminForm.scheduled_pickup_date}
+                    onChange={e => setAdminForm(f => ({
+                      ...f,
+                      scheduled_pickup_date: e.target.value,
+                    }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    🚛 Actual Pickup Date (by Techemet)
+                  </label>
+                  <input
+                    type="date"
+                    value={adminForm.actual_pickup_date}
+                    onChange={e => setAdminForm(f => ({
+                      ...f,
+                      actual_pickup_date: e.target.value,
+                    }))}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Admin Notes */}
+              <div>
+                <label className={labelCls}>
+                  📝 Admin Notes
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Internal notes about this request..."
+                  value={adminForm.admin_notes}
+                  onChange={e => setAdminForm(f => ({
+                    ...f, admin_notes: e.target.value,
+                  }))}
+                  className={`${inputCls} resize-none`}
+                />
+              </div>
+
+              {/* Save Button */}
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`w-full py-3 rounded-xl font-bold
+                  text-white text-sm transition-all
+                  duration-200 shadow-md ${
+                  saving
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : saved
+                    ? 'bg-green-500'
+                    : 'bg-[#003478] hover:bg-blue-900 active:scale-95'
+                }`}
+              >
+                {saving ? (
+                  <span className="flex items-center
+                                   justify-center gap-2">
+                    <div className="w-4 h-4 border-2
+                                    border-white
+                                    border-t-transparent
+                                    rounded-full animate-spin" />
+                    Saving...
+                  </span>
+                ) : saved ? (
+                  '✅ Saved Successfully!'
+                ) : (
+                  '💾 Save Admin Details'
+                )}
+              </button>
+            </div>
+          </section>
+
+          {/* ── Footer timestamps ── */}
+          <div className="text-xs text-gray-400 text-right
+                          border-t border-gray-100 pt-3">
+            <p>
+              Submitted: {fmtDateTime(req.created_at)}
+            </p>
+            {req.status_updated_at && (
+              <p>
+                Last Updated:{' '}
+                {fmtDateTime(req.status_updated_at)}
+              </p>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Dashboard Page ────────────────────────────────────
+export default function AdminDashboard() {
+  const router = useRouter()
+
+  const [requests,    setRequests]    = useState<Request[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [activeTab,   setActiveTab]   = useState<TabKey>('total_requests')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedReq, setSelectedReq] = useState<Request | null>(null)
+  const [toast,       setToast]       = useState<string | null>(null)
+
+  // ── Fetch ──────────────────────────────────────────────
+  const fetchRequests = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res  = await fetch('/api/admin/requests')
+      const data = await res.json()
+      if (data.success) setRequests(data.data || [])
+    } catch (err) {
+      console.error('Fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchRequests() }, [fetchRequests])
+
+  // ── Toast ──────────────────────────────────────────────
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  // ── Status Change ──────────────────────────────────────
+  const handleStatusChange = async (
+    id: number,
+    status: TabKey
+  ) => {
+    try {
+      const res  = await fetch('/api/admin/update-status', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, status }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setRequests(prev =>
+          prev.map(r =>
+            r.id === id ? { ...r, status } : r
+          )
+        )
+        showToast('✅ Status updated!')
+      } else {
+        showToast('❌ Failed to update status')
+      }
+    } catch {
+      showToast('❌ Network error')
+    }
+  }
+
+  // ── Admin Update ───────────────────────────────────────
+  const handleAdminUpdate = async (
+    id:   number,
+    form: AdminEditForm
+  ) => {
+    try {
+      const res  = await fetch('/api/admin/update-request', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, ...form }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setRequests(prev =>
+          prev.map(r =>
+            r.id === id
+              ? {
+                  ...r,
+                  mcl_number:                  form.mcl_number || undefined,
+                  fcsd_offer_amount:           form.fcsd_offer_amount
+                                                 ? Number(form.fcsd_offer_amount)
+                                                 : undefined,
+                  vendor_request_received_at:  form.vendor_request_received_at || undefined,
+                  techemet_request_sent_at:    form.techemet_request_sent_at   || undefined,
+                  requested_pickup_date:       form.requested_pickup_date      || undefined,
+                  scheduled_pickup_date:       form.scheduled_pickup_date      || undefined,
+                  actual_pickup_date:          form.actual_pickup_date         || undefined,
+                  admin_notes:                 form.admin_notes                || undefined,
+                  status:                      form.status,
+                }
+              : r
+          )
+        )
+        showToast('✅ Admin details saved!')
+      } else {
+        showToast('❌ Failed to save')
+      }
+    } catch {
+      showToast('❌ Network error')
+    }
+  }
+
+  // ── Logout ─────────────────────────────────────────────
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login/admin')
+  }
+
+  // ── Export CSV ─────────────────────────────────────────
+  const exportCSV = () => {
+    const headers = [
+      'ID', 'MCL Number', 'RCRC Number', 'RCRC Name',
+      'Contact', 'Phone', 'Email',
+      'City', 'State',
+      'Preferred Date', 'Time Window',
+      'Pallets', 'Pieces',
+      'FCSD Offer ($)',
+      'Vendor Request Received',
+      'Techemet Request Sent',
+      'Requested Pickup Date',
+      'Scheduled Pickup Date',
+      'Actual Pickup Date',
+      'Status', 'Admin Notes',
+      'Submitted Date',
+    ]
+    const rows = filteredRequests.map(r => [
+      r.id,
+      r.mcl_number                 || '',
+      r.rcrc_number                || '',
+      r.rcrc_name                  || '',
+      r.rcrc_contact_person        || r.customer_name || '',
+      r.rcrc_phone_number          || r.phone         || '',
+      r.email                      || '',
+      r.city                       || '',
+      r.state                      || '',
+      r.preferred_date             || '',
+      r.time_window                || '',
+      r.pallet_quantity            ?? 0,
+      r.total_pieces_quantity      ?? 0,
+      r.fcsd_offer_amount          ?? '',
+      fmtDateTime(r.vendor_request_received_at),
+      fmtDateTime(r.techemet_request_sent_at),
+      fmtDate(r.requested_pickup_date),
+      fmtDate(r.scheduled_pickup_date),
+      fmtDate(r.actual_pickup_date),
+      r.status,
+      `"${(r.admin_notes || '').replace(/"/g, '""')}"`,
+      fmtDateTime(r.created_at),
+    ])
+
+    const csv  = [headers, ...rows]
+      .map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `paycat-pickup-${activeTab}-${
+      new Date().toISOString().slice(0, 10)
+    }.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('📥 CSV downloaded!')
+  }
+
+  // ── Computed ───────────────────────────────────────────
+  const counts = {
+    total_requests:   requests.filter(r => r.status === 'total_requests').length,
+    sent_for_pickup:  requests.filter(r => r.status === 'sent_for_pickup').length,
+    in_transit:       requests.filter(r => r.status === 'in_transit').length,
+    shipment_arrived: requests.filter(r => r.status === 'shipment_arrived').length,
+  }
+
+  const filteredRequests = requests.filter(r => {
+    const matchTab    = r.status === activeTab
+    const q           = searchQuery.toLowerCase()
+    const matchSearch = !q
+      || (r.rcrc_name            || '').toLowerCase().includes(q)
+      || (r.rcrc_number          || '').toLowerCase().includes(q)
+      || (r.rcrc_contact_person  || '').toLowerCase().includes(q)
+      || (r.customer_name        || '').toLowerCase().includes(q)
+      || (r.mcl_number           || '').toLowerCase().includes(q)
+      || (r.city                 || '').toLowerCase().includes(q)
+      || String(r.id).includes(q)
+    return matchTab && matchSearch
+  })
+
+  const overdueReqs = requests.filter(r => {
+    const days = Math.floor(
+      (Date.now() - new Date(r.created_at).getTime())
+      / (1000 * 60 * 60 * 24)
+    )
+    return days > 2 && r.status !== 'shipment_arrived'
+  })
+
+  const totalMissingMCL = requests.filter(
+    r => !r.mcl_number && r.status !== 'shipment_arrived'
+  ).length
+
+  // ── Render ─────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-gray-50">
+
+      {/* ── Toast ── */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50
+                        bg-gray-900 text-white px-5 py-3
+                        rounded-xl shadow-xl text-sm
+                        font-medium">
+          {toast}
+        </div>
+      )}
+
+      {/* ── Modal ── */}
+      {selectedReq && (
+        <ViewModal
+          req={selectedReq}
+          onClose={() => setSelectedReq(null)}
+          onStatusChange={(id, status) => {
+            handleStatusChange(id, status)
+            setSelectedReq(prev =>
+              prev ? { ...prev, status } : null
+            )
+          }}
+          onAdminUpdate={handleAdminUpdate}
+        />
+      )}
+
+      {/* ── Navbar ── */}
+      <nav className="bg-[#003478] shadow-lg sticky
+                      top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6
+                        py-3 flex items-center
+                        justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white/20 rounded-xl
+                            flex items-center justify-center">
+              <span className="text-xl">🏭</span>
+            </div>
+            <div>
+              <h1 className="text-white font-bold text-base
+                             leading-tight">
+                Ford Component Sales
+              </h1>
+              <p className="text-blue-200 text-xs">
+                Paycat Pickup Dashboard
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:block text-blue-200
+                             text-xs font-medium">
+              👤 Admin
+            </span>
             <button
-              onClick={fetchRequests}
-              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg
-                         text-sm hover:bg-red-700"
+              onClick={handleLogout}
+              className="bg-white/10 hover:bg-white/20
+                         text-white text-xs font-semibold
+                         px-4 py-2 rounded-xl transition
+                         flex items-center gap-1.5"
             >
-              Try Again
+              🚪 Logout
             </button>
           </div>
-        )}
+        </div>
+      </nav>
 
-        {/* ── Stats Cards ── */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {tabs.map(tab => (
+      {/* ── Main ── */}
+      <main className="max-w-7xl mx-auto
+                       px-4 sm:px-6 py-6">
+
+        {/* ── Greeting ── */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {new Date().getHours() < 12 ? 'Good Morning'
+              : new Date().getHours() < 17 ? 'Good Afternoon'
+              : 'Good Evening'}, Girish! 👋
+          </h2>
+          <p className="text-gray-500 text-sm mt-0.5">
+            {new Date().toLocaleDateString('en-IN', {
+              weekday: 'long',
+              day:     'numeric',
+              month:   'long',
+              year:    'numeric',
+            })}
+          </p>
+        </div>
+
+        {/* ── Alert Banners ── */}
+        <div className="space-y-3 mb-6">
+          {overdueReqs.length > 0 && (
+            <div className="bg-red-50 border border-red-200
+                            rounded-2xl p-4">
+              <p className="text-red-700 font-bold text-sm
+                            flex items-center gap-2 mb-2">
+                ⚠️ {overdueReqs.length} request
+                {overdueReqs.length > 1 ? 's' : ''} pending
+                more than 2 days!
+              </p>
+              <div className="space-y-1.5">
+                {overdueReqs.slice(0, 3).map(r => {
+                  const d = Math.floor(
+                    (Date.now() - new Date(r.created_at).getTime())
+                    / (1000 * 60 * 60 * 24)
+                  )
+                  return (
+                    <div key={r.id}
+                         className="flex items-center
+                                    justify-between text-xs
+                                    bg-red-100 rounded-lg
+                                    px-3 py-1.5 text-red-700">
+                      <span>
+                        #{r.id} — {r.rcrc_name || 'N/A'}
+                      </span>
+                      <span className="font-bold">
+                        {d} days
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {totalMissingMCL > 0 && (
+            <div className="bg-orange-50 border
+                            border-orange-200 rounded-2xl p-4">
+              <p className="text-orange-700 font-bold
+                            text-sm flex items-center gap-2">
+                🔖 {totalMissingMCL} request
+                {totalMissingMCL > 1 ? 's' : ''} missing
+                MCL Number — please assign!
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ── 4 Tab Stat Cards ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4
+                        gap-4 mb-6">
+          {TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`p-4 rounded-xl border-2 text-left transition-all
-                ${activeTab === tab.key
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-blue-300'}`}
+              className={`rounded-2xl p-4 text-left
+                transition-all duration-200 border-2 ${
+                activeTab === tab.key
+                  ? `${tab.bg} ${tab.border} shadow-md scale-105`
+                  : 'bg-white border-transparent shadow-sm hover:shadow-md'
+              }`}
             >
-              <p className="text-2xl font-bold text-gray-900">{tab.count}</p>
-              <p className="text-xs text-gray-500 mt-1">{tab.label}</p>
+              <div className="flex items-center
+                              justify-between mb-3">
+                <span className="text-3xl">{tab.icon}</span>
+                {activeTab === tab.key && (
+                  <span className={`text-xs font-bold
+                    ${tab.color} bg-white/70 px-2 py-0.5
+                    rounded-full`}>
+                    Active
+                  </span>
+                )}
+              </div>
+              <p className={`text-4xl font-black mb-1 ${
+                activeTab === tab.key
+                  ? tab.color
+                  : 'text-gray-800'
+              }`}>
+                {counts[tab.key]}
+              </p>
+              <p className="text-xs font-semibold
+                            text-gray-500 leading-tight">
+                {tab.label}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {tab.desc}
+              </p>
             </button>
           ))}
         </div>
 
-        {/* ── Search + Tabs ── */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-
-          {/* Tabs Row */}
-          <div className="flex border-b border-gray-200 overflow-x-auto">
-            {tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap
-                  border-b-2 transition-colors
-                  ${activeTab === tab.key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-              >
-                {tab.label}
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs
-                  ${activeTab === tab.key
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'bg-gray-100 text-gray-500'}`}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Search Row */}
-          <div className="p-4 border-b border-gray-100">
+        {/* ── Search & Actions ── */}
+        <div className="flex flex-col sm:flex-row
+                        gap-3 mb-6">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-4
+                            flex items-center
+                            pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400"
+                   fill="none" stroke="currentColor"
+                   viewBox="0 0 24 24">
+                <path strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0
+                         11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <input
               type="text"
-              placeholder="Search by name, email, phone, city, RCRC, scrap category..."
+              placeholder="Search by RCRC name, MCL number, contact, city..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg
-                         text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-3 bg-white
+                         border border-gray-200 rounded-xl
+                         text-sm focus:ring-2
+                         focus:ring-[#003478]
+                         focus:border-transparent
+                         outline-none shadow-sm"
             />
           </div>
 
-          {/* ── Table ── */}
-          {loading ? (
-            <div className="p-12 text-center">
-              <div className="inline-block w-8 h-8 border-4 border-blue-500
-                              border-t-transparent rounded-full animate-spin" />
-              <p className="text-gray-500 mt-3">Loading requests...</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-gray-400 text-lg">No requests found</p>
-              <p className="text-gray-400 text-sm mt-1">
-                {searchQuery ? 'Try a different search term' : 'No requests in this category'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">RCRC</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scrap Category</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pickup Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pallets / Pieces</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filtered.map(req => (
-                    <tr
-                      key={req.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      {/* ID */}
-                      <td className="px-4 py-4 font-mono text-gray-500">
-                        #{req.id}
-                      </td>
+          <button
+            onClick={exportCSV}
+            className="flex items-center justify-center
+                       gap-2 px-5 py-3 bg-[#003478]
+                       text-white text-sm font-semibold
+                       rounded-xl hover:bg-blue-900
+                       transition shadow-sm"
+          >
+            📥 Export CSV
+          </button>
 
-                      {/* Customer */}
-                      <td className="px-4 py-4">
-                        <p className="font-medium text-gray-900">
-                          {req.customer_name || '—'}
-                        </p>
-                        <p className="text-xs text-gray-500">{req.email}</p>
-                        <p className="text-xs text-gray-400">{req.phone || '—'}</p>
-                        <p className="text-xs text-gray-400 truncate max-w-[160px]">
-                          {[req.city, req.state].filter(Boolean).join(', ') || '—'}
-                        </p>
-                      </td>
-
-                      {/* RCRC */}
-                      <td className="px-4 py-4">
-                        <p className="font-medium text-gray-900">
-                          {req.rcrc_name || '—'}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          #{req.rcrc_number || '—'}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {req.rcrc_contact_person || '—'}
-                        </p>
-                      </td>
-
-                      {/* Scrap Category */}
-                      <td className="px-4 py-4">
-                        <p className="font-medium text-gray-900">
-                          {req.scrap_category || '—'}
-                        </p>
-                        <p className="text-xs text-gray-500 max-w-[140px] truncate">
-                          {req.description || '—'}
-                        </p>
-                      </td>
-
-                      {/* Pickup Date */}
-                      <td className="px-4 py-4">
-                        <p className="text-gray-900">
-                          {formatDate(req.preferred_date)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {req.time_window || '—'}
-                        </p>
-                      </td>
-
-                      {/* Pallets / Pieces */}
-                      <td className="px-4 py-4">
-                        <p className="text-gray-900">
-                          {req.pallet_quantity ?? 0} pallets
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {req.total_pieces_quantity ?? 0} pieces
-                        </p>
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="px-4 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium
-                          ${STATUS_STYLES[req.status] || 'bg-gray-100 text-gray-800'}`}>
-                          {req.status}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-4">
-                        <div className="flex flex-col gap-1">
-                          <button
-                            onClick={() => setSelectedRequest(req)}
-                            className="px-3 py-1 bg-blue-600 text-white rounded
-                                       text-xs hover:bg-blue-700 transition-colors"
-                          >
-                            View
-                          </button>
-                          <select
-                            value={req.status}
-                            disabled={updatingId === req.id}
-                            onChange={e => updateStatus(req.id, e.target.value)}
-                            className="px-2 py-1 border border-gray-200 rounded
-                                       text-xs focus:outline-none focus:ring-1
-                                       focus:ring-blue-500 disabled:opacity-50"
-                          >
-                            {STATUS_OPTIONS.map(s => (
-                              <option key={s} value={s}>
-                                {s.charAt(0).toUpperCase() + s.slice(1)}
-                              </option>
-                            ))}
-                          </select>
-                          {updatingId === req.id && (
-                            <span className="text-xs text-blue-500">Saving...</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Table Footer */}
-          {!loading && filtered.length > 0 && (
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
-              Showing {filtered.length} of {counts.all} total requests
-            </div>
-          )}
+          <button
+            onClick={fetchRequests}
+            className="flex items-center justify-center
+                       gap-2 px-5 py-3 bg-white
+                       text-gray-700 text-sm font-semibold
+                       rounded-xl hover:bg-gray-50
+                       transition shadow-sm border
+                       border-gray-200"
+          >
+            🔄 Refresh
+          </button>
         </div>
-      </div>
 
-      {/* ─── Detail Modal ─────────────────────────────────────────────────────── */}
-      {selectedRequest && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-start
-                     justify-center p-4 overflow-y-auto"
-          onClick={e => {
-            if (e.target === e.currentTarget) setSelectedRequest(null)
-          }}
-        >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl
-                          my-8 overflow-hidden">
+        {/* ── Tab Title ── */}
+        <div className="flex items-center
+                        justify-between mb-4">
+          <h3 className="text-base font-bold text-gray-800
+                         flex items-center gap-2">
+            {TABS.find(t => t.key === activeTab)?.icon}
+            {TABS.find(t => t.key === activeTab)?.label}
+            <span className="bg-gray-200 text-gray-600
+                             text-xs px-2 py-0.5
+                             rounded-full font-semibold">
+              {filteredRequests.length}
+            </span>
+          </h3>
+          <p className="text-xs text-gray-400">
+            Click a card to view & edit details
+          </p>
+        </div>
 
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4
-                            border-b border-gray-200 bg-gray-50">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  Request #{selectedRequest.id}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Submitted {formatDateTime(selectedRequest.created_at)}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium
-                  ${STATUS_STYLES[selectedRequest.status] || 'bg-gray-100 text-gray-800'}`}>
-                  {selectedRequest.status}
-                </span>
-                <button
-                  onClick={() => setSelectedRequest(null)}
-                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-
-              {/* Customer Info */}
-              <section>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase
-                               tracking-wide mb-3 pb-1 border-b border-gray-100">
-                  Customer Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Name</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.customer_name || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Email</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.email || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Phone</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.phone || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Address</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {fullAddress(selectedRequest)}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Pickup Details */}
-              <section>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase
-                               tracking-wide mb-3 pb-1 border-b border-gray-100">
-                  Pickup Details
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Preferred Date</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {formatDate(selectedRequest.preferred_date)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Time Window</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.time_window || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Scrap Category</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.scrap_category || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Description</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.description || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Pallet Quantity</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.pallet_quantity ?? 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Total Pieces</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.total_pieces_quantity ?? 0}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-xs text-gray-500 uppercase font-medium">
-                      Special Instructions
-                    </p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.special_instructions || '—'}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* RCRC Info */}
-              <section>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase
-                               tracking-wide mb-3 pb-1 border-b border-gray-100">
-                  RCRC Information
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Name</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.rcrc_name || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Number</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.rcrc_number || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">Contact Person</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.rcrc_contact_person || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Email</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.rcrc_email || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Phone</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {selectedRequest.rcrc_phone_number || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-medium">RCRC Address</p>
-                    <p className="text-sm text-gray-900 mt-0.5">
-                      {[
-                        selectedRequest.rcrc_address,
-                        selectedRequest.rcrc_address2,
-                        selectedRequest.rcrc_zip_code,
-                      ].filter(Boolean).join(', ') || '—'}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Attachments */}
-              {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
-                <section>
-                  <h3 className="text-sm font-semibold text-gray-700 uppercase
-                                 tracking-wide mb-3 pb-1 border-b border-gray-100">
-                    Attachments ({selectedRequest.attachments.length})
-                  </h3>
-                  <div className="flex flex-wrap gap-3">
-                    {selectedRequest.attachments.map((att, i) => (
-                      <a
-                        key={i}
-                        href={att.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-3 py-2 bg-blue-50
-                                   border border-blue-200 rounded-lg text-blue-700
-                                   text-sm hover:bg-blue-100 transition-colors"
-                      >
-                        📎 {att.name || `Attachment ${i + 1}`}
-                      </a>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Notes */}
-              {selectedRequest.notes && (
-                <section>
-                  <h3 className="text-sm font-semibold text-gray-700 uppercase
-                                 tracking-wide mb-3 pb-1 border-b border-gray-100">
-                    Notes
-                  </h3>
-                  <p className="text-sm text-gray-700 bg-yellow-50 border
-                                border-yellow-200 rounded-lg p-3">
-                    {selectedRequest.notes}
-                  </p>
-                </section>
-              )}
-
-              {/* Update Status */}
-              <section>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase
-                               tracking-wide mb-3 pb-1 border-b border-gray-100">
-                  Update Status
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {STATUS_OPTIONS.map(s => (
-                    <button
-                      key={s}
-                      onClick={() => updateStatus(selectedRequest.id, s)}
-                      disabled={
-                        updatingId === selectedRequest.id ||
-                        selectedRequest.status === s
-                      }
-                      className={`px-4 py-2 rounded-lg text-sm font-medium
-                        transition-colors disabled:opacity-50
-                        ${selectedRequest.status === s
-                          ? 'bg-gray-800 text-white cursor-default'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                    >
-                      {updatingId === selectedRequest.id
-                        ? 'Saving...'
-                        : s.charAt(0).toUpperCase() + s.slice(1)}
-                    </button>
+        {/* ── Loading Skeleton ── */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2
+                          lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i}
+                   className="bg-white rounded-2xl p-5
+                              animate-pulse h-80 shadow-sm">
+                <div className="h-4 bg-gray-200 rounded
+                                w-3/4 mb-3" />
+                <div className="h-3 bg-gray-100 rounded
+                                w-1/2 mb-6" />
+                <div className="grid grid-cols-2 gap-3">
+                  {[1,2,3,4].map(j => (
+                    <div key={j}
+                         className="h-14 bg-gray-100
+                                    rounded-xl" />
                   ))}
                 </div>
-              </section>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50
-                            flex justify-end">
-              <button
-                onClick={() => setSelectedRequest(null)}
-                className="px-5 py-2 bg-gray-800 text-white rounded-lg
-                           text-sm hover:bg-gray-900 transition-colors"
-              >
-                Close
-              </button>
-            </div>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ── Empty State ── */}
+        {!loading && filteredRequests.length === 0 && (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">
+              {TABS.find(t => t.key === activeTab)?.icon}
+            </div>
+            <h3 className="text-lg font-bold
+                           text-gray-600 mb-2">
+              No {TABS.find(t => t.key === activeTab)?.label}
+            </h3>
+            <p className="text-gray-400 text-sm">
+              {searchQuery
+                ? `No results for "${searchQuery}"`
+                : 'No requests in this category yet'}
+            </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-4 text-sm text-[#003478]
+                           hover:underline font-semibold"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Cards Grid ── */}
+        {!loading && filteredRequests.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2
+                          lg:grid-cols-3 gap-4">
+            {filteredRequests.map(req => (
+              <RequestCard
+                key={req.id}
+                req={req}
+                onView={setSelectedReq}
+                onStatusChange={handleStatusChange}
+              />
+            ))}
+          </div>
+        )}
+
+      </main>
     </div>
   )
 }
