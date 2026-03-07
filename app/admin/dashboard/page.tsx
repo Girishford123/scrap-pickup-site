@@ -1443,10 +1443,12 @@ function RequestCard({
   req,
   onStatusChange,
   onView,
+  onDelete,          // ← ADD THIS LINE
 }: {
   req:            PickupRequest
   onStatusChange: (id: number, newStatus: TabKey) => void
   onView:         (req: PickupRequest) => void
+  onDelete:       (req: PickupRequest) => void  // ← ADD THIS LINE
 }) {
   const nextMap: Record<
     TabKey,
@@ -1571,23 +1573,36 @@ function RequestCard({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-2 pt-1">
-        <button
-          onClick={() => onView(req)}
-          className="flex-1 py-2 px-3 rounded-xl bg-gray-100
-                     hover:bg-gray-200 text-gray-700 text-xs
-                     font-semibold transition-colors"
-        >
-          👁 View
-        </button>
+<div className="flex gap-2 pt-1">
 
-        {next ? (
-          <button
-            onClick={() => onStatusChange(req.id, next.key)}
-            className="flex-1 py-2 px-3 rounded-xl bg-blue-600
-                       hover:bg-blue-700 text-white text-xs
-                       font-semibold transition-colors"
-          >
+  {/* 👁 View Button — already exists, keep it */}
+  <button
+    onClick={() => onView(req)}
+    className="flex-1 py-2 px-3 rounded-xl bg-gray-100
+               hover:bg-gray-200 text-gray-700 text-xs
+               font-semibold transition-colors"
+  >
+    👁 View
+  </button>
+
+  {/* ↓↓↓ ADD THIS NEW DELETE BUTTON ↓↓↓ */}
+  <button
+    onClick={() => onDelete(req)}
+    className="py-2 px-3 rounded-xl bg-red-50
+               hover:bg-red-100 text-red-500 text-xs
+               font-semibold transition-colors
+               border border-red-100"
+  >
+    🗑️
+  </button>
+  {/* ↑↑↑ END OF NEW BUTTON ↑↑↑ */}
+
+  {next ? (
+    <button
+      onClick={() => onStatusChange(req.id, next.key)}
+      ...
+    >
+
             {next.icon} {next.label}
           </button>
         ) : (
@@ -1826,28 +1841,43 @@ function ViewModal({
             </>
           ) : (
             <>
+             <>
+            {/* Close button — already exists, keep it */}
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-gray-100
+                         hover:bg-gray-200 text-gray-700
+                         font-semibold text-sm transition-colors"
+            >
+              Close
+            </button>
+
+            {/* ↓↓↓ ADD DELETE BUTTON HERE ↓↓↓ */}
+            <button
+              onClick={onDelete}
+              className="py-2.5 px-4 rounded-xl bg-red-50
+                         hover:bg-red-100 text-red-600
+                         font-semibold text-sm transition-colors
+                         border border-red-100"
+            >
+              🗑️ Delete
+            </button>
+            {/* ↑↑↑ END OF DELETE BUTTON ↑↑↑ */}
+
+            {next && (
               <button
-                onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl bg-gray-100
-                           hover:bg-gray-200 text-gray-700
-                           font-semibold text-sm transition-colors"
+                onClick={() => {
+                  onStatusChange(req.id, next.key)
+                  onClose()
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600
+                           hover:bg-blue-700 text-white font-semibold
+                           text-sm transition-colors"
               >
-                Close
+                {next.icon} {next.label}
               </button>
-              {next && (
-                <button
-                  onClick={() => {
-                    onStatusChange(req.id, next.key)
-                    onClose()
-                  }}
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600
-                             hover:bg-blue-700 text-white font-semibold
-                             text-sm transition-colors"
-                >
-                  {next.icon} {next.label}
-                </button>
-              )}
-            </>
+            )}
+          </>
           )}
         </div>
 
@@ -1867,7 +1897,10 @@ export default function AdminDashboard() {
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [syncing,       setSyncing]       = useState(false)
   const [syncMsg,       setSyncMsg]       = useState('')
-  const [error,         setError]         = useState('')
+  const [error,      setError]      = useState('')
+  const [deleteReq,  setDeleteReq]  = useState<PickupRequest | null>(null)
+  const [deleteMsg,  setDeleteMsg]  = useState('')
+
 
   // ── Fetch All Requests ────────────────────────────────
   const fetchRequests = useCallback(async () => {
@@ -1975,7 +2008,38 @@ export default function AdminDashboard() {
       setViewReq(prev => prev ? { ...prev, ...updated } : null)
     }
   }, [viewReq])
+// ── Handle Delete ─────────────────────────────────────
+const handleDelete = useCallback(async (
+  id:           number,
+  reason:       string,
+  reasonDetail: string
+) => {
+  try {
+    const res = await fetch('/api/admin/delete-request', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id, reason, reasonDetail }),
+    })
 
+    const data = await res.json()
+
+    if (!res.ok) throw new Error(data.error ?? 'Delete failed')
+
+    // Remove from local state
+    setRequests(prev => prev.filter(r => r.id !== id))
+    setDeleteReq(null)
+    setViewReq(null)
+
+    setDeleteMsg(
+      `✅ Deleted & archived. Email sent: ${data.emailSent ? 'Yes' : 'No email on file'}`
+    )
+    setTimeout(() => setDeleteMsg(''), 6000)
+
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Delete failed')
+  }
+}, [])
+  
   // ── Sync Button ───────────────────────────────────────
   const handleSync = useCallback(async () => {
     setSyncing(true)
@@ -2192,11 +2256,30 @@ export default function AdminDashboard() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200
-                          rounded-xl p-4 mb-4 text-sm text-red-700">
-            ❌ {error}
-          </div>
-        )}
+          {/* Error */}
+{error && (
+  <div className="bg-red-50 border border-red-200
+                  rounded-xl p-4 mb-4 text-sm text-red-700">
+    ❌ {error}
+  </div>
+)}
+
+{/* ↓↓↓ ADD THIS RIGHT HERE ↓↓↓ */}
+{deleteMsg && (
+  <div className="bg-green-50 border border-green-200
+                  rounded-xl p-4 mb-4 text-sm
+                  text-green-700 flex justify-between
+                  items-center">
+    <span>{deleteMsg}</span>
+    <button
+      onClick={() => setDeleteMsg('')}
+      className="text-green-400 hover:text-green-600 ml-3"
+    >
+      ✕
+    </button>
+  </div>
+)}
+
 
         {/* Tab Bar */}
         <div className="flex gap-2 overflow-x-auto pb-1 mb-5
@@ -2300,30 +2383,264 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2
-                          lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map(req => (
-              <RequestCard
-                key={req.id}
-                req={req}
-                onView={setViewReq}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
-          </div>
+                lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {filtered.map(req => (
+    <RequestCard
+      key={req.id}
+      req={req}
+      onView={setViewReq}
+      onStatusChange={handleStatusChange}
+      onDelete={setDeleteReq}    {/* ← ADD THIS LINE */}
+    />
+  ))}
+</div>
         )}
 
       </div>
-
-      {/* ── View & Edit Modal ────────────────────────── */}
+        {/* ── View & Edit Modal ────────────────────────── */}
       {viewReq && (
         <ViewModal
           req={viewReq}
           onClose={() => setViewReq(null)}
           onSave={handleAdminSave}
           onStatusChange={handleStatusChange}
+          onDelete={() => {
+            setDeleteReq(viewReq)
+            setViewReq(null)
+          }}
         />
       )}
 
+      {/* ↓↓↓ ADD DELETE MODAL HERE ↓↓↓ */}
+      {deleteReq && (
+        <DeleteModal
+          req={deleteReq}
+          onClose={() => setDeleteReq(null)}
+          onConfirm={handleDelete}
+        />
+      )}
+      {/* ↑↑↑ END OF DELETE MODAL ↑↑↑ */}
+
+    </div>  {/* ← this closes the outer min-h-screen div */}
+  )
+}
+// ─────────────────────────────────────────────────────────
+// DeleteModal
+// ─────────────────────────────────────────────────────────
+function DeleteModal({
+  req,
+  onClose,
+  onConfirm,
+}: {
+  req:       PickupRequest
+  onClose:   () => void
+  onConfirm: (
+    id:           number,
+    reason:       string,
+    reasonDetail: string
+  ) => Promise<void>
+}) {
+  const [reason,       setReason]       = useState('')
+  const [reasonDetail, setReasonDetail] = useState('')
+  const [deleting,     setDeleting]     = useState(false)
+  const [confirmed,    setConfirmed]    = useState(false)
+
+  const reasons = [
+    { key: 'duplicate',         label: '🔁 Duplicate Request'              },
+    { key: 'test_record',       label: '🧪 Test / Demo Record'             },
+    { key: 'wrong_information', label: '❌ Incorrect Information Submitted' },
+    { key: 'cancelled_by_rcrc', label: '🚫 Cancelled by RCRC'             },
+    { key: 'no_longer_needed',  label: '📭 No Longer Needed'               },
+    { key: 'other',             label: '📝 Other'                          },
+  ]
+
+  async function handleConfirm() {
+    if (!reason)    return
+    if (!confirmed) return
+    setDeleting(true)
+    await onConfirm(req.id, reason, reasonDetail)
+    setDeleting(false)
+  }
+
+  const canDelete = reason && confirmed && !deleting
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center
+                 bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-red-50 border-b border-red-100
+                        rounded-t-3xl px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🗑️</span>
+            <div>
+              <h2 className="text-lg font-bold text-red-700">
+                Delete Request
+              </h2>
+              <p className="text-xs text-red-400 mt-0.5">
+                This action cannot be undone
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Request Summary */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">MCL #</span>
+              <span className="font-bold text-gray-700">
+                {req.mcl_number ?? '—'}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">RCRC</span>
+              <span className="font-semibold text-gray-700">
+                {req.rcrc_name ?? '—'}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">Status</span>
+              <span className="font-semibold text-gray-700 capitalize">
+                {req.status.replace(/_/g, ' ')}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">Requestor Email</span>
+              <span className="font-semibold text-blue-600 truncate
+                               max-w-[180px]">
+                {req.rcrc_email ?? req.email ?? '—'}
+              </span>
+            </div>
+          </div>
+
+          {/* Reason Dropdown */}
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-2">
+              Reason for Deletion <span className="text-red-500">*</span>
+            </label>
+            <div className="space-y-1.5">
+              {reasons.map(r => (
+                <button
+                  key={r.key}
+                  onClick={() => setReason(r.key)}
+                  className={`w-full text-left text-sm px-4 py-2.5
+                             rounded-xl border font-medium
+                             transition-all ${
+                    reason === r.key
+                      ? 'bg-red-50 border-red-300 text-red-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {r.label}
+                  {reason === r.key && (
+                    <span className="float-right text-red-500">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Optional Detail */}
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-1.5">
+              Additional Notes
+              <span className="text-gray-400 font-normal ml-1">
+                (optional)
+              </span>
+            </label>
+            <textarea
+              value={reasonDetail}
+              onChange={e => setReasonDetail(e.target.value)}
+              placeholder="Add any additional context..."
+              rows={2}
+              className="w-full text-sm border border-gray-200
+                         rounded-xl px-3 py-2 resize-none
+                         focus:outline-none focus:ring-2
+                         focus:ring-red-300 bg-gray-50"
+            />
+          </div>
+
+          {/* Email Notice */}
+          <div className="flex items-start gap-2 bg-blue-50
+                          border border-blue-100 rounded-xl p-3">
+            <span className="text-base mt-0.5">📧</span>
+            <p className="text-xs text-blue-700">
+              An email will be sent to{' '}
+              <strong>
+                {req.rcrc_email ?? req.email ?? 'the requestor'}
+              </strong>{' '}
+              notifying them of this deletion and its reason.
+            </p>
+          </div>
+
+          {/* Audit Notice */}
+          <div className="flex items-start gap-2 bg-amber-50
+                          border border-amber-100 rounded-xl p-3">
+            <span className="text-base mt-0.5">📋</span>
+            <p className="text-xs text-amber-700">
+              This request will be permanently deleted from
+              the main table but <strong>archived in
+              Supabase</strong> under{' '}
+              <code className="bg-amber-100 px-1 rounded text-xs">
+                deleted_requests
+              </code>{' '}
+              for audit purposes.
+            </p>
+          </div>
+
+          {/* Confirm Checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={e => setConfirmed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-red-600 cursor-pointer"
+            />
+            <span className="text-xs text-gray-600">
+              I understand this will delete MCL{' '}
+              <strong>{req.mcl_number ?? `#${req.id}`}</strong> and
+              notify the requestor by email. This record will
+              be archived for audit purposes.
+            </span>
+          </label>
+
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl bg-gray-100
+                       hover:bg-gray-200 text-gray-700
+                       font-semibold text-sm transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!canDelete}
+            className={`flex-1 py-2.5 rounded-xl font-semibold
+                       text-sm transition-all ${
+              canDelete
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {deleting
+              ? '⏳ Deleting...'
+              : '🗑️ Delete & Notify'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
