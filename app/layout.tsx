@@ -5,7 +5,7 @@ import ProgressBar     from './components/ProgressBar'
 import PageTransition  from './components/PageTransition'
 import FloatingButtons from './components/FloatingButtons'
 import Navbar          from './components/Navbar'
-import { SessionProvider } from 'next-auth/react'   // ← ADD THIS
+import SessionWrapper  from './components/SessionWrapper'  // ← NEW
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -37,7 +37,7 @@ export default function RootLayout({
         bg-white dark:bg-[#0a0a0a]
         transition-colors duration-200
       `}>
-        <SessionProvider>              {/* ← ADD THIS */}
+        <SessionWrapper>              {/* ← CHANGED */}
 
           {/* Progress Bar */}
           <ProgressBar />
@@ -53,7 +53,7 @@ export default function RootLayout({
           {/* Floating Contact Buttons */}
           <FloatingButtons />
 
-        </SessionProvider>             {/* ← ADD THIS */}
+        </SessionWrapper>             {/* ← CHANGED */}
       </body>
     </html>
   )
