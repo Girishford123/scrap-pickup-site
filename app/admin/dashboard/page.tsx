@@ -118,10 +118,8 @@ const TABS = [
   },
 ]
 
-const ADMIN_EMAILS = [
-  'gkulkara@ford.com',
-  'mrideno2@ford.com',
-]
+// ✅ REPLACE WITH ENV VARIABLE
+const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ALLOWED_EMAILS?.split(',') ?? []
 
 // ─────────────────────────────────────────────────────────
 // Helpers

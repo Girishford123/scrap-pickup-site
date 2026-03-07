@@ -1,5 +1,5 @@
 // app/api/auth/[...nextauth]/route.ts
-import NextAuth      from 'next-auth'
+import NextAuth       from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 
 const handler = NextAuth({
@@ -11,12 +11,9 @@ const handler = NextAuth({
   ],
   callbacks: {
     async signIn({ user }) {
-      const allowed = [
-        'gkulkara@ford.com',
-        'mrideno2@ford.com',
-        'girishtrainer@gmail.com',
-      ]
-      return allowed.includes(user.email ?? '')
+      const allowedEmails =
+        process.env.ALLOWED_EMAILS?.split(',') ?? []
+      return allowedEmails.includes(user.email ?? '')
     },
     async session({ session }) {
       return session
