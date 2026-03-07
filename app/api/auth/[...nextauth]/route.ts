@@ -13,7 +13,8 @@ const handler = NextAuth({
     async signIn({ user }) {
       const allowed = [
         'gkulkara@ford.com',
-        'mrideno2@ford.com',
+        'mrideno2@ford.com'
+        'girishtrainer@gmail.com',
       ]
       return allowed.includes(user.email ?? '')
     },
