@@ -1807,17 +1807,18 @@ function RequestCard({
           👁 View
         </button>
 
-        {/* Delete Button */}
-        <button
-          onClick={() => onDelete(req)}
-          className="py-2 px-3 rounded-xl bg-red-50
-                     hover:bg-red-100 text-red-500 text-xs
-                     font-semibold transition-colors
-                     border border-red-100"
-        >
-          🗑️
-        </button>
-
+        {/* Delete Button — hidden for closed MCLs */}
+{req.status !== 'closed' && (
+  <button
+    onClick={() => onDelete(req)}
+    className="py-2 px-3 rounded-xl bg-red-50
+               hover:bg-red-100 text-red-500 text-xs
+               font-semibold transition-colors
+               border border-red-100"
+  >
+    🗑️
+  </button>
+)}
         {/* Status Button */}
         {next ? (
           <button
@@ -2077,16 +2078,18 @@ function ViewModal({
                 Close
               </button>
 
-              {/* Delete */}
-              <button
-                onClick={onDelete}
-                className="py-2.5 px-4 rounded-xl bg-red-50
-                           hover:bg-red-100 text-red-600
-                           font-semibold text-sm transition-colors
-                           border border-red-100"
-              >
-                🗑️ Delete
-              </button>
+              {/* Delete — hidden for closed MCLs */}
+{req.status !== 'closed' && (
+  <button
+    onClick={onDelete}
+    className="py-2.5 px-4 rounded-xl bg-red-50
+               hover:bg-red-100 text-red-600
+               font-semibold text-sm transition-colors
+               border border-red-100"
+  >
+    🗑️ Delete
+  </button>
+)}
 
               {/* Status Advance */}
               {next && (
