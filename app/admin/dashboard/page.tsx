@@ -1,6 +1,6 @@
 // app/admin/dashboard/page.tsx
 'use client'
-
+export const dynamic = 'force-dynamic'
 // ── Auth Imports ─────────────────────────────────────────
 import { useSession, signOut } from 'next-auth/react'
 
