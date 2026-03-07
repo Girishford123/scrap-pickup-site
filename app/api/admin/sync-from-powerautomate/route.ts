@@ -6,26 +6,21 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// ── Convert Excel Serial Date → YYYY-MM-DD ─────────────
+// ── Convert Excel Serial Date → YYYY-MM-DD ──────────────
 function excelDateToISO(value: unknown): string | null {
   if (!value && value !== 0) return null
 
-  // Already a real date string like "2025-01-09"
   if (typeof value === 'string') {
     const trimmed = value.trim()
     if (!trimmed || trimmed === '') return null
-    // Check if it's already a date string
     if (isNaN(Number(trimmed))) {
       const d = new Date(trimmed)
       return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
     }
-    // It's a number string — treat as serial
     value = Number(trimmed)
   }
 
   if (typeof value === 'number') {
-    // Excel serial date → JS Date
-    // Excel epoch is Dec 30, 1899
     const excelEpoch = new Date(1899, 11, 30)
     const msPerDay   = 86400000
     const date       = new Date(excelEpoch.getTime() + value * msPerDay)
@@ -50,108 +45,114 @@ function cleanNum(val: unknown): number | null {
   return isNaN(n) ? null : n
 }
 
-// ── Map one Excel row → Supabase record ────────────────
+// ── Map one Excel row → Supabase record ─────────────────
 function mapRow(row: Record<string, unknown>) {
-
-  // Power Automate sends the EXACT Excel header names
-  // matching them here precisely:
   return {
-    mcl_number:              clean(row['mcl_number'])
-                          || clean(row['MCL Number'])
-                          || clean(row['MCL_Number'])
-                          || null,
+    mcl_number: clean(row['mcl_number'])
+      || clean(row['MCL Number'])
+      || clean(row['MCL_Number'])
+      || null,
 
-    requested_pickup_date:   excelDateToISO(
-                               row['requested_pickup_date']
-                            ?? row['Requested Pickup Date']
-                            ?? row['RequestedPickupDate']
-                            ),
+    requested_pickup_date: excelDateToISO(
+      row['requested_pickup_date']
+      ?? row['Requested Pickup Date']
+      ?? row['RequestedPickupDate']
+    ),
 
-    rcrc_number:             clean(row['RCRC Number'])
-                          || clean(row['rcrc_number'])
-                          || clean(row['RCRCNumber'])
-                          || null,
+    rcrc_number: clean(row['RCRC Number'])
+      || clean(row['rcrc_number'])
+      || clean(row['RCRCNumber'])
+      || null,
 
-    rcrc_name:               clean(row['rcrc_name'])
-                          || clean(row['RCRC Name'])
-                          || clean(row['RCRCName'])
-                          || null,
+    rcrc_name: clean(row['rcrc_name'])
+      || clean(row['RCRC Name'])
+      || clean(row['RCRCName'])
+      || null,
 
-    rcrc_contact_person:     clean(row['rcrc_contact_person'])
-                          || clean(row['RCRC Contact Person'])
-                          || null,
+    rcrc_contact_person: clean(row['rcrc_contact_person'])
+      || clean(row['RCRC Contact Person'])
+      || null,
 
-    rcrc_email:              clean(row['rcrc_email'])
-                          || clean(row['RCRC Email'])
-                          || null,
+    rcrc_email: clean(row['rcrc_email'])
+      || clean(row['RCRC Email'])
+      || null,
 
-    rcrc_phone_number:       clean(row['phone'])
-                          || clean(row['Phone'])
-                          || clean(row['rcrc_phone_number'])
-                          || null,
+    rcrc_phone_number: clean(row['phone'])
+      || clean(row['Phone'])
+      || clean(row['rcrc_phone_number'])
+      || null,
 
-    rcrc_address:            clean(row['RCRC Address'])
-                          || clean(row['rcrc_address'])
-                          || clean(row['RCRCAddress'])
-                          || null,
+    rcrc_address: clean(row['RCRC Address'])
+      || clean(row['rcrc_address'])
+      || clean(row['RCRCAddress'])
+      || null,
 
-    city:                    clean(row['city'])
-                          || clean(row['City'])
-                          || null,
+    city: clean(row['city'])
+      || clean(row['City'])
+      || null,
 
-    state:                   clean(row['state'])
-                          || clean(row['State'])
-                          || null,
+    state: clean(row['state'])
+      || clean(row['State'])
+      || null,
 
-    rcrc_zip_code:           clean(row['zip'])
-                          || clean(row['Zip'])
-                          || clean(row['ZIP'])
-                          || null,
+    rcrc_zip_code: clean(row['zip'])
+      || clean(row['Zip'])
+      || clean(row['ZIP'])
+      || null,
 
-    time_window:             clean(row['Pickup Hours'])
-                          || clean(row['time_window'])
-                          || clean(row['PickupHours'])
-                          || null,
+    time_window: clean(row['Pickup Hours'])
+      || clean(row['time_window'])
+      || clean(row['PickupHours'])
+      || null,
 
-    pallet_quantity:         cleanNum(
-                               row['Pallet Quantity']
-                            ?? row['pallet_quantity']
-                            ?? row['PalletQuantity']
-                            ),
+    pallet_quantity: cleanNum(
+      row['Pallet Quantity']
+      ?? row['pallet_quantity']
+      ?? row['PalletQuantity']
+    ),
 
-    total_pieces_quantity:   cleanNum(
-                               row['Total Pieces Quantity']
-                            ?? row['total_pieces_quantity']
-                            ?? row['TotalPiecesQuantity']
-                            ),
+    total_pieces_quantity: cleanNum(
+      row['Total Pieces Quantity']
+      ?? row['total_pieces_quantity']
+      ?? row['TotalPiecesQuantity']
+    ),
 
-    fcsd_offer_amount:       cleanNum(
-                               row['Ounce Calculator Est Amount']
-                            ?? row['fcsd_offer_amount']
-                            ?? row['OunceCalculatorEstAmount']
-                            ),
+    fcsd_offer_amount: cleanNum(
+      row['Ounce Calculator Est Amount']
+      ?? row['fcsd_offer_amount']
+      ?? row['OunceCalculatorEstAmount']
+    ),
 
-    date_sent_to_techemet:   excelDateToISO(
-                               row['Date sent to techemet']
-                            ?? row['date_sent_to_techemet']
-                            ?? row['DateSentToTechemet']
-                            ),
+    date_sent_to_techemet: excelDateToISO(
+      row['Date sent to techemet']
+      ?? row['date_sent_to_techemet']
+      ?? row['DateSentToTechemet']
+    ),
 
-    scheduled_pickup_date:   excelDateToISO(
-                               row['Scheduled Pickup Date (by Techemet)']
-                            ?? row['scheduled_pickup_date']
-                            ?? row['ScheduledPickupDate']
-                            ),
+    // Column S in Excel
+    invoice_submitted_date: excelDateToISO(
+      row['invoice submitted']
+      ?? row['Invoice Submitted']
+      ?? row['invoice_submitted']
+      ?? row['InvoiceSubmitted']
+      ?? row['Invoice Submitted Date']
+    ),
 
-    actual_pickup_date:      excelDateToISO(
-                               row['Shipment Arrived Date']
-                            ?? row['actual_pickup_date']
-                            ?? row['ShipmentArrivedDate']
-                            ),
+    scheduled_pickup_date: excelDateToISO(
+      row['Scheduled Pickup Date (by Techemet)']
+      ?? row['scheduled_pickup_date']
+      ?? row['ScheduledPickupDate']
+    ),
 
-    admin_notes:             clean(row['Comments'])
-                          || clean(row['admin_notes'])
-                          || null,
+    actual_pickup_date: excelDateToISO(
+      row['Shipment Arrived Date']
+      ?? row['actual_pickup_date']
+      ?? row['ShipmentArrivedDate']
+    ),
+
+    admin_notes: clean(row['Comments'])
+      || clean(row['admin_notes'])
+      || null,
   }
 }
 
@@ -161,7 +162,6 @@ export async function POST(request: Request) {
     const body = await request.json()
     console.log('📥 Sync received. Keys:', Object.keys(body))
 
-    // Support both { rows: [...] } and direct array
     const rows: Record<string, unknown>[] =
       Array.isArray(body)       ? body       :
       Array.isArray(body.rows)  ? body.rows  :
@@ -171,7 +171,6 @@ export async function POST(request: Request) {
 
     if (rows.length === 0) {
       console.warn('⚠️ No rows received')
-      // Log what we DID receive to help debug
       console.log('📦 Body received:', JSON.stringify(body).slice(0, 500))
       return NextResponse.json(
         {
@@ -184,8 +183,6 @@ export async function POST(request: Request) {
     }
 
     console.log(`📊 Total rows received: ${rows.length}`)
-
-    // Log first row to verify column names
     console.log('🔍 First row sample:', JSON.stringify(rows[0]))
 
     let inserted    = 0
@@ -198,25 +195,26 @@ export async function POST(request: Request) {
       try {
         const mapped = mapRow(row)
 
-        // Log each mapped row for debugging
-        console.log(`Processing → MCL: ${mapped.mcl_number} | RCRC: ${mapped.rcrc_number} | Name: ${mapped.rcrc_name}`)
+        console.log(
+          `Processing → MCL: ${mapped.mcl_number} | ` +
+          `RCRC: ${mapped.rcrc_number} | ` +
+          `Name: ${mapped.rcrc_name} | ` +
+          `Invoice: ${mapped.invoice_submitted_date}`
+        )
 
-        // ── Skip rows with no identifying info ──────────
         if (!mapped.mcl_number && !mapped.rcrc_number) {
           console.log('⏭️ Skipping row — no MCL or RCRC number')
           skipped++
           continue
         }
 
-        // ── Check if record already exists ──────────────
-        // Match by mcl_number (most reliable unique key)
-        // If no mcl_number, match by rcrc_number + requested_pickup_date
+        // ── Check if record exists ───────────────────────
         let existing = null
 
         if (mapped.mcl_number) {
           const { data } = await supabase
             .from('pickup_request')
-            .select('id')
+            .select('id, status')
             .eq('mcl_number', mapped.mcl_number)
             .maybeSingle()
           existing = data
@@ -225,7 +223,7 @@ export async function POST(request: Request) {
         if (!existing && mapped.rcrc_number && mapped.requested_pickup_date) {
           const { data } = await supabase
             .from('pickup_request')
-            .select('id')
+            .select('id, status')
             .eq('rcrc_number', mapped.rcrc_number)
             .eq('requested_pickup_date', mapped.requested_pickup_date)
             .maybeSingle()
@@ -233,13 +231,11 @@ export async function POST(request: Request) {
         }
 
         if (existing) {
-          // ── UPDATE existing record ───────────────────
+          // ── UPDATE existing record ─────────────────────
           const updatePayload: Record<string, unknown> = {
             updated_at: new Date().toISOString(),
           }
 
-          // Only update fields that have real values
-          // so we don't overwrite manually-set admin fields
           if (mapped.mcl_number)            updatePayload.mcl_number            = mapped.mcl_number
           if (mapped.rcrc_number)           updatePayload.rcrc_number           = mapped.rcrc_number
           if (mapped.rcrc_name)             updatePayload.rcrc_name             = mapped.rcrc_name
@@ -258,7 +254,17 @@ export async function POST(request: Request) {
           if (mapped.scheduled_pickup_date) updatePayload.scheduled_pickup_date = mapped.scheduled_pickup_date
           if (mapped.actual_pickup_date)    updatePayload.actual_pickup_date    = mapped.actual_pickup_date
           if (mapped.date_sent_to_techemet) updatePayload.date_sent_to_techemet = mapped.date_sent_to_techemet
+          if (mapped.invoice_submitted_date) updatePayload.invoice_submitted_date = mapped.invoice_submitted_date
           if (mapped.admin_notes)           updatePayload.admin_notes           = mapped.admin_notes
+
+          // ── Auto-close if invoice date exists ──────────
+          if (mapped.invoice_submitted_date) {
+            updatePayload.status            = 'closed'
+            updatePayload.status_updated_at = new Date().toISOString()
+            console.log(
+              `🧾 Auto-closing MCL ${mapped.mcl_number} — invoice date: ${mapped.invoice_submitted_date}`
+            )
+          }
 
           const { error } = await supabase
             .from('pickup_request')
@@ -275,10 +281,21 @@ export async function POST(request: Request) {
           }
 
         } else {
-          // ── INSERT new record ────────────────────────
+          // ── INSERT new record ──────────────────────────
+          // Auto-close if invoice date already exists
+          const insertStatus = mapped.invoice_submitted_date
+            ? 'closed'
+            : 'total_requests'
+
+          if (insertStatus === 'closed') {
+            console.log(
+              `🧾 Inserting as closed — MCL ${mapped.mcl_number} has invoice date`
+            )
+          }
+
           const insertPayload = {
             ...mapped,
-            status:     'total_requests',
+            status:     insertStatus,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }
@@ -288,11 +305,18 @@ export async function POST(request: Request) {
             .insert(insertPayload)
 
           if (error) {
-            console.error(`❌ Insert error:`, error.message, '| Row:', JSON.stringify(mapped))
+            console.error(
+              `❌ Insert error:`,
+              error.message,
+              '| Row:',
+              JSON.stringify(mapped)
+            )
             errors.push(`Insert MCL ${mapped.mcl_number}: ${error.message}`)
             error_count++
           } else {
-            console.log(`✅ Inserted MCL: ${mapped.mcl_number}`)
+            console.log(
+              `✅ Inserted MCL: ${mapped.mcl_number} | Status: ${insertStatus}`
+            )
             inserted++
           }
         }
@@ -313,11 +337,10 @@ export async function POST(request: Request) {
       updated,
       skipped,
       error_count,
-      errors:      errors.slice(0, 10), // show first 10 errors only
+      errors:      errors.slice(0, 10),
     }
 
     console.log('✅ Sync complete:', JSON.stringify(summary))
-
     return NextResponse.json(summary, { status: 200 })
 
   } catch (err: unknown) {
@@ -353,6 +376,7 @@ export async function GET() {
       'Date sent to techemet',
       'Scheduled Pickup Date (by Techemet)',
       'Shipment Arrived Date',
+      'invoice submitted',
       'Comments',
     ],
   })

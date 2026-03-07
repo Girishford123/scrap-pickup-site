@@ -1,62 +1,81 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 
-// ── Types ──────────────────────────────────────────────────
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+// ── Types ───────────────────────────────────────────────
 type TabKey =
   | 'total_requests'
   | 'sent_for_pickup'
   | 'in_transit'
   | 'shipment_arrived'
+  | 'closed'
 
-type Request = {
-  id:                           number
-  rcrc_number?:                 string
-  rcrc_name?:                   string
-  customer_name?:               string
-  rcrc_contact_person?:         string
-  email?:                       string
-  phone?:                       string
-  rcrc_phone_number?:           string
-  address1?:                    string
-  address2?:                    string
-  city?:                        string
-  state?:                       string
-  zip?:                         string
-  preferred_date?:              string
-  time_window?:                 string
-  pallet_quantity?:             number
-  total_pieces_quantity?:       number
-  special_instructions?:        string
-  mcl_number?:                  string
-  fcsd_offer_amount?:           number
-  vendor_request_received_at?:  string
-  techemet_request_sent_at?:    string
-  requested_pickup_date?:       string
-  scheduled_pickup_date?:       string
-  actual_pickup_date?:          string
-  date_sent_to_techemet?:       string   // 🆕 NEW
-  admin_notes?:                 string
-  status:                       TabKey
-  status_updated_at?:           string
-  created_at:                   string
+interface PickupRequest {
+  id:                       number
+  created_at:               string
+  updated_at:               string
+  customer_name?:           string
+  phone?:                   string
+  email?:                   string
+  address1?:                string
+  address2?:                string
+  city?:                    string
+  state?:                   string
+  zip?:                     string
+  preferred_date?:          string
+  time_window?:             string
+  scrap_category?:          string
+  description?:             string
+  rcrc_number?:             string
+  rcrc_name?:               string
+  rcrc_contact_person?:     string
+  rcrc_email?:              string
+  rcrc_phone_number?:       string
+  rcrc_address?:            string
+  rcrc_address2?:           string
+  rcrc_zip_code?:           string
+  pallet_quantity?:         number
+  total_pieces_quantity?:   number
+  special_instructions?:    string
+  notes?:                   string
+  status:                   TabKey
+  attachments?:             { url: string; name: string }[]
+  cancel_reason?:           string
+  cancelled_at?:            string
+  mcl_number?:              string
+  fcsd_offer_amount?:       number
+  vendor_request_received_at?: string
+  techemet_request_sent_at?:   string
+  requested_pickup_date?:   string
+  scheduled_pickup_date?:   string
+  actual_pickup_date?:      string
+  status_updated_at?:       string
+  admin_notes?:             string
+  date_sent_to_techemet?:   string
+  invoice_submitted_date?:  string
 }
 
-type AdminEditForm = {
-  mcl_number:                  string
-  fcsd_offer_amount:           string
-  vendor_request_received_at:  string
-  techemet_request_sent_at:    string
-  requested_pickup_date:       string
-  scheduled_pickup_date:       string
-  actual_pickup_date:          string
-  date_sent_to_techemet:       string   // 🆕 NEW
-  admin_notes:                 string
-  status:                      TabKey
+interface AdminEditForm {
+  mcl_number:               string
+  fcsd_offer_amount:        string
+  vendor_request_received_at: string
+  techemet_request_sent_at: string
+  requested_pickup_date:    string
+  scheduled_pickup_date:    string
+  actual_pickup_date:       string
+  date_sent_to_techemet:    string
+  invoice_submitted_date:   string
+  admin_notes:              string
+  status:                   TabKey
 }
 
-// ── Tab Config ─────────────────────────────────────────────
+// ── Constants ───────────────────────────────────────────
 const TABS = [
   {
     key:    'total_requests'   as TabKey,
@@ -94,6 +113,15 @@ const TABS = [
     border: 'border-green-300',
     desc:   'Arrived at destination',
   },
+  {
+    key:    'closed'           as TabKey,
+    label:  'Closed',
+    icon:   '🧾',
+    color:  'text-teal-700',
+    bg:     'bg-teal-50',
+    border: 'border-teal-300',
+    desc:   'Invoice submitted — MCL closed',
+  },
 ]
 
 const STATUS_FLOW = [
@@ -101,132 +129,89 @@ const STATUS_FLOW = [
   { key: 'sent_for_pickup'  as TabKey, label: 'Sent for Pickup', icon: '🚚', color: 'bg-yellow-500' },
   { key: 'in_transit'       as TabKey, label: 'In Transit',      icon: '🔄', color: 'bg-purple-500' },
   { key: 'shipment_arrived' as TabKey, label: 'Arrived',         icon: '✅', color: 'bg-green-500'  },
+  { key: 'closed'           as TabKey, label: 'Closed',          icon: '🧾', color: 'bg-teal-500'   },
 ]
 
-// ── Helpers ────────────────────────────────────────────────
-function fmtDate(val?: string | null) {
+// ── Helpers ─────────────────────────────────────────────
+function fmtDate(val?: string | null): string {
   if (!val) return '—'
-  return new Date(val).toLocaleDateString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric',
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return val
+  return d.toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
   })
 }
 
-function fmtDateTime(val?: string | null) {
-  if (!val) return '—'
-  return new Date(val).toLocaleString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+function fmtMoney(val?: number | null): string {
+  if (val == null) return '—'
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', maximumFractionDigits: 0,
+  }).format(val)
 }
 
-// ── Aging Helpers ──────────────────────────────────────────
-function getDaysOld(createdAt: string): number {
-  return Math.floor(
-    (Date.now() - new Date(createdAt).getTime())
-    / (1000 * 60 * 60 * 24)
-  )
-}
-
-function getAgingColor(days: number): {
-  bg:     string
-  text:   string
-  border: string
-  badge:  string
-  dot:    string
-} {
-  if (days <= 3) return {
-    bg:     'bg-green-50',
-    text:   'text-green-700',
-    border: 'border-green-200',
-    badge:  'bg-green-100 text-green-700',
-    dot:    'bg-green-500',
-  }
-  if (days <= 7) return {
-    bg:     'bg-yellow-50',
-    text:   'text-yellow-700',
-    border: 'border-yellow-200',
-    badge:  'bg-yellow-100 text-yellow-700',
-    dot:    'bg-yellow-500',
-  }
-  if (days <= 14) return {
-    bg:     'bg-orange-50',
-    text:   'text-orange-700',
-    border: 'border-orange-200',
-    badge:  'bg-orange-100 text-orange-700',
-    dot:    'bg-orange-500',
-  }
-  return {
-    bg:     'bg-red-50',
-    text:   'text-red-700',
-    border: 'border-red-200',
-    badge:  'bg-red-100 text-red-700',
-    dot:    'bg-red-500',
-  }
-}
-
-function getAgingLabel(days: number): string {
-  if (days === 0) return 'Today'
-  if (days === 1) return '1 day old'
-  return `${days} days old`
-}
-
-// ── Status Badge ───────────────────────────────────────────
+// ── StatusBadge ─────────────────────────────────────────
 function StatusBadge({ status }: { status: TabKey }) {
-  const map = {
+  const map: Record<TabKey, { label: string; icon: string; bg: string; text: string }> = {
     total_requests:   { label: 'New Request',     icon: '📋', bg: 'bg-blue-100',   text: 'text-blue-700'   },
     sent_for_pickup:  { label: 'Sent for Pickup', icon: '🚚', bg: 'bg-yellow-100', text: 'text-yellow-700' },
     in_transit:       { label: 'In Transit',      icon: '🔄', bg: 'bg-purple-100', text: 'text-purple-700' },
     shipment_arrived: { label: 'Arrived',         icon: '✅', bg: 'bg-green-100',  text: 'text-green-700'  },
+    closed:           { label: 'Closed',          icon: '🧾', bg: 'bg-teal-100',   text: 'text-teal-700'   },
   }
   const s = map[status] ?? map.total_requests
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${s.bg} ${s.text}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${s.bg} ${s.text}`}>
       {s.icon} {s.label}
     </span>
   )
 }
 
-// ── Analytics Dashboard ────────────────────────────────────
-function AnalyticsDashboard({
-  requests,
-  onSelectRequest,
-}: {
-  requests:        Request[]
-  onSelectRequest: (r: Request) => void
-}) {
-  const activeRequests = requests.filter(
-    r => r.status !== 'shipment_arrived'
-  )
+// ── ProgressBar ─────────────────────────────────────────
+function ProgressBar({ status }: { status: TabKey }) {
+  const idx   = STATUS_FLOW.findIndex(s => s.key === status)
+  const total = STATUS_FLOW.length
 
+  return (
+    <div className="flex items-center gap-1 w-full">
+      {STATUS_FLOW.map((step, i) => (
+        <div key={step.key} className="flex-1 flex items-center gap-1">
+          <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+            i <= idx ? step.color : 'bg-gray-200'
+          }`} />
+          {i < total - 1 && (
+            <div className={`w-1.5 h-1.5 rounded-full ${
+              i < idx ? STATUS_FLOW[i + 1].color : 'bg-gray-200'
+            }`} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── AnalyticsDashboard ──────────────────────────────────
+function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
+  const activeRequests = requests.filter(
+    r => r.status !== 'shipment_arrived' && r.status !== 'closed'
+  )
   const totalActive    = activeRequests.length
   const totalCompleted = requests.filter(r => r.status === 'shipment_arrived').length
-  const totalValue     = requests.reduce((sum, r) => sum + (r.fcsd_offer_amount || 0), 0)
-  const avgDays        = activeRequests.length > 0
-    ? (activeRequests.reduce((sum, r) => sum + getDaysOld(r.created_at), 0) / activeRequests.length).toFixed(1)
-    : '0'
+  const totalClosed    = requests.filter(r => r.status === 'closed').length
 
-  const fresh    = activeRequests.filter(r => getDaysOld(r.created_at) <= 3)
-  const aging    = activeRequests.filter(r => { const d = getDaysOld(r.created_at); return d >= 4 && d <= 7 })
-  const overdue  = activeRequests.filter(r => { const d = getDaysOld(r.created_at); return d >= 8 && d <= 14 })
-  const critical = activeRequests.filter(r => getDaysOld(r.created_at) >= 15)
-
-  const sortedByAge = [...activeRequests].sort(
-    (a, b) => getDaysOld(b.created_at) - getDaysOld(a.created_at)
+  const totalPallets = requests.reduce(
+    (s, r) => s + (r.pallet_quantity ?? 0), 0
   )
-
-  const maxCount = Math.max(fresh.length, aging.length, overdue.length, critical.length, 1)
-
-  const statusLabel: Record<string, string> = {
-    total_requests:   '📋 New Request',
-    sent_for_pickup:  '🚚 Sent for Pickup',
-    in_transit:       '🔄 In Transit',
-    shipment_arrived: '✅ Arrived',
-  }
+  const totalPieces = requests.reduce(
+    (s, r) => s + (r.total_pieces_quantity ?? 0), 0
+  )
+  const totalValue = requests.reduce(
+    (s, r) => s + (r.fcsd_offer_amount ?? 0), 0
+  )
 
   const quickStats = [
     {
-      label:      'Active Requests',
-      value:      totalActive,
+      label:      'Total MCLs',
+      value:      requests.length,
       icon:       '📋',
       color:      'text-blue-700',
       bg:         'bg-blue-50',
@@ -235,7 +220,17 @@ function AnalyticsDashboard({
       suffix:     '',
     },
     {
-      label:      'Completed',
+      label:      'Active',
+      value:      totalActive,
+      icon:       '⚡',
+      color:      'text-yellow-700',
+      bg:         'bg-yellow-50',
+      border:     'border-yellow-200',
+      isMonetary: false,
+      suffix:     '',
+    },
+    {
+      label:      'Arrived',
       value:      totalCompleted,
       icon:       '✅',
       color:      'text-green-700',
@@ -245,803 +240,829 @@ function AnalyticsDashboard({
       suffix:     '',
     },
     {
-      label:      'Total FCSD Value',
-      value:      totalValue,
-      icon:       '💰',
-      color:      'text-purple-700',
-      bg:         'bg-purple-50',
-      border:     'border-purple-200',
-      isMonetary: true,
+      label:      'Closed & Invoiced',
+      value:      totalClosed,
+      icon:       '🧾',
+      color:      'text-teal-700',
+      bg:         'bg-teal-50',
+      border:     'border-teal-200',
+      isMonetary: false,
       suffix:     '',
     },
     {
-      label:      'Avg. Age',
-      value:      avgDays,
-      icon:       '⏱️',
-      color:      Number(avgDays) > 7 ? 'text-red-700'   : 'text-gray-700',
-      bg:         Number(avgDays) > 7 ? 'bg-red-50'      : 'bg-gray-50',
-      border:     Number(avgDays) > 7 ? 'border-red-200' : 'border-gray-200',
+      label:      'Total Pallets',
+      value:      totalPallets,
+      icon:       '📦',
+      color:      'text-purple-700',
+      bg:         'bg-purple-50',
+      border:     'border-purple-200',
       isMonetary: false,
-      suffix:     ' days',
-    },
-  ]
-
-  const agingBuckets = [
-    {
-      label:  '🟢 Fresh',
-      range:  '0 – 3 days',
-      count:  fresh.length,
-      bg:     'bg-green-50',
-      border: 'border-green-200',
-      text:   'text-green-700',
-      numCol: 'text-green-600',
-      barCol: 'bg-green-400',
-      tip:    'On track ✅',
+      suffix:     '',
     },
     {
-      label:  '🟡 Aging',
-      range:  '4 – 7 days',
-      count:  aging.length,
-      bg:     'bg-yellow-50',
-      border: 'border-yellow-200',
-      text:   'text-yellow-700',
-      numCol: 'text-yellow-600',
-      barCol: 'bg-yellow-400',
-      tip:    'Needs attention',
+      label:      'Total Pieces',
+      value:      totalPieces,
+      icon:       '🔩',
+      color:      'text-indigo-700',
+      bg:         'bg-indigo-50',
+      border:     'border-indigo-200',
+      isMonetary: false,
+      suffix:     '',
     },
     {
-      label:  '🟠 Overdue',
-      range:  '8 – 14 days',
-      count:  overdue.length,
-      bg:     'bg-orange-50',
-      border: 'border-orange-200',
-      text:   'text-orange-700',
-      numCol: 'text-orange-600',
-      barCol: 'bg-orange-400',
-      tip:    'Action required ⚠️',
-    },
-    {
-      label:  '🔴 Critical',
-      range:  '15+ days',
-      count:  critical.length,
-      bg:     'bg-red-50',
-      border: 'border-red-200',
-      text:   'text-red-700',
-      numCol: 'text-red-600',
-      barCol: 'bg-red-500',
-      tip:    'Urgent! Follow up now 🚨',
+      label:      'Est. Total Value',
+      value:      totalValue,
+      icon:       '💰',
+      color:      'text-emerald-700',
+      bg:         'bg-emerald-50',
+      border:     'border-emerald-200',
+      isMonetary: true,
+      suffix:     '',
     },
   ]
 
   return (
-    <div className="space-y-6 mb-8">
-
-      {/* Section Title */}
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-gray-200" />
-        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest px-2">
-          📊 Analytics &amp; Aging Overview
-        </h2>
-        <div className="h-px flex-1 bg-gray-200" />
-      </div>
-
-      {/* Row 1 — Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {quickStats.map(stat => (
-          <div
-            key={stat.label}
-            className={`rounded-2xl p-4 border-2 ${stat.bg} ${stat.border} flex flex-col gap-1`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-2xl">{stat.icon}</span>
-            </div>
-            <p className={`text-3xl font-black ${stat.color}`}>
-              {stat.isMonetary
-                ? `$${Number(stat.value).toLocaleString()}`
-                : `${stat.value}${stat.suffix}`
-              }
-            </p>
-            <p className="text-xs font-semibold text-gray-500 leading-tight">
-              {stat.label}
-            </p>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+      {quickStats.map(stat => (
+        <div
+          key={stat.label}
+          className={`rounded-xl border ${stat.bg} ${stat.border} p-3 flex flex-col gap-1`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-lg">{stat.icon}</span>
           </div>
-        ))}
-      </div>
-
-      {/* Row 2 — Aging Buckets */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {agingBuckets.map(bucket => (
-          <div
-            key={bucket.label}
-            className={`rounded-2xl p-4 border-2 ${bucket.bg} ${bucket.border}`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <p className={`text-sm font-bold ${bucket.text}`}>
-                {bucket.label}
-              </p>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${bucket.bg} ${bucket.text} border ${bucket.border}`}>
-                {bucket.range}
-              </span>
-            </div>
-
-            <p className={`text-5xl font-black mb-2 ${bucket.numCol}`}>
-              {bucket.count}
-            </p>
-
-            {/* Progress Bar */}
-            <div className="h-2 bg-white/60 rounded-full overflow-hidden mb-2">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${bucket.barCol}`}
-                style={{ width: `${(bucket.count / maxCount) * 100}%` }}
-              />
-            </div>
-
-            <p className={`text-xs font-medium ${bucket.text}`}>
-              {bucket.count === 0 ? '✅ All clear!' : bucket.tip}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Row 3 — Request Age Tracker */}
-      {sortedByAge.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-
-          {/* Tracker Header */}
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-gray-800">
-                ⏳ Request Age Tracker
-              </h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Sorted oldest first — click any row to view &amp; edit
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              {[
-                { dot: 'bg-green-500',  label: '0-3d'  },
-                { dot: 'bg-yellow-500', label: '4-7d'  },
-                { dot: 'bg-orange-500', label: '8-14d' },
-                { dot: 'bg-red-500',    label: '15d+'  },
-              ].map(l => (
-                <div key={l.label} className="flex items-center gap-1">
-                  <div className={`w-2.5 h-2.5 rounded-full ${l.dot}`} />
-                  <span className="text-gray-400">{l.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tracker Rows */}
-          <div className="divide-y divide-gray-50">
-            {sortedByAge.map((req, index) => {
-              const days   = getDaysOld(req.created_at)
-              const colors = getAgingColor(days)
-              const pct    = Math.min((days / 20) * 100, 100)
-
-              return (
-                <button
-                  key={req.id}
-                  onClick={() => onSelectRequest(req)}
-                  className="w-full px-5 py-3.5 hover:bg-gray-50 transition-all duration-150 flex items-center gap-4 text-left group"
-                >
-                  {/* Rank */}
-                  <div className="w-6 text-xs font-bold text-gray-300 flex-shrink-0">
-                    #{index + 1}
-                  </div>
-
-                  {/* Color Dot */}
-                  <div className={`w-3 h-3 rounded-full flex-shrink-0 ${colors.dot}`} />
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-gray-800">
-                        #{req.id} — {req.rcrc_name || 'N/A'}
-                      </span>
-                      {req.mcl_number ? (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                          {req.mcl_number}
-                        </span>
-                      ) : (
-                        <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">
-                          ⚠️ No MCL
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-gray-400">
-                        {statusLabel[req.status] || req.status}
-                      </span>
-                      {req.preferred_date && (
-                        <span className="text-xs text-gray-400">
-                          📅 {req.preferred_date}
-                        </span>
-                      )}
-                      {req.city && (
-                        <span className="text-xs text-gray-400">
-                          📍 {req.city}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="hidden sm:block w-32 flex-shrink-0">
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${colors.dot}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {pct.toFixed(0)}% of 20d limit
-                    </p>
-                  </div>
-
-                  {/* Age Badge */}
-                  <div className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold ${colors.badge} border ${colors.border}`}>
-                    {getAgingLabel(days)}
-                  </div>
-
-                  {/* Arrow */}
-                  <div className="text-gray-300 group-hover:text-gray-500 transition text-sm flex-shrink-0">
-                    →
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Tracker Footer */}
-          <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-400">
-              Showing {sortedByAge.length} active request{sortedByAge.length !== 1 ? 's' : ''}
-            </p>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="text-green-600 font-semibold">🟢 {fresh.length} fresh</span>
-              <span className="text-yellow-600 font-semibold">🟡 {aging.length} aging</span>
-              <span className="text-orange-600 font-semibold">🟠 {overdue.length} overdue</span>
-              <span className="text-red-600 font-semibold">🔴 {critical.length} critical</span>
-            </div>
-          </div>
+          <p className={`text-xl font-bold ${stat.color}`}>
+            {stat.isMonetary
+              ? fmtMoney(stat.value)
+              : stat.value.toLocaleString()
+            }
+          </p>
+          <p className="text-xs text-gray-500 font-medium leading-tight">
+            {stat.label}
+          </p>
         </div>
-      )}
-
-      {/* Empty State */}
-      {sortedByAge.length === 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
-          <div className="text-5xl mb-3">🎉</div>
-          <h3 className="text-green-700 font-bold text-lg mb-1">All Clear!</h3>
-          <p className="text-green-600 text-sm">No active requests pending right now.</p>
-        </div>
-      )}
-
+      ))}
     </div>
   )
 }
 
-// ── View & Edit Modal ──────────────────────────────────────
-function ViewModal({
-  req,
-  onClose,
-  onStatusChange,
-  onAdminUpdate,
-}: {
-  req:            Request
-  onClose:        () => void
-  onStatusChange: (id: number, s: TabKey) => void
-  onAdminUpdate:  (id: number, f: AdminEditForm) => Promise<void>
-}) {
-  const [saving, setSaving] = useState(false)
-  const [saved,  setSaved]  = useState(false)
-  const [tab,    setTab]    = useState<'admin' | 'info'>('admin')
-
-  const [form, setForm] = useState<AdminEditForm>({
-    mcl_number:                 req.mcl_number ?? '',
-    fcsd_offer_amount:          req.fcsd_offer_amount != null ? String(req.fcsd_offer_amount) : '',
-    vendor_request_received_at: req.vendor_request_received_at ? req.vendor_request_received_at.slice(0, 16) : '',
-    techemet_request_sent_at:   req.techemet_request_sent_at   ? req.techemet_request_sent_at.slice(0, 16)   : '',
-    requested_pickup_date:      req.requested_pickup_date      ?? '',
-    scheduled_pickup_date:      req.scheduled_pickup_date      ?? '',
-    actual_pickup_date:         req.actual_pickup_date         ?? '',
-    date_sent_to_techemet:      req.date_sent_to_techemet      ?? '',  // 🆕 NEW
-    admin_notes:                req.admin_notes                ?? '',
-    status:                     req.status,
-  })
-
-  const contact    = req.rcrc_contact_person || req.customer_name || 'N/A'
-  const phone      = req.rcrc_phone_number   || req.phone         || 'N/A'
-  const address    = [req.address1, req.address2, req.city, req.state, req.zip].filter(Boolean).join(', ') || 'N/A'
-  const currentIdx = STATUS_FLOW.findIndex(s => s.key === form.status)
-
-  const handleSave = async () => {
-    setSaving(true)
-    await onAdminUpdate(req.id, form)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
-  }
-
-  const inp = 'w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition'
-  const lbl = 'block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wide'
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Modal Header */}
-        <div className="bg-[#003478] px-6 py-4 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <h2 className="text-white font-bold text-lg">
-              Request #{req.id} — Full Details
-            </h2>
-            <p className="text-blue-200 text-xs mt-0.5">
-              {req.rcrc_name || 'N/A'} • {req.rcrc_number || 'N/A'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 bg-white/20 rounded-lg text-white hover:bg-white/30 transition flex items-center justify-center font-bold text-lg"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-
-          {/* Progress Tracker */}
-          <div>
-            <p className="text-sm font-bold text-gray-700 mb-4">📊 Shipment Progress</p>
-            <div className="flex items-center">
-              {STATUS_FLOW.map((s, idx) => (
-                <div key={s.key} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center w-full">
-                    <button
-                      onClick={() => {
-                        setForm(f => ({ ...f, status: s.key }))
-                        onStatusChange(req.id, s.key)
-                      }}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all hover:scale-110 ${idx <= currentIdx ? `${s.color} text-white shadow-md` : 'bg-gray-100 text-gray-400'}`}
-                    >
-                      {idx <= currentIdx ? s.icon : idx + 1}
-                    </button>
-                    <p className={`text-xs mt-1.5 text-center leading-tight font-medium max-w-16 ${idx <= currentIdx ? 'text-gray-800' : 'text-gray-400'}`}>
-                      {s.label}
-                    </p>
-                  </div>
-                  {idx < STATUS_FLOW.length - 1 && (
-                    <div className={`h-1.5 flex-1 mb-6 rounded-full transition-all ${idx < currentIdx ? 'bg-green-400' : 'bg-gray-200'}`} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tab Toggle */}
-          <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
-            <button
-              onClick={() => setTab('admin')}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'admin' ? 'bg-[#003478] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              🔐 Admin Fields
-            </button>
-            <button
-              onClick={() => setTab('info')}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tab === 'info' ? 'bg-[#003478] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              📝 Requestor Info
-            </button>
-          </div>
-
-          {/* ── Admin Tab ─────────────────────────────── */}
-          {tab === 'admin' && (
-            <div className="space-y-5">
-
-              {/* MCL + FCSD */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={lbl}>🔖 MCL Number</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. MCL-2025-001"
-                    value={form.mcl_number}
-                    onChange={e => setForm(f => ({ ...f, mcl_number: e.target.value }))}
-                    className={inp}
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>💰 FCSD Offer Amount ($)</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 1500.00"
-                    value={form.fcsd_offer_amount}
-                    onChange={e => setForm(f => ({ ...f, fcsd_offer_amount: e.target.value }))}
-                    className={inp}
-                  />
-                </div>
-              </div>
-
-              {/* Vendor + Techemet */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={lbl}>📥 Vendor Request Received by FCSD</label>
-                  <input
-                    type="datetime-local"
-                    value={form.vendor_request_received_at}
-                    onChange={e => setForm(f => ({ ...f, vendor_request_received_at: e.target.value }))}
-                    className={inp}
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>📤 Techemet Request Sent by FCSD</label>
-                  <input
-                    type="datetime-local"
-                    value={form.techemet_request_sent_at}
-                    onChange={e => setForm(f => ({ ...f, techemet_request_sent_at: e.target.value }))}
-                    className={inp}
-                  />
-                </div>
-              </div>
-
-              {/* Pickup Dates */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className={lbl}>📆 Requested Pickup Date (FCSD to Techemet)</label>
-                  <input
-                    type="date"
-                    value={form.requested_pickup_date}
-                    onChange={e => setForm(f => ({ ...f, requested_pickup_date: e.target.value }))}
-                    className={inp}
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>📅 Scheduled Pickup Date (by Techemet)</label>
-                  <input
-                    type="date"
-                    value={form.scheduled_pickup_date}
-                    onChange={e => setForm(f => ({ ...f, scheduled_pickup_date: e.target.value }))}
-                    className={inp}
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>🚛 Actual Pickup Date (by Techemet)</label>
-                  <input
-                    type="date"
-                    value={form.actual_pickup_date}
-                    onChange={e => setForm(f => ({ ...f, actual_pickup_date: e.target.value }))}
-                    className={inp}
-                  />
-                </div>
-              </div>
-
-              {/* 🆕 NEW — Date Sent to Techemet */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                <label className="block text-xs font-bold text-blue-600 mb-1 uppercase tracking-wide">
-                  📬 Date Sent to Techemet 🆕
-                </label>
-                <input
-                  type="date"
-                  value={form.date_sent_to_techemet}
-                  onChange={e =>
-                    setForm(f => ({ ...f, date_sent_to_techemet: e.target.value }))
-                  }
-                  className="w-full px-3 py-2.5 bg-white border border-blue-300
-                             rounded-xl text-sm text-gray-800 focus:ring-2
-                             focus:ring-blue-600 focus:border-transparent
-                             outline-none transition"
-                />
-                <p className="text-xs text-blue-500 mt-1.5">
-                  📊 Synced from Excel — date Ford sent request to Techemet
-                </p>
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className={lbl}>📊 Update Status</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {STATUS_FLOW.map(s => (
-                    <button
-                      key={s.key}
-                      type="button"
-                      onClick={() => {
-                        setForm(f => ({ ...f, status: s.key }))
-                        onStatusChange(req.id, s.key)
-                      }}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 border-2 ${form.status === s.key ? `${s.color} text-white border-transparent shadow-md` : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                    >
-                      {s.icon} {s.label}
-                      {form.status === s.key && (
-                        <span className="bg-white/30 text-xs rounded px-1">✓</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Admin Notes */}
-              <div>
-                <label className={lbl}>📝 Admin Notes</label>
-                <textarea
-                  rows={3}
-                  placeholder="Internal notes about this request..."
-                  value={form.admin_notes}
-                  onChange={e => setForm(f => ({ ...f, admin_notes: e.target.value }))}
-                  className={`${inp} resize-none`}
-                />
-              </div>
-
-              {/* Save Button */}
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className={`w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all shadow-md ${saving ? 'bg-gray-400 cursor-not-allowed' : saved ? 'bg-green-500' : 'bg-[#003478] hover:bg-blue-900 active:scale-95'}`}
-              >
-                {saving ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Saving...
-                  </span>
-                ) : saved ? '✅ Saved Successfully!' : '💾 Save Admin Details'}
-              </button>
-
-            </div>
-          )}
-
-          {/* ── Requestor Info Tab ────────────────────── */}
-          {tab === 'info' && (
-            <div className="space-y-5">
-
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                🏢 RCRC Information
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  ['RCRC Number',    req.rcrc_number  || '—'],
-                  ['RCRC Name',      req.rcrc_name    || '—'],
-                  ['Contact Person', contact],
-                  ['Phone',          phone],
-                  ['Email',          req.email        || '—'],
-                  ['Time Window',    req.time_window  || '—'],
-                ].map(([label, value]) => (
-                  <div key={label} className="bg-gray-50 rounded-xl p-3">
-                    <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-                    <p className="text-sm font-semibold text-gray-800 break-words">{value}</p>
-                  </div>
-                ))}
-                <div className="bg-gray-50 rounded-xl p-3 col-span-2">
-                  <p className="text-xs text-gray-400 mb-0.5">📍 Pickup Address</p>
-                  <p className="text-sm font-semibold text-gray-800">{address}</p>
-                </div>
-              </div>
-
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                📦 Paycat Details
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-400">Preferred Date</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{req.preferred_date || '—'}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-400">Pallets</p>
-                  <p className="text-2xl font-black text-[#003478] mt-0.5">{req.pallet_quantity ?? 0}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-400">Total Pieces</p>
-                  <p className="text-2xl font-black text-[#003478] mt-0.5">{req.total_pieces_quantity ?? 0}</p>
-                </div>
-              </div>
-
-              {/* 🆕 Date Sent to Techemet — read-only in Info Tab */}
-              {req.date_sent_to_techemet && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                  <p className="text-xs font-bold text-blue-600 mb-0.5">
-                    📬 Date Sent to Techemet
-                  </p>
-                  <p className="text-sm font-semibold text-blue-800">
-                    {fmtDate(req.date_sent_to_techemet)}
-                  </p>
-                </div>
-              )}
-
-              {req.special_instructions && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-                  <p className="text-xs font-bold text-yellow-700 mb-1">📝 Special Instructions</p>
-                  <p className="text-sm text-yellow-800">{req.special_instructions}</p>
-                </div>
-              )}
-
-              <div className="text-xs text-gray-400 text-right pt-3 border-t border-gray-100">
-                Submitted: {fmtDateTime(req.created_at)}
-              </div>
-
-            </div>
-          )}
-
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Request Card ───────────────────────────────────────────
+// ── RequestCard ─────────────────────────────────────────
 function RequestCard({
   req,
   onView,
   onStatusChange,
 }: {
-  req:            Request
-  onView:         (r: Request) => void
-  onStatusChange: (id: number, s: TabKey) => void
+  req:            PickupRequest
+  onView:         (r: PickupRequest) => void
+  onStatusChange: (id: number, status: TabKey) => void
 }) {
-  const contact = req.rcrc_contact_person || req.customer_name || 'N/A'
-  const phone   = req.rcrc_phone_number   || req.phone         || 'N/A'
-  const days    = getDaysOld(req.created_at)
+  const nextMap: Record<TabKey, { key: TabKey; label: string; icon: string } | null> = {
+    total_requests:   { key: 'sent_for_pickup',  label: 'Send for Pickup', icon: '🚚' },
+    sent_for_pickup:  { key: 'in_transit',        label: 'Mark In Transit', icon: '🔄' },
+    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',    icon: '✅' },
+    shipment_arrived: { key: 'closed',            label: 'Close MCL',       icon: '🧾' },
+    closed:           null,
+  }
+
+  const next = nextMap[req.status]
+
+  const dates: [string, string | undefined, string][] = [
+    ['📥 Received',                req.vendor_request_received_at,  'text-gray-700'  ],
+    ['📤 Sent to Techemet',        req.techemet_request_sent_at,    'text-gray-700'  ],
+    ['📬 Date Sent to Techemet',   req.date_sent_to_techemet,       'text-blue-700'  ],
+    ['📅 Scheduled',               req.scheduled_pickup_date,       'text-blue-700'  ],
+    ['🚛 Actual Pickup',           req.actual_pickup_date,          'text-green-700' ],
+    ['🧾 Invoice Submitted',       req.invoice_submitted_date,      'text-teal-700'  ],
+  ]
+
+  return (
+    <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden ${
+      req.status === 'closed' ? 'border-teal-200' : 'border-gray-100'
+    }`}>
+      {/* Header */}
+      <div className={`px-4 pt-4 pb-3 flex items-start justify-between gap-2 ${
+        req.status === 'closed' ? 'bg-teal-50/50' : ''
+      }`}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {req.mcl_number && (
+              <span className="text-xs font-bold text-white bg-gray-800 px-2 py-0.5 rounded-lg">
+                MCL {req.mcl_number}
+              </span>
+            )}
+            <StatusBadge status={req.status} />
+            {req.invoice_submitted_date && (
+              <span className="text-xs font-bold text-teal-700 bg-teal-100 px-2 py-0.5 rounded-lg">
+                🧾 Invoiced
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-semibold text-gray-900 mt-1 truncate">
+            {req.rcrc_name || req.customer_name || 'Unknown RCRC'}
+          </p>
+          {req.rcrc_number && (
+            <p className="text-xs text-gray-400">RCRC #{req.rcrc_number}</p>
+          )}
+        </div>
+        {req.fcsd_offer_amount && (
+          <span className="text-sm font-bold text-emerald-700 whitespace-nowrap">
+            {fmtMoney(req.fcsd_offer_amount)}
+          </span>
+        )}
+      </div>
+
+      {/* Progress */}
+      <div className="px-4 pb-2">
+        <ProgressBar status={req.status} />
+      </div>
+
+      {/* Dates */}
+      <div className="px-4 pb-3 space-y-1">
+        {dates.map(([label, val, cls]) =>
+          val ? (
+            <div key={label} className="flex justify-between text-xs">
+              <span className="text-gray-400">{label}</span>
+              <span className={`font-medium ${cls}`}>{fmtDate(val)}</span>
+            </div>
+          ) : null
+        )}
+      </div>
+
+      {/* Stats row */}
+      {(req.pallet_quantity || req.total_pieces_quantity) && (
+        <div className="px-4 pb-3 flex gap-3">
+          {req.pallet_quantity ? (
+            <span className="text-xs text-gray-500">
+              📦 {req.pallet_quantity.toLocaleString()} pallets
+            </span>
+          ) : null}
+          {req.total_pieces_quantity ? (
+            <span className="text-xs text-gray-500">
+              🔩 {req.total_pieces_quantity.toLocaleString()} pcs
+            </span>
+          ) : null}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="px-4 pb-4 flex gap-2">
+        <button
+          onClick={() => onView(req)}
+          className="flex-1 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200
+                     text-gray-700 text-xs font-semibold transition-colors"
+        >
+          👁 View &amp; Edit
+        </button>
+
+        {next ? (
+          <button
+            onClick={() => onStatusChange(req.id, next.key)}
+            className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700
+                       text-white text-xs font-semibold transition-colors"
+          >
+            {next.icon} {next.label}
+          </button>
+        ) : (
+          <div className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-center border ${
+            req.status === 'closed'
+              ? 'bg-teal-50 text-teal-700 border-teal-200'
+              : 'bg-green-50 text-green-700 border-green-200'
+          }`}>
+            {req.status === 'closed' ? '🧾 Closed' : '✅ Completed'}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── ViewModal ────────────────────────────────────────────
+function ViewModal({
+  req,
+  onClose,
+  onSave,
+  onStatusChange,
+}: {
+  req:            PickupRequest
+  onClose:        () => void
+  onSave:         (id: number, data: Partial<PickupRequest>) => void
+  onStatusChange: (id: number, status: TabKey) => void
+}) {
+  const [activeTab, setActiveTab] = useState<'info' | 'admin' | 'attachments'>('info')
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
+
+  const [form, setForm] = useState<AdminEditForm>({
+    mcl_number:                  req.mcl_number                  ?? '',
+    fcsd_offer_amount:           req.fcsd_offer_amount?.toString() ?? '',
+    vendor_request_received_at:  req.vendor_request_received_at  ?? '',
+    techemet_request_sent_at:    req.techemet_request_sent_at    ?? '',
+    requested_pickup_date:       req.requested_pickup_date       ?? '',
+    scheduled_pickup_date:       req.scheduled_pickup_date       ?? '',
+    actual_pickup_date:          req.actual_pickup_date          ?? '',
+    date_sent_to_techemet:       req.date_sent_to_techemet       ?? '',
+    invoice_submitted_date:      req.invoice_submitted_date      ?? '',
+    admin_notes:                 req.admin_notes                 ?? '',
+    status:                      req.status,
+  })
 
   const nextMap: Record<TabKey, { key: TabKey; label: string; icon: string } | null> = {
     total_requests:   { key: 'sent_for_pickup',  label: 'Send for Pickup', icon: '🚚' },
     sent_for_pickup:  { key: 'in_transit',        label: 'Mark In Transit', icon: '🔄' },
     in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',    icon: '✅' },
-    shipment_arrived: null,
+    shipment_arrived: { key: 'closed',            label: 'Close MCL',       icon: '🧾' },
+    closed:           null,
   }
-  const next = nextMap[req.status]
+
+  const next = nextMap[form.status]
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const payload: Partial<PickupRequest> = {
+        mcl_number:               form.mcl_number               || undefined,
+        fcsd_offer_amount:        form.fcsd_offer_amount ? Number(form.fcsd_offer_amount) : undefined,
+        vendor_request_received_at: form.vendor_request_received_at || undefined,
+        techemet_request_sent_at: form.techemet_request_sent_at || undefined,
+        requested_pickup_date:    form.requested_pickup_date    || undefined,
+        scheduled_pickup_date:    form.scheduled_pickup_date    || undefined,
+        actual_pickup_date:       form.actual_pickup_date       || undefined,
+        date_sent_to_techemet:    form.date_sent_to_techemet    || undefined,
+        invoice_submitted_date:   form.invoice_submitted_date   || undefined,
+        admin_notes:              form.admin_notes              || undefined,
+        status:                   form.status,
+      }
+
+      // Auto-close if invoice date is set
+      if (form.invoice_submitted_date && form.status !== 'closed') {
+        payload.status = 'closed'
+        setForm(f => ({ ...f, status: 'closed' }))
+      }
+
+      await onSave(req.id, payload)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const modalTabs = [
+    { key: 'info'        as const, label: 'Info',        icon: '📋' },
+    { key: 'admin'       as const, label: 'Admin Fields', icon: '⚙️' },
+    { key: 'attachments' as const, label: 'Attachments',  icon: '📎' },
+  ]
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all duration-200 flex flex-col gap-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#003478] rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            #{req.id}
-          </div>
+        {/* Modal Header */}
+        <div className={`px-5 py-4 flex items-start justify-between gap-3 border-b ${
+          form.status === 'closed'
+            ? 'bg-teal-50 border-teal-100'
+            : 'bg-gray-50 border-gray-100'
+        }`}>
           <div>
-            <h3 className="font-bold text-gray-900 text-sm leading-tight">
-              {req.rcrc_name || 'N/A'}
-            </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              RCRC: {req.rcrc_number || 'N/A'}
+            <div className="flex items-center gap-2 flex-wrap">
+              {req.mcl_number && (
+                <span className="text-xs font-bold text-white bg-gray-800 px-2 py-0.5 rounded-lg">
+                  MCL {req.mcl_number}
+                </span>
+              )}
+              <StatusBadge status={form.status} />
+              {form.invoice_submitted_date && (
+                <span className="text-xs font-bold text-teal-700 bg-teal-100 px-2 py-0.5 rounded-lg">
+                  🧾 Invoiced &amp; Closed
+                </span>
+              )}
+            </div>
+            <p className="text-base font-bold text-gray-900 mt-1">
+              {req.rcrc_name || req.customer_name || 'Unknown RCRC'}
             </p>
+            {req.rcrc_number && (
+              <p className="text-xs text-gray-400">RCRC #{req.rcrc_number}</p>
+            )}
           </div>
-        </div>
-        <StatusBadge status={req.status} />
-      </div>
-
-      {/* MCL + Offer */}
-      <div className={`rounded-xl p-3 border ${req.mcl_number ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <p className="text-xs text-gray-400">🔖 MCL Number</p>
-            <p className={`text-sm font-bold ${req.mcl_number ? 'text-blue-700' : 'text-orange-500 italic'}`}>
-              {req.mcl_number || '⚠️ Not assigned'}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-400">💰 FCSD Offer</p>
-            <p className={`text-sm font-bold ${req.fcsd_offer_amount ? 'text-green-700' : 'text-gray-300'}`}>
-              {req.fcsd_offer_amount
-                ? `$${Number(req.fcsd_offer_amount).toLocaleString()}`
-                : '—'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Info Grid */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-gray-50 rounded-xl p-2.5">
-          <p className="text-xs text-gray-400">👤 Contact</p>
-          <p className="text-xs font-semibold text-gray-800 truncate mt-0.5">{contact}</p>
-        </div>
-        <div className="bg-gray-50 rounded-xl p-2.5">
-          <p className="text-xs text-gray-400">📞 Phone</p>
-          <p className="text-xs font-semibold text-gray-800 mt-0.5">{phone}</p>
-        </div>
-        <div className="bg-gray-50 rounded-xl p-2.5">
-          <p className="text-xs text-gray-400">📦 Plt / Pcs</p>
-          <p className="text-xs font-semibold text-gray-800 mt-0.5">
-            {req.pallet_quantity ?? 0} / {req.total_pieces_quantity ?? 0}
-          </p>
-        </div>
-        <div className="bg-gray-50 rounded-xl p-2.5">
-          <p className="text-xs text-gray-400">📅 Pref. Date</p>
-          <p className="text-xs font-semibold text-gray-800 mt-0.5">
-            {req.preferred_date || '—'}
-          </p>
-        </div>
-      </div>
-
-      {/* Timestamps */}
-      <div className="space-y-1.5 text-xs">
-        {([
-          ['📥 Received',            req.vendor_request_received_at, 'text-gray-700'  ],
-          ['📤 Sent to Techemet',    req.techemet_request_sent_at,   'text-gray-700'  ],
-          ['📬 Date Sent to Techemet', req.date_sent_to_techemet,    'text-blue-700'  ],  // 🆕 NEW
-          ['📅 Scheduled',           req.scheduled_pickup_date,      'text-blue-700'  ],
-          ['🚛 Actual Pickup',       req.actual_pickup_date,         'text-green-700' ],
-        ] as [string, string | undefined, string][]).map(([label, val, col]) => (
-          <div key={label} className="flex items-center justify-between">
-            <span className="text-gray-400">{label}</span>
-            <span className={`font-semibold ${val ? col : 'text-gray-300'}`}>
-              {fmtDate(val)}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Age Footer */}
-      <div className="flex items-center justify-between text-xs text-gray-400 pt-1 border-t border-gray-100">
-        <span>Submitted: {fmtDate(req.created_at)}</span>
-        <span className={`font-semibold ${days > 7 ? 'text-red-500' : days > 2 ? 'text-orange-500' : 'text-gray-400'}`}>
-          {days === 0 ? 'Today' : days === 1 ? '1 day ago' : `${days} days ago`}
-          {days > 7  && ' 🔴'}
-          {days > 2 && days <= 7 && ' ⚠️'}
-        </span>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => onView(req)}
-          className="flex-1 py-2.5 px-3 rounded-xl border-2 border-[#003478] text-[#003478] text-xs font-semibold hover:bg-[#003478] hover:text-white transition-all"
-        >
-          👁️ View &amp; Edit
-        </button>
-        {next ? (
           <button
-            onClick={() => onStatusChange(req.id, next.key)}
-            className="flex-1 py-2.5 px-3 rounded-xl bg-[#003478] text-white text-xs font-semibold hover:bg-blue-900 transition shadow-sm"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1 rounded-lg
+                       hover:bg-gray-100 transition-colors flex-shrink-0 mt-1"
           >
-            {next.icon} {next.label}
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-        ) : (
-          <div className="flex-1 py-2.5 px-3 rounded-xl bg-green-50 text-green-700 text-xs font-semibold text-center border border-green-200">
-            ✅ Completed
-          </div>
-        )}
-      </div>
+        </div>
 
+        {/* Progress */}
+        <div className="px-5 py-2 bg-gray-50 border-b border-gray-100">
+          <ProgressBar status={form.status} />
+        </div>
+
+        {/* Modal Tab Nav */}
+        <div className="flex border-b border-gray-100 bg-white">
+          {modalTabs.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`flex-1 py-3 text-xs font-semibold transition-colors ${
+                activeTab === t.key
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Modal Content */}
+        <div className="flex-1 overflow-y-auto">
+
+          {/* ── INFO TAB ─────────────────────────────────── */}
+          {activeTab === 'info' && (
+            <div className="p-5 space-y-4">
+
+              {/* Closed Banner — Info Tab */}
+              {form.status === 'closed' && (
+                <div className="bg-teal-50 border-2 border-teal-300 rounded-xl p-4
+                                flex items-center gap-3">
+                  <span className="text-3xl">🧾</span>
+                  <div>
+                    <p className="text-teal-700 font-bold text-sm">
+                      MCL Closed — Invoice Submitted
+                    </p>
+                    <p className="text-teal-600 text-xs mt-0.5">
+                      Invoice date: {fmtDate(form.invoice_submitted_date) || '—'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* RCRC Info */}
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  RCRC Details
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ['RCRC Name',    req.rcrc_name           ],
+                    ['RCRC #',       req.rcrc_number         ],
+                    ['Contact',      req.rcrc_contact_person ],
+                    ['Email',        req.rcrc_email          ],
+                    ['Phone',        req.rcrc_phone_number   ],
+                    ['Address',      req.rcrc_address        ],
+                    ['City',         req.city                ],
+                    ['State',        req.state               ],
+                    ['ZIP',          req.rcrc_zip_code       ],
+                    ['Time Window',  req.time_window         ],
+                  ].map(([label, val]) => val ? (
+                    <div key={label as string}>
+                      <p className="text-xs text-gray-400">{label}</p>
+                      <p className="text-sm font-medium text-gray-800">{val}</p>
+                    </div>
+                  ) : null)}
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              {(req.customer_name || req.email || req.phone) && (
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    Customer
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      ['Name',  req.customer_name ],
+                      ['Email', req.email         ],
+                      ['Phone', req.phone         ],
+                    ].map(([label, val]) => val ? (
+                      <div key={label as string}>
+                        <p className="text-xs text-gray-400">{label}</p>
+                        <p className="text-sm font-medium text-gray-800">{val}</p>
+                      </div>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
+
+              {/* Quantities */}
+              {(req.pallet_quantity || req.total_pieces_quantity) && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                    Quantities
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {req.pallet_quantity && (
+                      <div>
+                        <p className="text-xs text-gray-400">Pallets</p>
+                        <p className="text-sm font-bold text-gray-800">
+                          {req.pallet_quantity.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {req.total_pieces_quantity && (
+                      <div>
+                        <p className="text-xs text-gray-400">Total Pieces</p>
+                        <p className="text-sm font-bold text-gray-800">
+                          {req.total_pieces_quantity.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {req.fcsd_offer_amount && (
+                      <div>
+                        <p className="text-xs text-gray-400">Est. Value</p>
+                        <p className="text-sm font-bold text-emerald-700">
+                          {fmtMoney(req.fcsd_offer_amount)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Key Dates */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Key Dates
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {req.date_sent_to_techemet && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                      <p className="text-xs font-bold text-blue-600 mb-0.5">
+                        📬 Date Sent to Techemet
+                      </p>
+                      <p className="text-sm font-semibold text-blue-800">
+                        {fmtDate(req.date_sent_to_techemet)}
+                      </p>
+                    </div>
+                  )}
+                  {req.invoice_submitted_date && (
+                    <div className="bg-teal-50 border border-teal-200 rounded-xl p-3">
+                      <p className="text-xs font-bold text-teal-600 mb-0.5">
+                        🧾 Invoice Submitted
+                      </p>
+                      <p className="text-sm font-semibold text-teal-800">
+                        {fmtDate(req.invoice_submitted_date)}
+                      </p>
+                    </div>
+                  )}
+                  {req.requested_pickup_date && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                      <p className="text-xs font-bold text-gray-600 mb-0.5">
+                        📅 Requested Pickup
+                      </p>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {fmtDate(req.requested_pickup_date)}
+                      </p>
+                    </div>
+                  )}
+                  {req.scheduled_pickup_date && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                      <p className="text-xs font-bold text-gray-600 mb-0.5">
+                        🗓 Scheduled Pickup
+                      </p>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {fmtDate(req.scheduled_pickup_date)}
+                      </p>
+                    </div>
+                  )}
+                  {req.actual_pickup_date && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                      <p className="text-xs font-bold text-green-600 mb-0.5">
+                        🚛 Actual Pickup
+                      </p>
+                      <p className="text-sm font-semibold text-green-800">
+                        {fmtDate(req.actual_pickup_date)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Admin Notes */}
+              {req.admin_notes && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <p className="text-xs font-bold text-amber-600 mb-1">
+                    📝 Admin Notes
+                  </p>
+                  <p className="text-sm text-gray-800">{req.admin_notes}</p>
+                </div>
+              )}
+
+              {/* Status Actions */}
+              {next && form.status !== 'closed' && (
+                <button
+                  onClick={() => {
+                    onStatusChange(req.id, next.key)
+                    setForm(f => ({ ...f, status: next.key }))
+                    onClose()
+                  }}
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700
+                             text-white font-semibold text-sm transition-colors"
+                >
+                  {next.icon} {next.label}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── ADMIN TAB ────────────────────────────────── */}
+          {activeTab === 'admin' && (
+            <div className="p-5 space-y-4">
+
+              {/* Closed Banner — Admin Tab */}
+              {form.status === 'closed' && (
+                <div className="bg-teal-50 border-2 border-teal-300 rounded-xl p-4
+                                flex items-center gap-3">
+                  <span className="text-3xl">🧾</span>
+                  <div>
+                    <p className="text-teal-700 font-bold text-sm">
+                      MCL Closed — Invoice Submitted
+                    </p>
+                    <p className="text-teal-600 text-xs mt-0.5">
+                      Invoice date: {fmtDate(form.invoice_submitted_date) || '—'}
+                    </p>
+                    <p className="text-teal-500 text-xs mt-0.5">
+                      This MCL is fully complete. Edit fields below if needed.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* MCL Number */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">
+                  MCL Number
+                </label>
+                <input
+                  type="text"
+                  value={form.mcl_number}
+                  onChange={e => setForm(f => ({ ...f, mcl_number: e.target.value }))}
+                  placeholder="e.g. 3255"
+                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl
+                             text-sm text-gray-800 focus:ring-2 focus:ring-blue-500
+                             focus:border-transparent outline-none transition"
+                />
+              </div>
+
+              {/* FCSD Offer Amount */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">
+                  Est. Offer Amount ($)
+                </label>
+                <input
+                  type="number"
+                  value={form.fcsd_offer_amount}
+                  onChange={e =>
+                    setForm(f => ({ ...f, fcsd_offer_amount: e.target.value }))
+                  }
+                  placeholder="0.00"
+                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl
+                             text-sm text-gray-800 focus:ring-2 focus:ring-blue-500
+                             focus:border-transparent outline-none transition"
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">
+                  Status
+                </label>
+                <select
+                  value={form.status}
+                  onChange={e => setForm(f => ({ ...f, status: e.target.value as TabKey }))}
+                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl
+                             text-sm text-gray-800 focus:ring-2 focus:ring-blue-500
+                             focus:border-transparent outline-none transition"
+                >
+                  {TABS.map(t => (
+                    <option key={t.key} value={t.key}>{t.icon} {t.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Fields */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  {
+                    key:   'vendor_request_received_at' as keyof AdminEditForm,
+                    label: '📥 Vendor Request Received',
+                    type:  'datetime-local',
+                  },
+                  {
+                    key:   'techemet_request_sent_at'   as keyof AdminEditForm,
+                    label: '📤 Techemet Request Sent',
+                    type:  'datetime-local',
+                  },
+                  {
+                    key:   'requested_pickup_date'      as keyof AdminEditForm,
+                    label: '📅 Requested Pickup Date',
+                    type:  'date',
+                  },
+                  {
+                    key:   'scheduled_pickup_date'      as keyof AdminEditForm,
+                    label: '🗓 Scheduled Pickup Date',
+                    type:  'date',
+                  },
+                  {
+                    key:   'actual_pickup_date'         as keyof AdminEditForm,
+                    label: '🚛 Actual Pickup Date',
+                    type:  'date',
+                  },
+                ].map(field => (
+                  <div key={field.key}>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      {field.label}
+                    </label>
+                    <input
+                      type={field.type}
+                      value={form[field.key] as string}
+                      onChange={e =>
+                        setForm(f => ({ ...f, [field.key]: e.target.value }))
+                      }
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200
+                                 rounded-xl text-sm text-gray-800 focus:ring-2
+                                 focus:ring-blue-500 focus:border-transparent
+                                 outline-none transition"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Date Sent to Techemet + Invoice Submitted Side by Side */}
+              <div className="grid grid-cols-2 gap-4">
+
+                {/* Date Sent to Techemet */}
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                  <label className="block text-xs font-bold text-blue-600 mb-1 uppercase tracking-wide">
+                    📬 Date Sent to Techemet
+                  </label>
+                  <input
+                    type="date"
+                    value={form.date_sent_to_techemet}
+                    onChange={e =>
+                      setForm(f => ({ ...f, date_sent_to_techemet: e.target.value }))
+                    }
+                    className="w-full px-3 py-2.5 bg-white border border-blue-300
+                               rounded-xl text-sm text-gray-800 focus:ring-2
+                               focus:ring-blue-600 focus:border-transparent
+                               outline-none transition"
+                  />
+                  <p className="text-xs text-blue-500 mt-1.5">
+                    Synced from Excel
+                  </p>
+                </div>
+
+                {/* Invoice Submitted Date */}
+                <div className="bg-teal-50 border-2 border-teal-200 rounded-xl p-4">
+                  <label className="block text-xs font-bold text-teal-600 mb-1 uppercase tracking-wide">
+                    🧾 Invoice Submitted Date
+                  </label>
+                  <input
+                    type="date"
+                    value={form.invoice_submitted_date}
+                    onChange={e => {
+                      const val = e.target.value
+                      setForm(f => ({
+                        ...f,
+                        invoice_submitted_date: val,
+                        // Auto-set status to closed when date is entered
+                        status: val ? 'closed' : f.status,
+                      }))
+                    }}
+                    className="w-full px-3 py-2.5 bg-white border border-teal-300
+                               rounded-xl text-sm text-gray-800 focus:ring-2
+                               focus:ring-teal-600 focus:border-transparent
+                               outline-none transition"
+                  />
+                  <p className="text-xs text-teal-500 mt-1.5">
+                    ⚡ Setting date auto-closes MCL
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Admin Notes */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">
+                  📝 Admin Notes
+                </label>
+                <textarea
+                  value={form.admin_notes}
+                  onChange={e =>
+                    setForm(f => ({ ...f, admin_notes: e.target.value }))
+                  }
+                  rows={3}
+                  placeholder="Internal notes..."
+                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl
+                             text-sm text-gray-800 focus:ring-2 focus:ring-blue-500
+                             focus:border-transparent outline-none transition resize-none"
+                />
+              </div>
+
+              {/* Closed Banner — before save button */}
+              {form.status === 'closed' && (
+                <div className="bg-teal-50 border-2 border-teal-300 rounded-xl p-4
+                                flex items-center gap-3">
+                  <span className="text-2xl">🧾</span>
+                  <div>
+                    <p className="text-teal-700 font-bold text-sm">
+                      This MCL will be saved as Closed
+                    </p>
+                    <p className="text-teal-600 text-xs mt-0.5">
+                      Invoice date: {fmtDate(form.invoice_submitted_date) || '—'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Save Button */}
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`w-full py-3 rounded-xl font-semibold text-sm
+                           transition-all duration-200 ${
+                  saving
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : saved
+                      ? 'bg-green-500 text-white'
+                      : form.status === 'closed'
+                        ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : form.status === 'closed' ? '🧾 Save & Close MCL' : '💾 Save Changes'}
+              </button>
+            </div>
+          )}
+
+          {/* ── ATTACHMENTS TAB ──────────────────────────── */}
+          {activeTab === 'attachments' && (
+            <div className="p-5">
+              {req.attachments && req.attachments.length > 0 ? (
+                <div className="space-y-3">
+                  {req.attachments.map((att, i) => (
+                    <a
+                      key={i}
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-gray-50 border
+                                 border-gray-200 rounded-xl hover:bg-gray-100
+                                 transition-colors group"
+                    >
+                      <span className="text-2xl">📎</span>
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600
+                                       font-medium flex-1 truncate">
+                        {att.name}
+                      </span>
+                      <span className="text-xs text-blue-500">Open ↗</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-4xl mb-2">📎</p>
+                  <p className="text-sm">No attachments</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
-// ── Main Dashboard ─────────────────────────────────────────
+// ── Main AdminDashboard Component ────────────────────────
 export default function AdminDashboard() {
-  const router = useRouter()
-
-  const [requests,    setRequests]    = useState<Request[]>([])
+  const [requests,    setRequests]    = useState<PickupRequest[]>([])
   const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState<string | null>(null)
   const [activeTab,   setActiveTab]   = useState<TabKey>('total_requests')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedReq, setSelectedReq] = useState<Request | null>(null)
-  const [toast,       setToast]       = useState<string | null>(null)
+  const [search,      setSearch]      = useState('')
+  const [viewReq,     setViewReq]     = useState<PickupRequest | null>(null)
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [syncing,     setSyncing]     = useState(false)
+  const [syncMsg,     setSyncMsg]     = useState('')
+  const [error,       setError]       = useState('')
 
-  // ── Fetch ──────────────────────────────────────────────
+  // ── Fetch All Requests ──────────────────────────────────
   const fetchRequests = useCallback(async () => {
     setLoading(true)
-    setError(null)
+    setError('')
     try {
-      const res  = await fetch('/api/admin/requests')
-      const data = await res.json()
-      if (data.success) {
-        const normalized = (data.data || []).map((r: Request) => ({
-          ...r,
-          status: r.status || 'total_requests',
-        }))
-        setRequests(normalized)
-      } else {
-        setError(data.error || 'Failed to fetch requests')
-      }
-    } catch (err) {
-      console.error('Fetch error:', err)
-      setError('Network error — could not load requests')
+      const { data, error: err } = await supabase
+        .from('pickup_request')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (err) throw err
+      setRequests((data as PickupRequest[]) ?? [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
@@ -1049,413 +1070,418 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchRequests() }, [fetchRequests])
 
-  // ── Toast ──────────────────────────────────────────────
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }
-
-  // ── Status Change ──────────────────────────────────────
-  const handleStatusChange = async (id: number, status: TabKey) => {
+  // ── Status Change ───────────────────────────────────────
+  const handleStatusChange = useCallback(async (id: number, status: TabKey) => {
     try {
-      const res  = await fetch('/api/admin/update-status', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, status }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-        showToast('✅ Status updated!')
-      } else {
-        showToast('❌ Failed to update status')
-      }
-    } catch {
-      showToast('❌ Network error')
-    }
-  }
+      const { error: err } = await supabase
+        .from('pickup_request')
+        .update({ status, status_updated_at: new Date().toISOString() })
+        .eq('id', id)
 
-  // ── Admin Update ───────────────────────────────────────
-  const handleAdminUpdate = async (id: number, form: AdminEditForm) => {
+      if (err) throw err
+
+      setRequests(prev =>
+        prev.map(r => r.id === id ? { ...r, status } : r)
+      )
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Status update failed')
+    }
+  }, [])
+
+  // ── Admin Save ──────────────────────────────────────────
+  const handleAdminSave = useCallback(async (
+    id: number,
+    data: Partial<PickupRequest>
+  ) => {
+    const res = await fetch('/api/admin/update-request', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id, ...data }),
+    })
+
+    if (!res.ok) {
+      const j = await res.json()
+      throw new Error(j.error ?? 'Save failed')
+    }
+
+    const { data: updated } = await res.json()
+    setRequests(prev =>
+      prev.map(r => r.id === id ? { ...r, ...updated } : r)
+    )
+    if (viewReq?.id === id) {
+      setViewReq(prev => prev ? { ...prev, ...updated } : null)
+    }
+  }, [viewReq])
+
+  // ── Manual Sync ─────────────────────────────────────────
+  const handleSync = useCallback(async () => {
+    setSyncing(true)
+    setSyncMsg('')
     try {
-      console.log('💾 Saving admin update for ID:', id, form)
-
-      const res  = await fetch('/api/admin/update-request', {
-        method:  'POST',
+      const res = await fetch('/api/admin/sync-from-powerautomate', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, ...form }),
+        body: JSON.stringify({ rows: [] }),
       })
-      const data = await res.json()
-      console.log('💾 Save response:', data)
-
-      if (data.success) {
-        setRequests(prev =>
-          prev.map(r =>
-            r.id === id
-              ? {
-                  ...r,
-                  mcl_number:                 form.mcl_number                 || r.mcl_number,
-                  fcsd_offer_amount:          form.fcsd_offer_amount          ? Number(form.fcsd_offer_amount) : r.fcsd_offer_amount,
-                  vendor_request_received_at: form.vendor_request_received_at || r.vendor_request_received_at,
-                  techemet_request_sent_at:   form.techemet_request_sent_at   || r.techemet_request_sent_at,
-                  requested_pickup_date:      form.requested_pickup_date      || r.requested_pickup_date,
-                  scheduled_pickup_date:      form.scheduled_pickup_date      || r.scheduled_pickup_date,
-                  actual_pickup_date:         form.actual_pickup_date         || r.actual_pickup_date,
-                  date_sent_to_techemet:      form.date_sent_to_techemet      || r.date_sent_to_techemet,  // 🆕 NEW
-                  admin_notes:                form.admin_notes                || r.admin_notes,
-                  status:                     form.status,
-                }
-              : r
-          )
-        )
-        showToast('✅ Admin details saved successfully!')
-        setTimeout(() => fetchRequests(), 1000)
-      } else {
-        console.error('Save failed:', data.error)
-        showToast(`❌ Failed to save: ${data.error}`)
-      }
-    } catch (err) {
-      console.error('Save error:', err)
-      showToast('❌ Network error — could not save')
+      const j = await res.json()
+      setSyncMsg(
+        `✅ Sync done — inserted: ${j.inserted ?? 0}, updated: ${j.updated ?? 0}`
+      )
+      await fetchRequests()
+    } catch (e) {
+      setSyncMsg(e instanceof Error ? `❌ ${e.message}` : '❌ Sync failed')
+    } finally {
+      setSyncing(false)
+      setTimeout(() => setSyncMsg(''), 4000)
     }
-  }
+  }, [fetchRequests])
 
-  // ── Logout ─────────────────────────────────────────────
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/login/admin')
-  }
-
-  // ── Export CSV ─────────────────────────────────────────
-  const exportCSV = () => {
+  // ── Export CSV ──────────────────────────────────────────
+  function exportCSV() {
     const headers = [
-      'ID', 'MCL Number', 'RCRC Number', 'RCRC Name',
-      'Contact', 'Phone', 'Email', 'City', 'State',
-      'Preferred Date', 'Pallets', 'Pieces',
-      'FCSD Offer', 'Vendor Request Received',
-      'Techemet Request Sent', 'Requested Pickup Date',
-      'Scheduled Pickup Date', 'Actual Pickup Date',
-      'Date Sent to Techemet',    // 🆕 NEW
+      'ID', 'MCL #', 'RCRC Name', 'RCRC #', 'Contact', 'Email', 'Phone',
+      'Address', 'City', 'State', 'ZIP', 'Time Window',
+      'Pallets', 'Total Pieces', 'Est Value',
+      'Requested Pickup', 'Scheduled Pickup', 'Actual Pickup',
+      'Date Sent to Techemet', 'Invoice Submitted Date',
       'Status', 'Admin Notes', 'Submitted',
     ]
-    const rows = filteredRequests.map(r => [
+
+    const rows = filtered.map(r => [
       r.id,
-      r.mcl_number                || '',
-      r.rcrc_number               || '',
-      r.rcrc_name                 || '',
-      r.rcrc_contact_person       || r.customer_name || '',
-      r.rcrc_phone_number         || r.phone         || '',
-      r.email                     || '',
-      r.city                      || '',
-      r.state                     || '',
-      r.preferred_date            || '',
-      r.pallet_quantity           ?? 0,
-      r.total_pieces_quantity     ?? 0,
-      r.fcsd_offer_amount         ?? '',
-      fmtDateTime(r.vendor_request_received_at),
-      fmtDateTime(r.techemet_request_sent_at),
+      r.mcl_number           ?? '',
+      r.rcrc_name            ?? '',
+      r.rcrc_number          ?? '',
+      r.rcrc_contact_person  ?? '',
+      r.rcrc_email           ?? '',
+      r.rcrc_phone_number    ?? '',
+      r.rcrc_address         ?? '',
+      r.city                 ?? '',
+      r.state                ?? '',
+      r.rcrc_zip_code        ?? '',
+      r.time_window          ?? '',
+      r.pallet_quantity      ?? '',
+      r.total_pieces_quantity ?? '',
+      r.fcsd_offer_amount    ?? '',
       fmtDate(r.requested_pickup_date),
       fmtDate(r.scheduled_pickup_date),
       fmtDate(r.actual_pickup_date),
-      fmtDate(r.date_sent_to_techemet),   // 🆕 NEW
+      fmtDate(r.date_sent_to_techemet),
+      fmtDate(r.invoice_submitted_date),
       r.status,
-      `"${(r.admin_notes || '').replace(/"/g, '""')}"`,
-      fmtDateTime(r.created_at),
+      r.admin_notes          ?? '',
+      fmtDate(r.created_at),
     ])
-    const csv  = [headers, ...rows].map(r => r.join(',')).join('\n')
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+
     const blob = new Blob([csv], { type: 'text/csv' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `paycat-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `mcl-requests-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    showToast('📥 CSV downloaded!')
   }
 
-  // ── Computed ───────────────────────────────────────────
-  const counts = {
+  // ── Counts & Filtered ───────────────────────────────────
+  const counts: Record<TabKey, number> = {
     total_requests:   requests.filter(r => r.status === 'total_requests').length,
     sent_for_pickup:  requests.filter(r => r.status === 'sent_for_pickup').length,
     in_transit:       requests.filter(r => r.status === 'in_transit').length,
     shipment_arrived: requests.filter(r => r.status === 'shipment_arrived').length,
+    closed:           requests.filter(r => r.status === 'closed').length,
   }
 
-  const filteredRequests = requests.filter(r => {
-    const matchTab    = r.status === activeTab
-    const q           = searchQuery.toLowerCase()
-    const matchSearch = !q
-      || (r.rcrc_name           || '').toLowerCase().includes(q)
-      || (r.rcrc_number         || '').toLowerCase().includes(q)
-      || (r.rcrc_contact_person || '').toLowerCase().includes(q)
-      || (r.customer_name       || '').toLowerCase().includes(q)
-      || (r.mcl_number          || '').toLowerCase().includes(q)
-      || (r.city                || '').toLowerCase().includes(q)
-      || String(r.id).includes(q)
-    return matchTab && matchSearch
+  const filtered = requests.filter(r => {
+    if (r.status !== activeTab) return false
+    if (!search.trim())         return true
+    const q = search.toLowerCase()
+    return (
+      r.mcl_number?.toLowerCase().includes(q)          ||
+      r.rcrc_name?.toLowerCase().includes(q)           ||
+      r.rcrc_number?.toLowerCase().includes(q)         ||
+      r.customer_name?.toLowerCase().includes(q)       ||
+      r.rcrc_contact_person?.toLowerCase().includes(q) ||
+      false
+    )
   })
 
-  const overdueReqs = requests.filter(r => {
-    const days = getDaysOld(r.created_at)
-    return days > 2 && r.status !== 'shipment_arrived'
-  })
-
-  const missingMCL = requests.filter(
-    r => !r.mcl_number && r.status !== 'shipment_arrived'
-  ).length
-
-  // ── Render ─────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium">
-          {toast}
-        </div>
-      )}
+      {/* Top Bar */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
 
-      {/* Modal */}
-      {selectedReq && (
-        <ViewModal
-          req={selectedReq}
-          onClose={() => setSelectedReq(null)}
-          onStatusChange={(id, status) => {
-            handleStatusChange(id, status)
-            setSelectedReq(prev => prev ? { ...prev, status } : null)
-          }}
-          onAdminUpdate={handleAdminUpdate}
-        />
-      )}
+            {/* Title */}
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-gray-900">
+                🏭 MCL Admin
+              </span>
+              <span className="text-xs text-gray-400 hidden sm:block">
+                Scrap Pickup Dashboard
+              </span>
+            </div>
 
-      {/* Navbar */}
-      <nav className="bg-[#003478] shadow-lg sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <span className="text-xl">🏭</span>
-            </div>
-            <div>
-              <h1 className="text-white font-bold text-base leading-tight">
-                Ford Component Sales
-              </h1>
-              <p className="text-blue-200 text-xs">Paycat Pickup Dashboard</p>
-            </div>
+            {/* Actions */}
+<div className="flex items-center gap-2 flex-wrap">
+
+  {/* Sync Status Message */}
+  {syncMsg && (
+    <span className={`text-xs px-3 py-1.5 rounded-lg font-medium ${
+      syncMsg.startsWith('✅')
+        ? 'bg-green-100 text-green-700'
+        : syncMsg.startsWith('❌')
+          ? 'bg-red-100 text-red-700'
+          : 'bg-gray-100 text-gray-600'
+    }`}>
+      {syncMsg}
+    </span>
+  )}
+
+  {/* Analytics Toggle */}
+  <button
+    onClick={() => setShowAnalytics(s => !s)}
+    className="text-xs font-semibold px-3 py-2 rounded-xl
+               bg-gray-100 hover:bg-gray-200 text-gray-700
+               transition-colors whitespace-nowrap"
+  >
+    📊 {showAnalytics ? 'Hide' : 'Analytics'}
+  </button>
+
+  {/* 🔄 Sync Button — Triggers Power Automate */}
+  <button
+    onClick={handleSync}
+    disabled={syncing}
+    className={`text-xs font-semibold px-4 py-2 rounded-xl
+               text-white transition-colors whitespace-nowrap
+               flex items-center gap-1.5 ${
+      syncing
+        ? 'bg-blue-400 cursor-not-allowed'
+        : 'bg-blue-600 hover:bg-blue-700'
+    }`}
+  >
+    {syncing
+      ? (<><span className="animate-spin inline-block">⏳</span> Syncing...</>)
+      : (<>🔄 Sync Excel</>)
+    }
+  </button>
+
+  {/* Export CSV */}
+  <button
+    onClick={exportCSV}
+    className="text-xs font-semibold px-3 py-2 rounded-xl
+               bg-emerald-600 hover:bg-emerald-700 text-white
+               transition-colors whitespace-nowrap"
+  >
+    📥 Export CSV
+  </button>
+
+  {/* Refresh from Supabase */}
+  <button
+    onClick={fetchRequests}
+    disabled={loading}
+    className="text-xs font-semibold px-3 py-2 rounded-xl
+               bg-gray-100 hover:bg-gray-200 text-gray-700
+               transition-colors whitespace-nowrap"
+  >
+    {loading ? '⏳' : '↺'} Refresh
+  </button>
+
+</div>
+
+{/* Actions */}
+<div className="flex items-center gap-2 flex-wrap">
+
+  {/* Sync Status Message */}
+  {syncMsg && (
+    <span className={`text-xs px-3 py-1.5 rounded-lg font-medium ${
+      syncMsg.startsWith('✅')
+        ? 'bg-green-100 text-green-700'
+        : syncMsg.startsWith('❌')
+          ? 'bg-red-100 text-red-700'
+          : 'bg-gray-100 text-gray-600'
+    }`}>
+      {syncMsg}
+    </span>
+  )}
+
+  {/* Analytics Toggle */}
+  <button
+    onClick={() => setShowAnalytics(s => !s)}
+    className="text-xs font-semibold px-3 py-2 rounded-xl
+               bg-gray-100 hover:bg-gray-200 text-gray-700
+               transition-colors whitespace-nowrap"
+  >
+    📊 {showAnalytics ? 'Hide' : 'Analytics'}
+  </button>
+
+  {/* 🔄 Sync Button — Triggers Power Automate */}
+  <button
+    onClick={handleSync}
+    disabled={syncing}
+    className={`text-xs font-semibold px-4 py-2 rounded-xl
+               text-white transition-colors whitespace-nowrap
+               flex items-center gap-1.5 ${
+      syncing
+        ? 'bg-blue-400 cursor-not-allowed'
+        : 'bg-blue-600 hover:bg-blue-700'
+    }`}
+  >
+    {syncing
+      ? (<><span className="animate-spin inline-block">⏳</span> Syncing...</>)
+      : (<>🔄 Sync Excel</>)
+    }
+  </button>
+
+  {/* Export CSV */}
+  <button
+    onClick={exportCSV}
+    className="text-xs font-semibold px-3 py-2 rounded-xl
+               bg-emerald-600 hover:bg-emerald-700 text-white
+               transition-colors whitespace-nowrap"
+  >
+    📥 Export CSV
+  </button>
+
+  {/* Refresh from Supabase */}
+  <button
+    onClick={fetchRequests}
+    disabled={loading}
+    className="text-xs font-semibold px-3 py-2 rounded-xl
+               bg-gray-100 hover:bg-gray-200 text-gray-700
+               transition-colors whitespace-nowrap"
+  >
+    {loading ? '⏳' : '↺'} Refresh
+  </button>
+
+</div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1.5"
-          >
-            🚪 Logout
-          </button>
         </div>
-      </nav>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6">
 
-        {/* Greeting */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {new Date().getHours() < 12
-              ? 'Good Morning'
-              : new Date().getHours() < 17
-              ? 'Good Afternoon'
-              : 'Good Evening'}, Girish! 👋
-          </h2>
-          <p className="text-gray-500 text-sm mt-0.5">
-            {new Date().toLocaleDateString('en-IN', {
-              weekday: 'long', day: 'numeric',
-              month: 'long', year: 'numeric',
-            })}
-          </p>
-        </div>
+        {/* Analytics */}
+        {showAnalytics && <AnalyticsDashboard requests={requests} />}
 
-        {/* Error Banner */}
+        {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
-            <p className="text-red-700 font-bold text-sm">❌ {error}</p>
-            <button
-              onClick={fetchRequests}
-              className="text-red-600 underline text-xs mt-1"
-            >
-              Try again
-            </button>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm text-red-700">
+            ❌ {error}
           </div>
         )}
 
-        {/* Alert Banners */}
-        <div className="space-y-3 mb-6">
-          {overdueReqs.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-              <p className="text-red-700 font-bold text-sm mb-2">
-                ⚠️ {overdueReqs.length} request{overdueReqs.length > 1 ? 's' : ''} pending more than 2 days!
-              </p>
-              <div className="space-y-1.5">
-                {overdueReqs.slice(0, 3).map(r => {
-                  const d = getDaysOld(r.created_at)
-                  return (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between text-xs bg-red-100 rounded-lg px-3 py-1.5 text-red-700"
-                    >
-                      <span>#{r.id} — {r.rcrc_name || 'N/A'}</span>
-                      <span className="font-bold">{d} days</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {missingMCL > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
-              <p className="text-orange-700 font-bold text-sm">
-                🔖 {missingMCL} request{missingMCL > 1 ? 's' : ''} missing
-                MCL Number — click View &amp; Edit to assign!
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Analytics Dashboard */}
-        {!loading && (
-          <AnalyticsDashboard
-            requests={requests}
-            onSelectRequest={setSelectedReq}
-          />
-        )}
-
-        {/* 4 Tab Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        {/* Tab Bar */}
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-5 scrollbar-hide">
           {TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`rounded-2xl p-4 text-left transition-all duration-200 border-2 ${
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl
+                         text-sm font-semibold transition-all duration-200 border ${
                 activeTab === tab.key
-                  ? `${tab.bg} ${tab.border} shadow-md scale-105`
-                  : 'bg-white border-transparent shadow-sm hover:shadow-md'
+                  ? `${tab.bg} ${tab.color} ${tab.border} shadow-sm`
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-3xl">{tab.icon}</span>
-                {activeTab === tab.key && (
-                  <span className={`text-xs font-bold ${tab.color} bg-white/70 px-2 py-0.5 rounded-full`}>
-                    Active
-                  </span>
-                )}
-              </div>
-              <p className={`text-4xl font-black mb-1 ${
-                activeTab === tab.key ? tab.color : 'text-gray-800'
+              <span>{tab.icon}</span>
+              <span className="hidden sm:block">{tab.label}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                activeTab === tab.key
+                  ? `${tab.color} bg-white/70`
+                  : 'bg-gray-100 text-gray-500'
               }`}>
                 {counts[tab.key]}
-              </p>
-              <p className="text-xs font-semibold text-gray-500 leading-tight">{tab.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{tab.desc}</p>
+              </span>
             </button>
           ))}
         </div>
 
-        {/* Search + Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search by RCRC name, MCL number, contact, city..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#003478] focus:border-transparent outline-none shadow-sm"
-            />
-          </div>
-          <button
-            onClick={exportCSV}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-[#003478] text-white text-sm font-semibold rounded-xl hover:bg-blue-900 transition shadow-sm"
-          >
-            📥 Export CSV
-          </button>
-          <button
-            onClick={fetchRequests}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-white text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 transition shadow-sm border border-gray-200"
-          >
-            🔄 Refresh
-          </button>
+        {/* Search */}
+        <div className="relative mb-5">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by MCL #, RCRC name, contact..."
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200
+                       rounded-xl text-sm focus:ring-2 focus:ring-blue-500
+                       focus:border-transparent outline-none transition"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            🔍
+          </span>
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2
+                         text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Tab Title */}
+        {/* Active Tab Description */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
-            {TABS.find(t => t.key === activeTab)?.icon}
-            {TABS.find(t => t.key === activeTab)?.label}
-            <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-semibold">
-              {filteredRequests.length}
-            </span>
-          </h3>
           <p className="text-xs text-gray-400">
-            Click View &amp; Edit to fill admin details
+            {TABS.find(t => t.key === activeTab)?.desc} • {filtered.length} record{filtered.length !== 1 ? 's' : ''}
           </p>
         </div>
 
-        {/* Loading Skeleton */}
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white rounded-2xl p-5 animate-pulse h-80 shadow-sm">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
-                <div className="h-3 bg-gray-100 rounded w-1/2 mb-6" />
-                {[1, 2, 3, 4].map(j => (
-                  <div key={j} className="h-12 bg-gray-100 rounded-xl mb-2" />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && filteredRequests.length === 0 && !error && (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">
-              {TABS.find(t => t.key === activeTab)?.icon}
+        {/* Content */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent
+                             rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-gray-500">Loading requests...</p>
             </div>
-            <h3 className="text-lg font-bold text-gray-600 mb-2">
-              No {TABS.find(t => t.key === activeTab)?.label}
-            </h3>
-            <p className="text-gray-400 text-sm">
-              {searchQuery
-                ? <>No results for &ldquo;{searchQuery}&rdquo;</>
-                : 'No requests in this category yet'}
-            </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="mt-4 text-sm text-[#003478] hover:underline font-semibold"
-              >
-                Clear Search
-              </button>
-            )}
           </div>
-        )}
-
-        {/* Request Cards Grid */}
-        {!loading && filteredRequests.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredRequests.map(req => (
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">
+            <p className="text-5xl mb-3">
+              {TABS.find(t => t.key === activeTab)?.icon}
+            </p>
+            <p className="text-base font-semibold text-gray-500 mb-1">
+              No records found
+            </p>
+            <p className="text-sm">
+              {search
+                ? 'Try a different search term'
+                : `No ${TABS.find(t => t.key === activeTab)?.label} yet`
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map(req => (
               <RequestCard
                 key={req.id}
                 req={req}
-                onView={setSelectedReq}
+                onView={setViewReq}
                 onStatusChange={handleStatusChange}
               />
             ))}
           </div>
         )}
+      </div>
 
-      </main>
+      {/* View Modal */}
+      {viewReq && (
+        <ViewModal
+          req={viewReq}
+          onClose={() => setViewReq(null)}
+          onSave={handleAdminSave}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </div>
   )
 }
