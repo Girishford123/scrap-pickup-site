@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// ── Types ────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────
 type TabKey =
   | 'total_requests'
   | 'sent_for_pickup'
@@ -61,67 +61,13 @@ interface PickupRequest {
   invoice_submitted_date?:     string
 }
 
-interface AdminEditForm {
-  mcl_number:                  string
-  fcsd_offer_amount:           string
-  vendor_request_received_at:  string
-  techemet_request_sent_at:    string
-  requested_pickup_date:       string
-  scheduled_pickup_date:       string
-  actual_pickup_date:          string
-  date_sent_to_techemet:       string
-  invoice_submitted_date:      string
-  admin_notes:                 string
-  status:                      TabKey
-}
-
-// ── Constants ────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────
 const TABS = [
-  {
-    key:    'total_requests'   as TabKey,
-    label:  'Total Requests',
-    icon:   '📋',
-    color:  'text-blue-700',
-    bg:     'bg-blue-50',
-    border: 'border-blue-300',
-    desc:   'All incoming requests',
-  },
-  {
-    key:    'sent_for_pickup'  as TabKey,
-    label:  'Sent for Pickup',
-    icon:   '🚚',
-    color:  'text-yellow-700',
-    bg:     'bg-yellow-50',
-    border: 'border-yellow-300',
-    desc:   'Dispatched to Techemet',
-  },
-  {
-    key:    'in_transit'       as TabKey,
-    label:  'In Transit',
-    icon:   '🔄',
-    color:  'text-purple-700',
-    bg:     'bg-purple-50',
-    border: 'border-purple-300',
-    desc:   'Pickup completed, in transit',
-  },
-  {
-    key:    'shipment_arrived' as TabKey,
-    label:  'Shipment Arrived',
-    icon:   '✅',
-    color:  'text-green-700',
-    bg:     'bg-green-50',
-    border: 'border-green-300',
-    desc:   'Arrived at destination',
-  },
-  {
-    key:    'closed'           as TabKey,
-    label:  'Closed',
-    icon:   '🧾',
-    color:  'text-teal-700',
-    bg:     'bg-teal-50',
-    border: 'border-teal-300',
-    desc:   'Invoice submitted — MCL closed',
-  },
+  { key: 'total_requests'   as TabKey, label: 'Total Requests',   icon: '📋', color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-300',   desc: 'All incoming requests'              },
+  { key: 'sent_for_pickup'  as TabKey, label: 'Sent for Pickup',  icon: '🚚', color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-300', desc: 'Dispatched to Techemet'             },
+  { key: 'in_transit'       as TabKey, label: 'In Transit',       icon: '🔄', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-300', desc: 'Pickup completed, in transit'       },
+  { key: 'shipment_arrived' as TabKey, label: 'Shipment Arrived', icon: '✅', color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-300',  desc: 'Arrived at destination'             },
+  { key: 'closed'           as TabKey, label: 'Closed',           icon: '🧾', color: 'text-teal-700',   bg: 'bg-teal-50',   border: 'border-teal-300',   desc: 'Invoice submitted — MCL closed'     },
 ]
 
 const STATUS_FLOW = [
@@ -132,35 +78,26 @@ const STATUS_FLOW = [
   { key: 'closed'           as TabKey, label: 'Closed',          icon: '🧾', color: 'bg-teal-500'   },
 ]
 
-// ── Helpers ──────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────
 function fmtDate(val?: string | null): string {
   if (!val) return '—'
   const d = new Date(val)
   if (isNaN(d.getTime())) return val
   return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day:   'numeric',
-    year:  'numeric',
+    month: 'short', day: 'numeric', year: 'numeric',
   })
 }
 
 function fmtMoney(val?: number | null): string {
   if (val == null) return '—'
   return new Intl.NumberFormat('en-US', {
-    style:                 'currency',
-    currency:              'USD',
-    maximumFractionDigits: 0,
+    style: 'currency', currency: 'USD', maximumFractionDigits: 0,
   }).format(val)
 }
 
-// ── StatusBadge ──────────────────────────────────────────
+// ── StatusBadge ───────────────────────────────────────────
 function StatusBadge({ status }: { status: TabKey }) {
-  const map: Record<TabKey, {
-    label: string
-    icon:  string
-    bg:    string
-    text:  string
-  }> = {
+  const map: Record<TabKey, { label: string; icon: string; bg: string; text: string }> = {
     total_requests:   { label: 'New Request',     icon: '📋', bg: 'bg-blue-100',   text: 'text-blue-700'   },
     sent_for_pickup:  { label: 'Sent for Pickup', icon: '🚚', bg: 'bg-yellow-100', text: 'text-yellow-700' },
     in_transit:       { label: 'In Transit',      icon: '🔄', bg: 'bg-purple-100', text: 'text-purple-700' },
@@ -169,18 +106,16 @@ function StatusBadge({ status }: { status: TabKey }) {
   }
   const s = map[status] ?? map.total_requests
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                      text-xs font-semibold ${s.bg} ${s.text}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5
+                      rounded-full text-xs font-semibold ${s.bg} ${s.text}`}>
       {s.icon} {s.label}
     </span>
   )
 }
 
-// ── ProgressBar ──────────────────────────────────────────
+// ── ProgressBar ───────────────────────────────────────────
 function ProgressBar({ status }: { status: TabKey }) {
-  const idx   = STATUS_FLOW.findIndex(s => s.key === status)
-  const total = STATUS_FLOW.length
-
+  const idx = STATUS_FLOW.findIndex(s => s.key === status)
   return (
     <div className="flex items-center gap-1 w-full">
       {STATUS_FLOW.map((step, i) => (
@@ -188,7 +123,7 @@ function ProgressBar({ status }: { status: TabKey }) {
           <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
             i <= idx ? step.color : 'bg-gray-200'
           }`} />
-          {i < total - 1 && (
+          {i < STATUS_FLOW.length - 1 && (
             <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
               i < idx ? STATUS_FLOW[i + 1].color : 'bg-gray-200'
             }`} />
@@ -198,22 +133,293 @@ function ProgressBar({ status }: { status: TabKey }) {
     </div>
   )
 }
-// ── Analytics Dashboard ──────────────────────────────────
-function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
+// ─────────────────────────────────────────────────────────
+// SlowMCLsModal
+// ─────────────────────────────────────────────────────────
+function SlowMCLsModal({
+  requests,
+  band,
+  onClose,
+}: {
+  requests: PickupRequest[]
+  band:     'fast' | 'normal' | 'slow'
+  onClose:  () => void
+}) {
+  const [sortBy, setSortBy] = useState<'days' | 'value' | 'rcrc' | 'date'>('days')
 
-  // ── Filter out test records (RCRC 9999) ─────────────────
+  const bandConfig = {
+    fast:   { label: 'Fast (0–14 days)',    icon: '⚡', color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200',  badge: 'bg-green-100 text-green-700',   filter: (d: number) => d >= 0 && d <= 14 },
+    normal: { label: 'Normal (15–21 days)', icon: '⏱', color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200', badge: 'bg-yellow-100 text-yellow-700', filter: (d: number) => d > 14 && d <= 21 },
+    slow:   { label: 'Slow (21+ days)',     icon: '🔴', color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200',    badge: 'bg-red-100 text-red-700',       filter: (d: number) => d > 21            },
+  }
+
+  const config = bandConfig[band]
+
+  function daysBetween(start?: string | null, end?: string | null): number | null {
+    if (!start || !end) return null
+    const s = new Date(start)
+    const e = new Date(end)
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return null
+    const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24))
+    if (Math.abs(diff) > 365) return null
+    return diff >= 0 ? diff : null
+  }
+
+  const mcls = requests
+    .map(r => ({
+      ...r,
+      cycleDays: r.invoice_submitted_date
+        ? daysBetween(r.requested_pickup_date, r.invoice_submitted_date)
+        : daysBetween(r.requested_pickup_date, new Date().toISOString().slice(0, 10)),
+    }))
+    .filter(r => r.cycleDays !== null && config.filter(r.cycleDays!))
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'days':  return (b.cycleDays ?? 0) - (a.cycleDays ?? 0)
+        case 'value': return (b.fcsd_offer_amount ?? 0) - (a.fcsd_offer_amount ?? 0)
+        case 'rcrc':  return (a.rcrc_name ?? '').localeCompare(b.rcrc_name ?? '')
+        case 'date':  return (a.requested_pickup_date ?? '').localeCompare(b.requested_pickup_date ?? '')
+        default:      return 0
+      }
+    })
+
+  const totalValue = mcls.reduce((s, r) => s + (r.fcsd_offer_amount ?? 0), 0)
+
+  const statusStyle: Record<string, string> = {
+    total_requests:   'bg-blue-100   text-blue-700',
+    sent_for_pickup:  'bg-yellow-100 text-yellow-700',
+    in_transit:       'bg-purple-100 text-purple-700',
+    shipment_arrived: 'bg-green-100  text-green-700',
+    closed:           'bg-teal-100   text-teal-700',
+  }
+
+  const statusLabel: Record<string, string> = {
+    total_requests:   'New',
+    sent_for_pickup:  'Sent',
+    in_transit:       'In Transit',
+    shipment_arrived: 'Arrived',
+    closed:           'Closed',
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center
+                 bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl
+                   max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`${config.bg} border-b ${config.border}
+                        rounded-t-3xl px-6 py-4 flex items-start justify-between`}>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{config.icon}</span>
+              <h2 className={`text-xl font-bold ${config.color}`}>{config.label}</h2>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              {mcls.length} MCLs • Total Value: {fmtMoney(totalValue)}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-3xl leading-none font-light mt-1"
+          >×</button>
+        </div>
+
+        {/* Sort Controls */}
+        <div className="px-6 py-3 border-b border-gray-100 flex items-center
+                        gap-2 flex-wrap bg-gray-50/50">
+          <span className="text-xs text-gray-400 font-medium mr-1">Sort by:</span>
+          {([
+            { key: 'days'  as const, label: '📅 Most Delayed' },
+            { key: 'value' as const, label: '💰 Value'        },
+            { key: 'rcrc'  as const, label: '🏢 RCRC Name'    },
+            { key: 'date'  as const, label: '🗓 Request Date'  },
+          ]).map(s => (
+            <button
+              key={s.key}
+              onClick={() => setSortBy(s.key)}
+              className={`text-xs px-3 py-1.5 rounded-lg font-semibold
+                         transition-colors ${
+                sortBy === s.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+              }`}
+            >{s.label}</button>
+          ))}
+          <div className="ml-auto flex gap-2">
+            <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1
+                             rounded-full font-semibold">
+              {mcls.length} MCLs
+            </span>
+            <span className="text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1
+                             rounded-full font-semibold">
+              {fmtMoney(totalValue)}
+            </span>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          {mcls.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <p className="text-4xl mb-3">🎉</p>
+              <p className="font-semibold">No MCLs in this category!</p>
+            </div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-white">
+                <tr className="border-b-2 border-gray-100">
+                  {[
+                    { label: '#',           align: 'text-left'  },
+                    { label: 'MCL #',       align: 'text-left'  },
+                    { label: 'RCRC Name',   align: 'text-left'  },
+                    { label: 'RCRC #',      align: 'text-left'  },
+                    { label: 'Status',      align: 'text-left'  },
+                    { label: 'Requested',   align: 'text-left'  },
+                    { label: 'Last Update', align: 'text-left'  },
+                    { label: 'Est. Value',  align: 'text-right' },
+                    { label: 'Pieces',      align: 'text-right' },
+                    { label: 'Cycle Days',  align: 'text-right' },
+                    { label: 'Delay Stage', align: 'text-left'  },
+                  ].map(h => (
+                    <th key={h.label}
+                        className={`${h.align} py-2.5 px-2 font-bold
+                                   text-gray-500 whitespace-nowrap`}>
+                      {h.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {mcls.map((r, i) => {
+                  const delayStage =
+                    !r.date_sent_to_techemet  ? '⏳ Waiting → Techemet' :
+                    !r.scheduled_pickup_date  ? '📅 Waiting → Schedule' :
+                    !r.actual_pickup_date     ? '🚛 Waiting → Pickup'   :
+                    !r.invoice_submitted_date ? '🧾 Waiting → Invoice'  :
+                                               '✅ Complete'
+
+                  const lastUpdate =
+                    r.invoice_submitted_date ??
+                    r.actual_pickup_date     ??
+                    r.scheduled_pickup_date  ??
+                    r.date_sent_to_techemet  ??
+                    r.requested_pickup_date  ?? '—'
+
+                  return (
+                    <tr key={r.id}
+                        className="border-b border-gray-50 hover:bg-red-50/30
+                                   transition-colors">
+                      <td className="py-3 px-2 text-gray-400 font-bold">{i + 1}</td>
+                      <td className="py-3 px-2 font-bold text-gray-800">
+                        {r.mcl_number ?? '—'}
+                      </td>
+                      <td className="py-3 px-2 text-gray-700 font-semibold
+                                     max-w-[120px] truncate">
+                        {r.rcrc_name ?? '—'}
+                      </td>
+                      <td className="py-3 px-2 text-gray-500">
+                        {r.rcrc_number ?? '—'}
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className={`px-2 py-0.5 rounded-full font-semibold
+                          whitespace-nowrap ${statusStyle[r.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {statusLabel[r.status] ?? r.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-gray-500 whitespace-nowrap">
+                        {r.requested_pickup_date ?? '—'}
+                      </td>
+                      <td className="py-3 px-2 text-gray-500 whitespace-nowrap">
+                        {lastUpdate}
+                      </td>
+                      <td className="py-3 px-2 text-right font-bold
+                                     text-emerald-700 whitespace-nowrap">
+                        {r.fcsd_offer_amount ? fmtMoney(r.fcsd_offer_amount) : '—'}
+                      </td>
+                      <td className="py-3 px-2 text-right text-gray-600">
+                        {r.total_pieces_quantity?.toLocaleString() ?? '—'}
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <span className={`font-bold px-2.5 py-1 rounded-full
+                                         text-xs ${config.badge}`}>
+                          {r.cycleDays}d
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-gray-500 whitespace-nowrap">
+                        {delayStage}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold">
+                  <td colSpan={7} className="py-2.5 px-2 text-gray-600">
+                    Total — {mcls.length} MCLs
+                  </td>
+                  <td className="py-2.5 px-2 text-right text-emerald-700">
+                    {fmtMoney(totalValue)}
+                  </td>
+                  <td className="py-2.5 px-2 text-right text-gray-600">
+                    {mcls.reduce((s, r) => s + (r.total_pieces_quantity ?? 0), 0)
+                         .toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-2 text-right">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${config.badge}`}>
+                      avg {Math.round(
+                        mcls.reduce((s, r) => s + (r.cycleDays ?? 0), 0) /
+                        (mcls.length || 1)
+                      )}d
+                    </span>
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 rounded-b-3xl
+                        bg-gray-50/50 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300
+                       text-gray-700 font-semibold text-sm transition-colors"
+          >Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// AnalyticsDashboard
+// ─────────────────────────────────────────────────────────
+function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
+  const dashboardRef = useRef<HTMLDivElement>(null)
+  const [exporting,  setExporting]  = useState(false)
+  const [slowModal,  setSlowModal]  = useState<'fast' | 'normal' | 'slow' | null>(null)
+  const [rcrcSort,   setRcrcSort]   = useState<'value' | 'mcls' | 'days' | 'pieces' | 'completion'>('value')
+
+  // ── Filter test records ──────────────────────────────────
   const realRequests = requests.filter(r =>
-    r.rcrc_number !== '9999' &&
-    r.rcrc_name   !== 'Test RCRC' &&
+    r.rcrc_number !== '9999'        &&
+    r.rcrc_name   !== 'Test RCRC'   &&
     r.rcrc_name   !== 'Girish RCRC' &&
     r.rcrc_name   !== 'Girish load' &&
-    r.rcrc_name   !== 'Girish' &&
-    r.rcrc_name   !== 'GIrish' &&
-    r.rcrc_name   !== 'Siva' &&
+    r.rcrc_name   !== 'Girish'      &&
+    r.rcrc_name   !== 'GIrish'      &&
+    r.rcrc_name   !== 'Siva'        &&
     r.rcrc_name   !== 'FMC'
   )
 
-  // ── Normalize RCRC Names (fix case issues) ────────────────
   function normalizeRCRC(name?: string | null): string {
     if (!name) return 'Unknown'
     const lower = name.toLowerCase().trim()
@@ -223,7 +429,23 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
     return name.trim()
   }
 
-  // ── Core Stats ──────────────────────────────────────────
+  function daysBetween(start?: string | null, end?: string | null): number | null {
+    if (!start || !end) return null
+    const s = new Date(start)
+    const e = new Date(end)
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return null
+    const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24))
+    if (Math.abs(diff) > 365) return null
+    return diff >= 0 ? diff : null
+  }
+
+  function avgDays(vals: (number | null)[]): number | null {
+    const valid = vals.filter((v): v is number => v !== null && v >= 0)
+    if (valid.length === 0) return null
+    return Math.round(valid.reduce((s, v) => s + v, 0) / valid.length)
+  }
+
+  // ── Core Stats ───────────────────────────────────────────
   const total         = realRequests.length
   const closed        = realRequests.filter(r => r.status === 'closed')
   const active        = realRequests.filter(r => r.status !== 'closed')
@@ -232,23 +454,527 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
   const sentForPickup = realRequests.filter(r => r.status === 'sent_for_pickup')
   const newRequests   = realRequests.filter(r => r.status === 'total_requests')
 
-  const totalValue    = realRequests.reduce(
-    (s, r) => s + (r.fcsd_offer_amount     ?? 0), 0
-  )
-  const closedValue   = closed.reduce(
-    (s, r) => s + (r.fcsd_offer_amount     ?? 0), 0
-  )
-  const totalPallets  = realRequests.reduce(
-    (s, r) => s + (r.pallet_quantity       ?? 0), 0
-  )
-  const totalPieces   = realRequests.reduce(
-    (s, r) => s + (r.total_pieces_quantity ?? 0), 0
-  )
-  const avgValuePerMCL = closed.length > 0
-    ? closedValue / closed.length
-    : 0
+  const totalValue     = realRequests.reduce((s, r) => s + (r.fcsd_offer_amount     ?? 0), 0)
+  const closedValue    = closed.reduce(      (s, r) => s + (r.fcsd_offer_amount     ?? 0), 0)
+  const totalPallets   = realRequests.reduce((s, r) => s + (r.pallet_quantity       ?? 0), 0)
+  const totalPieces    = realRequests.reduce((s, r) => s + (r.total_pieces_quantity ?? 0), 0)
+  const avgValuePerMCL = closed.length > 0 ? closedValue / closed.length : 0
 
-  // ── Day Calculations ────────────────────────────────────
+  // ── Cycle Days ───────────────────────────────────────────
+  const fullCycleDays   = realRequests.map(r => daysBetween(r.requested_pickup_date, r.invoice_submitted_date))
+  const daysToTechemet  = realRequests.map(r => daysBetween(r.requested_pickup_date, r.date_sent_to_techemet))
+  const daysToScheduled = realRequests.map(r => daysBetween(r.date_sent_to_techemet, r.scheduled_pickup_date))
+  const daysToPickup    = realRequests.map(r => daysBetween(r.scheduled_pickup_date, r.actual_pickup_date))
+  const daysToInvoice   = realRequests.map(r => daysBetween(r.actual_pickup_date, r.invoice_submitted_date))
+
+  const avgFullCycle   = avgDays(fullCycleDays)
+  const avgToTechemet  = avgDays(daysToTechemet)
+  const avgToScheduled = avgDays(daysToScheduled)
+  const avgToPickup    = avgDays(daysToPickup)
+  const avgToInvoice   = avgDays(daysToInvoice)
+
+  const validCycleDays = fullCycleDays.filter((v): v is number => v !== null)
+  const minCycle = validCycleDays.length > 0 ? Math.min(...validCycleDays) : 0
+  const maxCycle = validCycleDays.length > 0 ? Math.max(...validCycleDays) : 0
+
+  // ── RCRC Map ─────────────────────────────────────────────
+  const rcrcMap = new Map<string, {
+    name: string; number: string; totalMCLs: number; closedMCLs: number
+    totalValue: number; totalPieces: number; totalPallets: number
+    cycleDays: (number | null)[]; techhemetDays: (number | null)[]
+    scheduledDays: (number | null)[]; pickupDays: (number | null)[]
+    invoiceDays: (number | null)[]
+  }>()
+
+  realRequests.forEach(r => {
+    const normalName = normalizeRCRC(r.rcrc_name)
+    const key = r.rcrc_number ? `${normalName}-${r.rcrc_number}` : normalName
+    if (!rcrcMap.has(key)) {
+      rcrcMap.set(key, {
+        name: normalName, number: r.rcrc_number ?? '—',
+        totalMCLs: 0, closedMCLs: 0, totalValue: 0,
+        totalPieces: 0, totalPallets: 0,
+        cycleDays: [], techhemetDays: [], scheduledDays: [],
+        pickupDays: [], invoiceDays: [],
+      })
+    }
+    const rcrc = rcrcMap.get(key)!
+    rcrc.totalMCLs++
+    rcrc.totalValue   += r.fcsd_offer_amount     ?? 0
+    rcrc.totalPieces  += r.total_pieces_quantity ?? 0
+    rcrc.totalPallets += r.pallet_quantity       ?? 0
+    if (r.status === 'closed') rcrc.closedMCLs++
+    rcrc.cycleDays.push(    daysBetween(r.requested_pickup_date, r.invoice_submitted_date))
+    rcrc.techhemetDays.push(daysBetween(r.requested_pickup_date, r.date_sent_to_techemet))
+    rcrc.scheduledDays.push(daysBetween(r.date_sent_to_techemet, r.scheduled_pickup_date))
+    rcrc.pickupDays.push(   daysBetween(r.scheduled_pickup_date, r.actual_pickup_date))
+    rcrc.invoiceDays.push(  daysBetween(r.actual_pickup_date,    r.invoice_submitted_date))
+  })
+
+  const rcrcList = Array.from(rcrcMap.values()).map(r => ({
+    ...r,
+    avgCycleDays:     avgDays(r.cycleDays),
+    avgTechhemetDays: avgDays(r.techhemetDays),
+    avgScheduledDays: avgDays(r.scheduledDays),
+    avgPickupDays:    avgDays(r.pickupDays),
+    avgInvoiceDays:   avgDays(r.invoiceDays),
+    completionRate:   r.totalMCLs > 0
+      ? Math.round((r.closedMCLs / r.totalMCLs) * 100) : 0,
+  })).sort((a, b) => b.totalValue - a.totalValue)
+
+  const sortedRCRC = [...rcrcList].sort((a, b) => {
+    switch (rcrcSort) {
+      case 'value':      return b.totalValue    - a.totalValue
+      case 'mcls':       return b.totalMCLs     - a.totalMCLs
+      case 'pieces':     return b.totalPieces   - a.totalPieces
+      case 'completion': return b.completionRate - a.completionRate
+      case 'days': {
+        const aD = a.avgCycleDays ?? 9999
+        const bD = b.avgCycleDays ?? 9999
+        return aD - bD
+      }
+      default: return 0
+    }
+  })
+
+  const maxValue  = Math.max(...rcrcList.map(r => r.totalValue),  1)
+  const maxPieces = Math.max(...rcrcList.map(r => r.totalPieces), 1)
+
+  // ── Pipeline ─────────────────────────────────────────────
+  const pipeline = [
+    { key: 'total_requests',   label: 'New',        icon: '📋', count: newRequests.length,   color: 'bg-blue-500',   light: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'   },
+    { key: 'sent_for_pickup',  label: 'Sent',       icon: '🚚', count: sentForPickup.length, color: 'bg-yellow-500', light: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    { key: 'in_transit',       label: 'In Transit', icon: '🔄', count: inTransit.length,     color: 'bg-purple-500', light: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    { key: 'shipment_arrived', label: 'Arrived',    icon: '✅', count: arrived.length,       color: 'bg-green-500',  light: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200'  },
+    { key: 'closed',           label: 'Closed',     icon: '🧾', count: closed.length,        color: 'bg-teal-500',   light: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200'   },
+  ]
+
+  // ── Color Helpers ────────────────────────────────────────
+  function cycleColor(d: number | null)  { return d === null ? 'text-gray-400'    : d <= 14 ? 'text-green-600'  : d <= 21 ? 'text-yellow-600'  : 'text-red-600'   }
+  function cycleBg(d: number | null)     { return d === null ? 'bg-gray-50'       : d <= 14 ? 'bg-green-50'     : d <= 21 ? 'bg-yellow-50'     : 'bg-red-50'      }
+  function cycleBorder(d: number | null) { return d === null ? 'border-gray-200'  : d <= 14 ? 'border-green-200': d <= 21 ? 'border-yellow-200': 'border-red-200'  }
+  function cycleLabel(d: number | null)  { return d === null ? '—'                : d <= 14 ? '✅ Fast'          : d <= 21 ? '⚠️ Normal'         : '🔴 Slow'         }
+  function cycleLabelBg(d: number | null){ return d === null ? 'bg-gray-100 text-gray-500' : d <= 14 ? 'bg-green-100 text-green-700' : d <= 21 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700' }
+
+  // ── PDF Export ───────────────────────────────────────────
+  async function exportToPDF() {
+    if (!dashboardRef.current) return
+    setExporting(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const jsPDF       = (await import('jspdf')).default
+      const canvas = await html2canvas(dashboardRef.current, {
+        scale: 2, useCORS: true, backgroundColor: '#f8fafc', logging: false,
+      })
+      const imgData  = canvas.toDataURL('image/png')
+      const pdf      = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' })
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`ford-scrap-dashboard-${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (e) {
+      console.error('PDF export failed:', e)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // ── Email Report ─────────────────────────────────────────
+  async function sendDailyEmail() {
+    try {
+      const res  = await fetch('/api/send-report', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        alert(`✅ Report sent to ${data.sent_to.join(', ')}`)
+      } else {
+        alert(`❌ Failed: ${data.error}`)
+      }
+    } catch {
+      alert('❌ Failed to send email report')
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────
+  return (
+    <div>
+      {/* Export Buttons */}
+      <div className="flex justify-end mb-4 gap-2">
+        <button
+          onClick={exportToPDF}
+          disabled={exporting}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600
+                     hover:bg-blue-700 text-white text-sm font-semibold
+                     rounded-xl shadow-sm transition-colors disabled:opacity-50"
+        >
+          {exporting ? '⏳ Generating...' : '📄 Export PDF'}
+        </button>
+        <button
+          onClick={sendDailyEmail}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600
+                     hover:bg-emerald-700 text-white text-sm font-semibold
+                     rounded-xl shadow-sm transition-colors"
+        >
+          📧 Email Report
+        </button>
+      </div>
+
+      <div ref={dashboardRef} className="space-y-5 mb-8">
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+          {[
+            { label: 'Total Est. Value',   value: fmtMoney(totalValue),    icon: '💰', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', sub: fmtMoney(closedValue) + ' closed'                                              },
+            { label: 'Avg Value / MCL',    value: fmtMoney(avgValuePerMCL),icon: '📈', color: 'text-indigo-700',  bg: 'bg-indigo-50',  border: 'border-indigo-200',  sub: `from ${closed.length} closed`                                                 },
+            { label: 'Closed & Invoiced',  value: closed.length.toLocaleString(), icon: '🧾', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-200', sub: `${total > 0 ? Math.round((closed.length / total) * 100) : 0}% completion`      },
+            { label: 'Total Pallets',      value: totalPallets.toLocaleString(),  icon: '📦', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200', sub: 'all MCLs'                                                                  },
+            { label: 'Total Pieces',       value: totalPieces.toLocaleString(),   icon: '🔩', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200', sub: 'all MCLs'                                                                  },
+            { label: 'Avg Cycle Days',     value: avgFullCycle !== null ? `${avgFullCycle}d` : '—', icon: '⏱', color: cycleColor(avgFullCycle), bg: cycleBg(avgFullCycle), border: cycleBorder(avgFullCycle), sub: 'request → invoice'                    },
+            { label: 'Fastest / Slowest',  value: validCycleDays.length > 0 ? `${minCycle}d / ${maxCycle}d` : '—', icon: '⚡', color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200', sub: 'min / max cycle'                              },
+            { label: 'Total MCLs',         value: total.toLocaleString(),          icon: '📋', color: 'text-blue-700',  bg: 'bg-blue-50',  border: 'border-blue-200',  sub: `${active.length} active`                                                    },
+          ].map(stat => (
+            <div key={stat.label}
+                 className={`rounded-xl border ${stat.bg} ${stat.border} p-3 flex flex-col gap-1`}>
+              <span className="text-base">{stat.icon}</span>
+              <p className={`text-lg font-bold ${stat.color} leading-tight`}>{stat.value}</p>
+              <p className="text-xs text-gray-500 font-medium leading-tight">{stat.label}</p>
+              <p className="text-xs text-gray-400 leading-tight">{stat.sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Pipeline */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-gray-700">📊 MCL Pipeline Overview</h3>
+            <span className="text-xs text-gray-400">{total} total records</span>
+          </div>
+          <div className="grid grid-cols-5 gap-3 mb-5">
+            {pipeline.map(stage => {
+              const pct = total > 0 ? Math.round((stage.count / total) * 100) : 0
+              return (
+                <div key={stage.key}
+                     className={`${stage.light} border ${stage.border}
+                                 rounded-xl p-3 flex flex-col items-center
+                                 text-center gap-1.5`}>
+                  <span className="text-2xl">{stage.icon}</span>
+                  <span className={`text-2xl font-bold ${stage.text}`}>{stage.count}</span>
+                  <span className={`text-xs font-semibold ${stage.text}`}>{stage.label}</span>
+                  <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
+                    <div className={`h-full ${stage.color} rounded-full`}
+                         style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs text-gray-400">{pct}%</span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-500 font-medium">Overall Completion Rate</span>
+              <span className="font-bold text-teal-600">
+                {total > 0 ? Math.round((closed.length / total) * 100) : 0}%
+                {' '}({closed.length} / {total} MCLs)
+              </span>
+            </div>
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-teal-400 to-teal-600
+                              rounded-full transition-all duration-700"
+                   style={{ width: `${total > 0 ? Math.round((closed.length / total) * 100) : 0}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Avg Days Per Stage */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-gray-700">
+              ⏱ Average Days Per Stage — Full MCL Lifecycle
+            </h3>
+            <div className="flex gap-3 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />Fast ≤14d
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block" />Normal 15–21d
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Slow 21d+
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {([
+              { label: 'Request → Techemet',   value: avgToTechemet,  icon: '📤', from: 'Requested Date',   to: 'Date Sent to Techemet' },
+              { label: 'Techemet → Scheduled', value: avgToScheduled, icon: '📅', from: 'Sent to Techemet', to: 'Scheduled Pickup'      },
+              { label: 'Scheduled → Picked Up',value: avgToPickup,    icon: '🚛', from: 'Scheduled Date',   to: 'Actual Pickup'         },
+              { label: 'Pickup → Invoice',     value: avgToInvoice,   icon: '🧾', from: 'Actual Pickup',    to: 'Invoice Submitted'     },
+              { label: 'Total Cycle Time',     value: avgFullCycle,   icon: '⏱', from: 'Request Date',     to: 'Invoice Submitted'     },
+            ] as { label: string; value: number | null; icon: string; from: string; to: string }[])
+              .map(stage => (
+              <div key={stage.label}
+                   className={`rounded-xl p-4 border flex flex-col gap-2
+                               ${cycleBg(stage.value)} ${cycleBorder(stage.value)}`}>
+                <span className="text-xl">{stage.icon}</span>
+                <p className={`text-4xl font-bold ${cycleColor(stage.value)}`}>
+                  {stage.value !== null ? `${stage.value}d` : '—'}
+                </p>
+                <div>
+                  <p className="text-xs font-bold text-gray-700">{stage.label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{stage.from} →</p>
+                  <p className="text-xs text-gray-400">{stage.to}</p>
+                </div>
+                {stage.value !== null && (
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full
+                                   self-start ${cycleLabelBg(stage.value)}`}>
+                    {cycleLabel(stage.value)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Cycle Distribution — Clickable */}
+          {validCycleDays.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-gray-100">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+                Cycle Time Distribution (Closed MCLs)
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { key: 'fast'   as const, label: 'Fast (0–14 days)',    count: validCycleDays.filter(d => d <= 14).length,            color: 'bg-green-500',  light: 'bg-green-50',  text: 'text-green-700',  hover: 'hover:bg-green-100 hover:shadow-md',  border: 'border-green-200'  },
+                  { key: 'normal' as const, label: 'Normal (15–21 days)', count: validCycleDays.filter(d => d > 14 && d <= 21).length,  color: 'bg-yellow-500', light: 'bg-yellow-50', text: 'text-yellow-700', hover: 'hover:bg-yellow-100 hover:shadow-md', border: 'border-yellow-200' },
+                  { key: 'slow'   as const, label: 'Slow (21+ days)',     count: validCycleDays.filter(d => d > 21).length,             color: 'bg-red-500',    light: 'bg-red-50',    text: 'text-red-700',    hover: 'hover:bg-red-100 hover:shadow-md',    border: 'border-red-200'    },
+                ]).map(band => {
+                  const pct = validCycleDays.length > 0
+                    ? Math.round((band.count / validCycleDays.length) * 100) : 0
+                  return (
+                    <button
+                      key={band.key}
+                      onClick={() => setSlowModal(band.key)}
+                      className={`${band.light} border ${band.border} rounded-xl p-3
+                                  text-left w-full transition-all cursor-pointer ${band.hover}`}
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className={`text-xs font-bold ${band.text}`}>{band.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-sm font-bold ${band.text}`}>{band.count}</span>
+                          <span className="text-xs bg-white/80 border px-1.5 py-0.5
+                                           rounded-md opacity-60 font-medium">View →</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-white/70 rounded-full overflow-hidden">
+                        <div className={`h-full ${band.color} rounded-full`}
+                             style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className={`text-xs mt-1 ${band.text}`}>{pct}% of closed MCLs</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RCRC Performance Table */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 className="text-sm font-bold text-gray-700">🏢 RCRC Performance</h3>
+            <div className="flex gap-1.5 flex-wrap">
+              {([
+                { key: 'value'      as const, label: '💰 Value'      },
+                { key: 'mcls'       as const, label: '📋 MCLs'       },
+                { key: 'pieces'     as const, label: '🔩 Pieces'     },
+                { key: 'days'       as const, label: '⏱ Cycle Days'  },
+                { key: 'completion' as const, label: '✅ Completion'  },
+              ]).map(s => (
+                <button key={s.key} onClick={() => setRcrcSort(s.key)}
+                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold
+                                   transition-colors ${
+                          rcrcSort === s.key
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b-2 border-gray-100">
+                  {['#','RCRC Name','RCRC #','MCLs','Closed','Value','Pieces','Pallets',
+                    'Avg Cycle','Techemet','→ Sched','→ Pickup','→ Invoice','Completion'
+                  ].map(h => (
+                    <th key={h} className="text-left py-2.5 px-2 font-bold text-gray-500
+                                           whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRCRC.map((r, i) => (
+                  <tr key={r.name + r.number}
+                      className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
+                    <td className="py-2.5 px-2 text-gray-400 font-bold">{i + 1}</td>
+                    <td className="py-2.5 px-2 font-bold text-gray-800 whitespace-nowrap">{r.name}</td>
+                    <td className="py-2.5 px-2 text-gray-500">{r.number}</td>
+                    <td className="py-2.5 px-2 font-semibold text-blue-700">{r.totalMCLs}</td>
+                    <td className="py-2.5 px-2 font-semibold text-teal-700">{r.closedMCLs}</td>
+                    <td className="py-2.5 px-2 font-bold text-emerald-700 whitespace-nowrap">
+                      {fmtMoney(r.totalValue)}
+                    </td>
+                    <td className="py-2.5 px-2 text-gray-600">
+                      {r.totalPieces.toLocaleString()}
+                    </td>
+                    <td className="py-2.5 px-2 text-gray-600">
+                      {r.totalPallets.toLocaleString()}
+                    </td>
+                    <td className="py-2.5 px-2">
+                      {r.avgCycleDays !== null ? (
+                        <span className={`font-bold px-2 py-0.5 rounded-full text-xs
+                                         ${cycleLabelBg(r.avgCycleDays)}`}>
+                          {r.avgCycleDays}d
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="py-2.5 px-2 text-gray-500">
+                      {r.avgTechhemetDays !== null ? `${r.avgTechhemetDays}d` : '—'}
+                    </td>
+                    <td className="py-2.5 px-2 text-gray-500">
+                      {r.avgScheduledDays !== null ? `${r.avgScheduledDays}d` : '—'}
+                    </td>
+                    <td className="py-2.5 px-2 text-gray-500">
+                      {r.avgPickupDays !== null ? `${r.avgPickupDays}d` : '—'}
+                    </td>
+                    <td className="py-2.5 px-2 text-gray-500">
+                      {r.avgInvoiceDays !== null ? `${r.avgInvoiceDays}d` : '—'}
+                    </td>
+                    <td className="py-2.5 px-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden
+                                        min-w-[40px]">
+                          <div className="h-full bg-teal-500 rounded-full"
+                               style={{ width: `${r.completionRate}%` }} />
+                        </div>
+                        <span className="text-teal-700 font-bold whitespace-nowrap">
+                          {r.completionRate}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Top 10 Bar Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* By Value */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-700 mb-4">
+              💰 Top 10 RCRCs by Value
+            </h3>
+            <div className="space-y-2.5">
+              {rcrcList.slice(0, 10).map((r, i) => (
+                <div key={r.name + i} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-bold w-4 text-right">
+                    {i + 1}
+                  </span>
+                  <span className="text-xs text-gray-700 font-semibold w-24 truncate">
+                    {r.name}
+                  </span>
+                  <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full flex items-center
+                                    justify-end pr-1.5 transition-all duration-500"
+                         style={{ width: `${Math.round((r.totalValue / maxValue) * 100)}%` }}>
+                      <span className="text-white text-xs font-bold whitespace-nowrap">
+                        {fmtMoney(r.totalValue)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* By Pieces */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-700 mb-4">
+              🔩 Top 10 RCRCs by Pieces
+            </h3>
+            <div className="space-y-2.5">
+              {[...rcrcList]
+                .sort((a, b) => b.totalPieces - a.totalPieces)
+                .slice(0, 10)
+                .map((r, i) => (
+                <div key={r.name + i} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-bold w-4 text-right">
+                    {i + 1}
+                  </span>
+                  <span className="text-xs text-gray-700 font-semibold w-24 truncate">
+                    {r.name}
+                  </span>
+                  <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-purple-500 rounded-full flex items-center
+                                    justify-end pr-1.5 transition-all duration-500"
+                         style={{ width: `${Math.round((r.totalPieces / maxPieces) * 100)}%` }}>
+                      <span className="text-white text-xs font-bold whitespace-nowrap">
+                        {r.totalPieces.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+      </div>{/* end dashboardRef div */}
+
+      {/* SlowMCLsModal */}
+      {slowModal && (
+        <SlowMCLsModal
+          requests={realRequests}
+          band={slowModal}
+          onClose={() => setSlowModal(null)}
+        />
+      )}
+    </div>
+  )
+}
+// ─────────────────────────────────────────────────────────
+// AnalyticsDashboard
+// ─────────────────────────────────────────────────────────
+function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
+  const dashboardRef = useRef<HTMLDivElement>(null)
+  const [exporting,  setExporting]  = useState(false)
+  const [slowModal,  setSlowModal]  = useState<'fast' | 'normal' | 'slow' | null>(null)
+  const [rcrcSort,   setRcrcSort]   = useState<
+    'value' | 'mcls' | 'days' | 'pieces' | 'completion'
+  >('value')
+
+  // ── Filter test records ──────────────────────────────────
+  const realRequests = requests.filter(r =>
+    r.rcrc_number !== '9999'        &&
+    r.rcrc_name   !== 'Test RCRC'   &&
+    r.rcrc_name   !== 'Girish RCRC' &&
+    r.rcrc_name   !== 'Girish load' &&
+    r.rcrc_name   !== 'Girish'      &&
+    r.rcrc_name   !== 'GIrish'      &&
+    r.rcrc_name   !== 'Siva'        &&
+    r.rcrc_name   !== 'FMC'
+  )
+
+  function normalizeRCRC(name?: string | null): string {
+    if (!name) return 'Unknown'
+    const lower = name.toLowerCase().trim()
+    if (lower === 'aer')       return 'AER'
+    if (lower === 'fredjones') return 'FredJones'
+    if (lower === 'holman')    return 'Holman'
+    return name.trim()
+  }
+
   function daysBetween(
     start?: string | null,
     end?:   string | null
@@ -260,8 +986,6 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
     const diff = Math.round(
       (e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)
     )
-    // Filter out impossible values
-    // (typos like year 2205 or negative full cycles)
     if (Math.abs(diff) > 365) return null
     return diff >= 0 ? diff : null
   }
@@ -269,12 +993,25 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
   function avgDays(vals: (number | null)[]): number | null {
     const valid = vals.filter((v): v is number => v !== null && v >= 0)
     if (valid.length === 0) return null
-    return Math.round(
-      valid.reduce((s, v) => s + v, 0) / valid.length
-    )
+    return Math.round(valid.reduce((s, v) => s + v, 0) / valid.length)
   }
 
-  // Stage cycle times
+  // ── Core Stats ───────────────────────────────────────────
+  const total         = realRequests.length
+  const closed        = realRequests.filter(r => r.status === 'closed')
+  const active        = realRequests.filter(r => r.status !== 'closed')
+  const inTransit     = realRequests.filter(r => r.status === 'in_transit')
+  const arrived       = realRequests.filter(r => r.status === 'shipment_arrived')
+  const sentForPickup = realRequests.filter(r => r.status === 'sent_for_pickup')
+  const newRequests   = realRequests.filter(r => r.status === 'total_requests')
+
+  const totalValue     = realRequests.reduce((s, r) => s + (r.fcsd_offer_amount     ?? 0), 0)
+  const closedValue    = closed.reduce(      (s, r) => s + (r.fcsd_offer_amount     ?? 0), 0)
+  const totalPallets   = realRequests.reduce((s, r) => s + (r.pallet_quantity       ?? 0), 0)
+  const totalPieces    = realRequests.reduce((s, r) => s + (r.total_pieces_quantity ?? 0), 0)
+  const avgValuePerMCL = closed.length > 0 ? closedValue / closed.length : 0
+
+  // ── Cycle Days ───────────────────────────────────────────
   const fullCycleDays   = realRequests.map(r =>
     daysBetween(r.requested_pickup_date, r.invoice_submitted_date)
   )
@@ -297,16 +1034,11 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
   const avgToPickup    = avgDays(daysToPickup)
   const avgToInvoice   = avgDays(daysToInvoice)
 
-  // Valid cycle days for distribution
-  const validCycleDays = fullCycleDays.filter(
-    (v): v is number => v !== null
-  )
-  const minCycle = validCycleDays.length > 0
-    ? Math.min(...validCycleDays) : 0
-  const maxCycle = validCycleDays.length > 0
-    ? Math.max(...validCycleDays) : 0
+  const validCycleDays = fullCycleDays.filter((v): v is number => v !== null)
+  const minCycle = validCycleDays.length > 0 ? Math.min(...validCycleDays) : 0
+  const maxCycle = validCycleDays.length > 0 ? Math.max(...validCycleDays) : 0
 
-  // ── RCRC Analytics ──────────────────────────────────────
+  // ── RCRC Map ─────────────────────────────────────────────
   const rcrcMap = new Map<string, {
     name:          string
     number:        string
@@ -331,7 +1063,7 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
     if (!rcrcMap.has(key)) {
       rcrcMap.set(key, {
         name:          normalName,
-        number:        r.rcrc_number  ?? '—',
+        number:        r.rcrc_number ?? '—',
         totalMCLs:     0,
         closedMCLs:    0,
         totalValue:    0,
@@ -345,12 +1077,11 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
       })
     }
 
-    const rcrc       = rcrcMap.get(key)!
+    const rcrc = rcrcMap.get(key)!
     rcrc.totalMCLs++
     rcrc.totalValue   += r.fcsd_offer_amount     ?? 0
     rcrc.totalPieces  += r.total_pieces_quantity ?? 0
     rcrc.totalPallets += r.pallet_quantity       ?? 0
-
     if (r.status === 'closed') rcrc.closedMCLs++
 
     rcrc.cycleDays.push(
@@ -373,7 +1104,7 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
   const rcrcList = Array.from(rcrcMap.values())
     .map(r => ({
       ...r,
-      avgCycleDays:    avgDays(r.cycleDays),
+      avgCycleDays:     avgDays(r.cycleDays),
       avgTechhemetDays: avgDays(r.techhemetDays),
       avgScheduledDays: avgDays(r.scheduledDays),
       avgPickupDays:    avgDays(r.pickupDays),
@@ -384,106 +1115,11 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
     }))
     .sort((a, b) => b.totalValue - a.totalValue)
 
-  // ── Pipeline ────────────────────────────────────────────
-  const pipeline = [
-    {
-      key:   'total_requests',
-      label: 'New',
-      icon:  '📋',
-      count: newRequests.length,
-      color: 'bg-blue-500',
-      light: 'bg-blue-50',
-      text:  'text-blue-700',
-      border: 'border-blue-200',
-    },
-    {
-      key:   'sent_for_pickup',
-      label: 'Sent',
-      icon:  '🚚',
-      count: sentForPickup.length,
-      color: 'bg-yellow-500',
-      light: 'bg-yellow-50',
-      text:  'text-yellow-700',
-      border: 'border-yellow-200',
-    },
-    {
-      key:   'in_transit',
-      label: 'In Transit',
-      icon:  '🔄',
-      count: inTransit.length,
-      color: 'bg-purple-500',
-      light: 'bg-purple-50',
-      text:  'text-purple-700',
-      border: 'border-purple-200',
-    },
-    {
-      key:   'shipment_arrived',
-      label: 'Arrived',
-      icon:  '✅',
-      count: arrived.length,
-      color: 'bg-green-500',
-      light: 'bg-green-50',
-      text:  'text-green-700',
-      border: 'border-green-200',
-    },
-    {
-      key:   'closed',
-      label: 'Closed',
-      icon:  '🧾',
-      count: closed.length,
-      color: 'bg-teal-500',
-      light: 'bg-teal-50',
-      text:  'text-teal-700',
-      border: 'border-teal-200',
-    },
-  ]
-
-  // ── Color helpers ───────────────────────────────────────
-  function cycleColor(days: number | null): string {
-    if (days === null) return 'text-gray-400'
-    if (days <= 14)    return 'text-green-600'
-    if (days <= 21)    return 'text-yellow-600'
-    return 'text-red-600'
-  }
-
-  function cycleBg(days: number | null): string {
-    if (days === null) return 'bg-gray-50'
-    if (days <= 14)    return 'bg-green-50'
-    if (days <= 21)    return 'bg-yellow-50'
-    return 'bg-red-50'
-  }
-
-  function cycleBorder(days: number | null): string {
-    if (days === null) return 'border-gray-200'
-    if (days <= 14)    return 'border-green-200'
-    if (days <= 21)    return 'border-yellow-200'
-    return 'border-red-200'
-  }
-
-  function cycleLabel(days: number | null): string {
-    if (days === null) return '—'
-    if (days <= 14)    return '✅ Fast'
-    if (days <= 21)    return '⚠️ Normal'
-    return '🔴 Slow'
-  }
-
-  function cycleLabelBg(days: number | null): string {
-    if (days === null) return 'bg-gray-100 text-gray-500'
-    if (days <= 14)    return 'bg-green-100 text-green-700'
-    if (days <= 21)    return 'bg-yellow-100 text-yellow-700'
-    return 'bg-red-100 text-red-700'
-  }
-
-  // ── RCRC Sort State ─────────────────────────────────────
-  const [rcrcSort, setRcrcSort] = useState<
-    'value' | 'mcls' | 'days' | 'pieces' | 'completion'
-  >('value')
-
   const sortedRCRC = [...rcrcList].sort((a, b) => {
     switch (rcrcSort) {
-      case 'value':      return b.totalValue    - a.totalValue
-      case 'mcls':       return b.totalMCLs     - a.totalMCLs
-      case 'pieces':     return b.totalPieces   - a.totalPieces
+      case 'value':      return b.totalValue     - a.totalValue
+      case 'mcls':       return b.totalMCLs      - a.totalMCLs
+      case 'pieces':     return b.totalPieces    - a.totalPieces
       case 'completion': return b.completionRate - a.completionRate
       case 'days': {
         const aD = a.avgCycleDays ?? 9999
@@ -495,852 +1131,836 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
   })
 
   const maxValue  = Math.max(...rcrcList.map(r => r.totalValue),  1)
-  const maxPieces = Math.max(...rcrcList.map(r => r.totalPieces), 1)
+  const maxCycleForBar = Math.max(
+    ...rcrcList
+      .filter(r => r.avgCycleDays !== null)
+      .map(r => r.avgCycleDays!),
+    1
+  )
 
-  // ── Render ──────────────────────────────────────────────
+  // ── Pipeline ─────────────────────────────────────────────
+  const pipeline = [
+    { key: 'total_requests',   label: 'New',        icon: '📋', count: newRequests.length,   color: 'bg-blue-500',   light: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'   },
+    { key: 'sent_for_pickup',  label: 'Sent',       icon: '🚚', count: sentForPickup.length, color: 'bg-yellow-500', light: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    { key: 'in_transit',       label: 'In Transit', icon: '🔄', count: inTransit.length,     color: 'bg-purple-500', light: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    { key: 'shipment_arrived', label: 'Arrived',    icon: '✅', count: arrived.length,       color: 'bg-green-500',  light: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200'  },
+    { key: 'closed',           label: 'Closed',     icon: '🧾', count: closed.length,        color: 'bg-teal-500',   light: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200'   },
+  ]
+
+  // ── Color Helpers ────────────────────────────────────────
+  function cycleColor(d: number | null): string {
+    if (d === null) return 'text-gray-400'
+    if (d <= 14)    return 'text-green-600'
+    if (d <= 21)    return 'text-yellow-600'
+    return 'text-red-600'
+  }
+  function cycleBg(d: number | null): string {
+    if (d === null) return 'bg-gray-50'
+    if (d <= 14)    return 'bg-green-50'
+    if (d <= 21)    return 'bg-yellow-50'
+    return 'bg-red-50'
+  }
+  function cycleBorder(d: number | null): string {
+    if (d === null) return 'border-gray-200'
+    if (d <= 14)    return 'border-green-200'
+    if (d <= 21)    return 'border-yellow-200'
+    return 'border-red-200'
+  }
+  function cycleLabel(d: number | null): string {
+    if (d === null) return '—'
+    if (d <= 14)    return '✅ Fast'
+    if (d <= 21)    return '⚠️ Normal'
+    return '🔴 Slow'
+  }
+  function cycleLabelBg(d: number | null): string {
+    if (d === null) return 'bg-gray-100 text-gray-500'
+    if (d <= 14)    return 'bg-green-100 text-green-700'
+    if (d <= 21)    return 'bg-yellow-100 text-yellow-700'
+    return 'bg-red-100 text-red-700'
+  }
+
+  // ── PDF Export ───────────────────────────────────────────
+  async function exportToPDF() {
+    if (!dashboardRef.current) return
+    setExporting(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const jsPDF       = (await import('jspdf')).default
+      const canvas = await html2canvas(dashboardRef.current, {
+        scale: 2, useCORS: true,
+        backgroundColor: '#f8fafc', logging: false,
+      })
+      const imgData   = canvas.toDataURL('image/png')
+      const pdf       = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' })
+      const pdfWidth  = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`ford-scrap-dashboard-${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (e) {
+      console.error('PDF export failed:', e)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // ── Email Report ─────────────────────────────────────────
+  async function sendDailyEmail() {
+    try {
+      const res  = await fetch('/api/send-report', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        alert(`✅ Report sent to ${data.sent_to.join(', ')}`)
+      } else {
+        alert(`❌ Failed: ${data.error}`)
+      }
+    } catch {
+      alert('❌ Failed to send email report')
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────
   return (
-    <div className="space-y-5 mb-8">
-
-      {/* ── Row 1: KPI Cards ─────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4
-                      xl:grid-cols-8 gap-3">
-        {[
-          {
-            label:  'Total MCLs',
-            value:  total.toLocaleString(),
-            icon:   '📋',
-            color:  'text-blue-700',
-            bg:     'bg-blue-50',
-            border: 'border-blue-200',
-            sub:    `${active.length} active`,
-          },
-          {
-            label:  'Total Est. Value',
-            value:  fmtMoney(totalValue),
-            icon:   '💰',
-            color:  'text-emerald-700',
-            bg:     'bg-emerald-50',
-            border: 'border-emerald-200',
-            sub:    fmtMoney(closedValue) + ' closed',
-          },
-          {
-            label:  'Avg Value / MCL',
-            value:  fmtMoney(avgValuePerMCL),
-            icon:   '📈',
-            color:  'text-indigo-700',
-            bg:     'bg-indigo-50',
-            border: 'border-indigo-200',
-            sub:    `from ${closed.length} closed`,
-          },
-          {
-            label:  'Closed & Invoiced',
-            value:  closed.length.toLocaleString(),
-            icon:   '🧾',
-            color:  'text-teal-700',
-            bg:     'bg-teal-50',
-            border: 'border-teal-200',
-            sub:    `${total > 0
-              ? Math.round((closed.length / total) * 100)
-              : 0}% completion`,
-          },
-          {
-            label:  'Total Pallets',
-            value:  totalPallets.toLocaleString(),
-            icon:   '📦',
-            color:  'text-orange-700',
-            bg:     'bg-orange-50',
-            border: 'border-orange-200',
-            sub:    'all MCLs',
-          },
-          {
-            label:  'Total Pieces',
-            value:  totalPieces.toLocaleString(),
-            icon:   '🔩',
-            color:  'text-purple-700',
-            bg:     'bg-purple-50',
-            border: 'border-purple-200',
-            sub:    'all MCLs',
-          },
-          {
-            label:  'Avg Cycle Days',
-            value:  avgFullCycle !== null
-              ? `${avgFullCycle}d`
-              : '—',
-            icon:   '⏱',
-            color:  cycleColor(avgFullCycle),
-            bg:     cycleBg(avgFullCycle),
-            border: cycleBorder(avgFullCycle),
-            sub:    'request → invoice',
-          },
-          {
-            label:  'Fastest / Slowest',
-            value:  validCycleDays.length > 0
-              ? `${minCycle}d / ${maxCycle}d`
-              : '—',
-            icon:   '⚡',
-            color:  'text-gray-700',
-            bg:     'bg-gray-50',
-            border: 'border-gray-200',
-            sub:    'min / max cycle',
-          },
-        ].map(stat => (
-          <div
-            key={stat.label}
-            className={`rounded-xl border ${stat.bg} ${stat.border}
-                        p-3 flex flex-col gap-1`}
-          >
-            <span className="text-base">{stat.icon}</span>
-            <p className={`text-lg font-bold ${stat.color}
-                          leading-tight`}>
-              {stat.value}
-            </p>
-            <p className="text-xs text-gray-500 font-medium
-                          leading-tight">
-              {stat.label}
-            </p>
-            <p className="text-xs text-gray-400 leading-tight">
-              {stat.sub}
-            </p>
-          </div>
-        ))}
+    <div>
+      {/* Export Buttons */}
+      <div className="flex justify-end mb-4 gap-2">
+        <button
+          onClick={exportToPDF}
+          disabled={exporting}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600
+                     hover:bg-blue-700 text-white text-sm font-semibold
+                     rounded-xl shadow-sm transition-colors disabled:opacity-50"
+        >
+          {exporting ? '⏳ Generating...' : '📄 Export PDF'}
+        </button>
+        <button
+          onClick={sendDailyEmail}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600
+                     hover:bg-emerald-700 text-white text-sm font-semibold
+                     rounded-xl shadow-sm transition-colors"
+        >
+          📧 Email Report
+        </button>
       </div>
 
-      {/* ── Row 2: Pipeline + Completion ─────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100
-                      shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-gray-700">
-            📊 MCL Pipeline Overview
-          </h3>
-          <span className="text-xs text-gray-400">
-            {total} total records
-          </span>
-        </div>
+      <div ref={dashboardRef} className="space-y-5 mb-8">
 
-        {/* Pipeline Stages */}
-        <div className="grid grid-cols-5 gap-3 mb-5">
-          {pipeline.map(stage => {
-            const pct = total > 0
-              ? Math.round((stage.count / total) * 100)
-              : 0
-            return (
-              <div
-                key={stage.key}
-                className={`${stage.light} border ${stage.border}
-                            rounded-xl p-3 flex flex-col
-                            items-center text-center gap-1.5`}
-              >
-                <span className="text-2xl">{stage.icon}</span>
-                <span className={`text-2xl font-bold ${stage.text}`}>
-                  {stage.count}
-                </span>
-                <span className={`text-xs font-semibold ${stage.text}`}>
-                  {stage.label}
-                </span>
-                <div className="w-full bg-white/60
-                                rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className={`h-full ${stage.color} rounded-full`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="text-xs text-gray-400">
-                  {pct}%
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        {/* ── Slow MCLs Modal ─────────────────────────── */}
+        {slowModal && (
+          <SlowMCLsModal
+            requests={requests}
+            band={slowModal}
+            onClose={() => setSlowModal(null)}
+          />
+        )}
 
-        {/* Overall Completion Bar */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-500 font-medium">
-              Overall Completion Rate
-            </span>
-            <span className="font-bold text-teal-600">
-              {total > 0
+        {/* ── Row 1: KPI Cards ─────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4
+                        xl:grid-cols-8 gap-3">
+          {[
+            {
+              label:  'Total MCLs',
+              value:  total.toLocaleString(),
+              icon:   '📋',
+              color:  'text-blue-700',
+              bg:     'bg-blue-50',
+              border: 'border-blue-200',
+              sub:    `${active.length} active`,
+            },
+            {
+              label:  'Total Est. Value',
+              value:  fmtMoney(totalValue),
+              icon:   '💰',
+              color:  'text-emerald-700',
+              bg:     'bg-emerald-50',
+              border: 'border-emerald-200',
+              sub:    fmtMoney(closedValue) + ' closed',
+            },
+            {
+              label:  'Avg Value / MCL',
+              value:  fmtMoney(avgValuePerMCL),
+              icon:   '📈',
+              color:  'text-indigo-700',
+              bg:     'bg-indigo-50',
+              border: 'border-indigo-200',
+              sub:    `from ${closed.length} closed`,
+            },
+            {
+              label:  'Closed & Invoiced',
+              value:  closed.length.toLocaleString(),
+              icon:   '🧾',
+              color:  'text-teal-700',
+              bg:     'bg-teal-50',
+              border: 'border-teal-200',
+              sub:    `${total > 0
                 ? Math.round((closed.length / total) * 100)
-                : 0}%
-              {' '}({closed.length} / {total} MCLs)
-            </span>
-          </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                : 0}% completion`,
+            },
+            {
+              label:  'Total Pallets',
+              value:  totalPallets.toLocaleString(),
+              icon:   '📦',
+              color:  'text-orange-700',
+              bg:     'bg-orange-50',
+              border: 'border-orange-200',
+              sub:    'all MCLs',
+            },
+            {
+              label:  'Total Pieces',
+              value:  totalPieces.toLocaleString(),
+              icon:   '🔩',
+              color:  'text-purple-700',
+              bg:     'bg-purple-50',
+              border: 'border-purple-200',
+              sub:    'all MCLs',
+            },
+            {
+              label:  'Avg Cycle Days',
+              value:  avgFullCycle !== null ? `${avgFullCycle}d` : '—',
+              icon:   '⏱',
+              color:  cycleColor(avgFullCycle),
+              bg:     cycleBg(avgFullCycle),
+              border: cycleBorder(avgFullCycle),
+              sub:    'request → invoice',
+            },
+            {
+              label:  'Fastest / Slowest',
+              value:  validCycleDays.length > 0
+                ? `${minCycle}d / ${maxCycle}d`
+                : '—',
+              icon:   '⚡',
+              color:  'text-gray-700',
+              bg:     'bg-gray-50',
+              border: 'border-gray-200',
+              sub:    'min / max cycle',
+            },
+          ].map(stat => (
             <div
-              className="h-full bg-gradient-to-r from-teal-400
-                         to-teal-600 rounded-full transition-all
-                         duration-700"
-              style={{
-                width: `${total > 0
-                  ? Math.round((closed.length / total) * 100)
-                  : 0}%`
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Row 3: Avg Days Per Stage ─────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100
-                      shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-gray-700">
-            ⏱ Average Days Per Stage — Full MCL Lifecycle
-          </h3>
-          <div className="flex gap-3 text-xs">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500
-                               inline-block" />
-              Fast ≤14d
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-yellow-500
-                               inline-block" />
-              Normal 15–21d
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-red-500
-                               inline-block" />
-              Slow 21d+
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3
-                        lg:grid-cols-5 gap-3">
-          {([
-            {
-              label: 'Request → Techemet',
-              value: avgToTechemet,
-              icon:  '📤',
-              from:  'Requested Date',
-              to:    'Date Sent to Techemet',
-            },
-            {
-              label: 'Techemet → Scheduled',
-              value: avgToScheduled,
-              icon:  '📅',
-              from:  'Sent to Techemet',
-              to:    'Scheduled Pickup',
-            },
-            {
-              label: 'Scheduled → Picked Up',
-              value: avgToPickup,
-              icon:  '🚛',
-              from:  'Scheduled Date',
-              to:    'Actual Pickup',
-            },
-            {
-              label: 'Pickup → Invoice',
-              value: avgToInvoice,
-              icon:  '🧾',
-              from:  'Actual Pickup',
-              to:    'Invoice Submitted',
-            },
-            {
-              label: 'Total Cycle Time',
-              value: avgFullCycle,
-              icon:  '⏱',
-              from:  'Request Date',
-              to:    'Invoice Submitted',
-            },
-          ] as { label: string; value: number | null; icon: string; from: string; to: string }[])
-            .map(stage => (
-            <div
-              key={stage.label}
-              className={`rounded-xl p-4 border flex flex-col gap-2
-                         ${cycleBg(stage.value)}
-                         ${cycleBorder(stage.value)}`}
+              key={stat.label}
+              className={`rounded-xl border ${stat.bg} ${stat.border}
+                          p-3 flex flex-col gap-1`}
             >
-              <span className="text-xl">{stage.icon}</span>
-              <p className={`text-4xl font-bold
-                            ${cycleColor(stage.value)}`}>
-                {stage.value !== null
-                  ? `${stage.value}d`
-                  : '—'
-                }
+              <span className="text-base">{stat.icon}</span>
+              <p className={`text-lg font-bold ${stat.color} leading-tight`}>
+                {stat.value}
               </p>
-              <div>
-                <p className="text-xs font-bold text-gray-700">
-                  {stage.label}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {stage.from} →
-                </p>
-                <p className="text-xs text-gray-400">{stage.to}</p>
-              </div>
-              {stage.value !== null && (
-                <span className={`text-xs font-bold px-2 py-0.5
-                                 rounded-full self-start
-                                 ${cycleLabelBg(stage.value)}`}>
-                  {cycleLabel(stage.value)}
-                </span>
-              )}
+              <p className="text-xs text-gray-500 font-medium leading-tight">
+                {stat.label}
+              </p>
+              <p className="text-xs text-gray-400 leading-tight">
+                {stat.sub}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* Cycle Time Distribution */}
-        {validCycleDays.length > 0 && (
-          <div className="mt-5 pt-4 border-t border-gray-100">
-            <p className="text-xs font-bold text-gray-500
-                          uppercase tracking-wide mb-3">
-              Cycle Time Distribution (Closed MCLs)
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                {
-                  label:  'Fast (0–14 days)',
-                  count:  validCycleDays.filter(d => d <= 14).length,
-                  color:  'bg-green-500',
-                  light:  'bg-green-50',
-                  text:   'text-green-700',
-                },
-                {
-                  label:  'Normal (15–21 days)',
-                  count:  validCycleDays.filter(
-                    d => d > 14 && d <= 21
-                  ).length,
-                  color:  'bg-yellow-500',
-                  light:  'bg-yellow-50',
-                  text:   'text-yellow-700',
-                },
-                {
-                  label:  'Slow (21+ days)',
-                  count:  validCycleDays.filter(d => d > 21).length,
-                  color:  'bg-red-500',
-                  light:  'bg-red-50',
-                  text:   'text-red-700',
-                },
-              ].map(band => {
-                const pct = validCycleDays.length > 0
-                  ? Math.round(
-                    (band.count / validCycleDays.length) * 100
-                  )
-                  : 0
-                return (
-                  <div
-                    key={band.label}
-                    className={`${band.light} rounded-xl p-3`}
-                  >
-                    <div className="flex justify-between
-                                    items-center mb-1.5">
-                      <span className={`text-xs font-bold
-                                        ${band.text}`}>
-                        {band.label}
-                      </span>
-                      <span className={`text-sm font-bold
-                                        ${band.text}`}>
-                        {band.count}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-white/70 rounded-full
-                                    overflow-hidden">
-                      <div
-                        className={`h-full ${band.color}
-                                   rounded-full`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className={`text-xs mt-1 ${band.text}`}>
-                      {pct}% of closed MCLs
-                    </p>
+        {/* ── Row 2: Pipeline ──────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100
+                        shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-gray-700">
+              📊 MCL Pipeline Overview
+            </h3>
+            <span className="text-xs text-gray-400">
+              {total} total records
+            </span>
+          </div>
+          <div className="grid grid-cols-5 gap-3 mb-5">
+            {pipeline.map(stage => {
+              const pct = total > 0
+                ? Math.round((stage.count / total) * 100)
+                : 0
+              return (
+                <div
+                  key={stage.key}
+                  className={`${stage.light} border ${stage.border}
+                              rounded-xl p-3 flex flex-col
+                              items-center text-center gap-1.5`}
+                >
+                  <span className="text-2xl">{stage.icon}</span>
+                  <span className={`text-2xl font-bold ${stage.text}`}>
+                    {stage.count}
+                  </span>
+                  <span className={`text-xs font-semibold ${stage.text}`}>
+                    {stage.label}
+                  </span>
+                  <div className="w-full bg-white/60 rounded-full
+                                  h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full ${stage.color} rounded-full`}
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
-                )
-              })}
+                  <span className="text-xs text-gray-400">{pct}%</span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-500 font-medium">
+                Overall Completion Rate
+              </span>
+              <span className="font-bold text-teal-600">
+                {total > 0
+                  ? Math.round((closed.length / total) * 100)
+                  : 0}%
+                {' '}({closed.length} / {total} MCLs)
+              </span>
+            </div>
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-teal-400
+                           to-teal-600 rounded-full transition-all duration-700"
+                style={{
+                  width: `${total > 0
+                    ? Math.round((closed.length / total) * 100)
+                    : 0}%`
+                }}
+              />
             </div>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* ── Row 4: RCRC Analytics Table ──────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100
-                      shadow-sm p-5">
-        <div className="flex items-center justify-between
-                        flex-wrap gap-3 mb-4">
-          <div>
+        {/* ── Row 3: Avg Days Per Stage ─────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100
+                        shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-gray-700">
-              🏢 RCRC Performance Analytics
+              ⏱ Average Days Per Stage — Full MCL Lifecycle
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {rcrcList.length} unique RCRCs •
-              Test records excluded
-            </p>
+            <div className="flex gap-3 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                Fast ≤14d
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block" />
+                Normal 15–21d
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+                Slow 21d+
+              </span>
+            </div>
           </div>
 
-          {/* Sort Controls */}
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="grid grid-cols-2 sm:grid-cols-3
+                          lg:grid-cols-5 gap-3">
             {([
-              { key: 'value'      as const, label: '💰 Value'      },
-              { key: 'mcls'       as const, label: '📋 MCLs'       },
-              { key: 'pieces'     as const, label: '🔩 Pieces'      },
-              { key: 'days'       as const, label: '⏱ Fastest'     },
-              { key: 'completion' as const, label: '✅ Completion'  },
-            ]).map(s => (
-              <button
-                key={s.key}
-                onClick={() => setRcrcSort(s.key)}
-                className={`text-xs px-3 py-1.5 rounded-lg
-                           font-semibold transition-colors ${
-                  rcrcSort === s.key
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+              { label: 'Request → Techemet',    value: avgToTechemet,  icon: '📤', from: 'Requested Date',   to: 'Date Sent to Techemet' },
+              { label: 'Techemet → Scheduled',  value: avgToScheduled, icon: '📅', from: 'Sent to Techemet', to: 'Scheduled Pickup'      },
+              { label: 'Scheduled → Picked Up', value: avgToPickup,    icon: '🚛', from: 'Scheduled Date',   to: 'Actual Pickup'         },
+              { label: 'Pickup → Invoice',      value: avgToInvoice,   icon: '🧾', from: 'Actual Pickup',    to: 'Invoice Submitted'     },
+              { label: 'Total Cycle Time',      value: avgFullCycle,   icon: '⏱', from: 'Request Date',     to: 'Invoice Submitted'     },
+            ] as { label: string; value: number | null; icon: string; from: string; to: string }[])
+              .map(stage => (
+              <div
+                key={stage.label}
+                className={`rounded-xl p-4 border flex flex-col gap-2
+                           ${cycleBg(stage.value)}
+                           ${cycleBorder(stage.value)}`}
               >
-                {s.label}
-              </button>
+                <span className="text-xl">{stage.icon}</span>
+                <p className={`text-4xl font-bold ${cycleColor(stage.value)}`}>
+                  {stage.value !== null ? `${stage.value}d` : '—'}
+                </p>
+                <div>
+                  <p className="text-xs font-bold text-gray-700">
+                    {stage.label}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {stage.from} →
+                  </p>
+                  <p className="text-xs text-gray-400">{stage.to}</p>
+                </div>
+                {stage.value !== null && (
+                  <span className={`text-xs font-bold px-2 py-0.5
+                                   rounded-full self-start
+                                   ${cycleLabelBg(stage.value)}`}>
+                    {cycleLabel(stage.value)}
+                  </span>
+                )}
+              </div>
             ))}
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b-2 border-gray-100">
-                {[
-                  { label: '#',            align: 'text-left'  },
-                  { label: 'RCRC',         align: 'text-left'  },
-                  { label: 'MCLs',         align: 'text-right' },
-                  { label: 'Closed',       align: 'text-right' },
-                  { label: 'Complete%',    align: 'text-right' },
-                  { label: 'Est. Value',   align: 'text-right' },
-                  { label: 'Avg / MCL',    align: 'text-right' },
-                  { label: 'Pieces',       align: 'text-right' },
-                  { label: 'Pallets',      align: 'text-right' },
-                  { label: '→ Techemet',   align: 'text-right' },
-                  { label: '→ Scheduled',  align: 'text-right' },
-                  { label: '→ Pickup',     align: 'text-right' },
-                  { label: '→ Invoice',    align: 'text-right' },
-                  { label: 'Full Cycle',   align: 'text-right' },
-                  { label: 'Value Bar',    align: 'text-left'  },
-                ].map(h => (
-                  <th
-                    key={h.label}
-                    className={`${h.align} py-2 px-2 font-bold
-                               text-gray-500 whitespace-nowrap`}
-                  >
-                    {h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {sortedRCRC.map((rcrc, i) => {
-                const valueBarPct = maxValue > 0
-                  ? (rcrc.totalValue / maxValue) * 100
-                  : 0
-
-                const rowColors = [
-                  'bg-yellow-50/60', // 🏆 #1
-                  'bg-gray-50/40',   // 🥈 #2
-                  'bg-orange-50/40', // 🥉 #3
-                ]
-
-                return (
-                  <tr
-                    key={`${rcrc.number}-${i}`}
-                    className={`border-b border-gray-50
-                               hover:bg-blue-50/30
-                               transition-colors ${
-                      i < 3 ? rowColors[i] : ''
-                    }`}
-                  >
-                    {/* Rank */}
-                    <td className="py-2.5 px-2 font-bold
-                                   text-gray-400 text-center">
-                      {i === 0
-                        ? '🏆'
-                        : i === 1
-                          ? '🥈'
-                          : i === 2
-                            ? '🥉'
-                            : i + 1
-                      }
-                    </td>
-
-                    {/* RCRC Name */}
-                    <td className="py-2.5 px-2">
-                      <p className="font-bold text-gray-800
-                                    whitespace-nowrap">
-                        {rcrc.name}
-                      </p>
-                      <p className="text-gray-400 text-xs">
-                        #{rcrc.number}
-                      </p>
-                    </td>
-
-                    {/* Total MCLs */}
-                    <td className="py-2.5 px-2 text-right
-                                   font-bold text-gray-700">
-                      {rcrc.totalMCLs}
-                    </td>
-
-                    {/* Closed */}
-                    <td className="py-2.5 px-2 text-right
-                                   text-teal-600 font-semibold">
-                      {rcrc.closedMCLs}
-                    </td>
-
-                    {/* Completion % */}
-                    <td className="py-2.5 px-2 text-right">
-                      <div className="flex items-center
-                                      justify-end gap-1.5">
-                        <div className="w-12 h-1.5 bg-gray-100
-                                        rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              rcrc.completionRate >= 80
-                                ? 'bg-teal-500'
-                                : rcrc.completionRate >= 50
-                                  ? 'bg-yellow-500'
-                                  : 'bg-red-400'
-                            }`}
-                            style={{
-                              width: `${rcrc.completionRate}%`
-                            }}
-                          />
+          {/* Cycle Distribution — Clickable */}
+          {validCycleDays.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-gray-100">
+              <p className="text-xs font-bold text-gray-500
+                            uppercase tracking-wide mb-3">
+                Cycle Time Distribution (Closed MCLs)
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { key: 'fast'   as const, label: 'Fast (0–14 days)',    count: validCycleDays.filter(d => d <= 14).length,           color: 'bg-green-500',  light: 'bg-green-50',  text: 'text-green-700',  hover: 'hover:bg-green-100 hover:shadow-md',  border: 'border-green-200'  },
+                  { key: 'normal' as const, label: 'Normal (15–21 days)', count: validCycleDays.filter(d => d > 14 && d <= 21).length, color: 'bg-yellow-500', light: 'bg-yellow-50', text: 'text-yellow-700', hover: 'hover:bg-yellow-100 hover:shadow-md', border: 'border-yellow-200' },
+                  { key: 'slow'   as const, label: 'Slow (21+ days)',     count: validCycleDays.filter(d => d > 21).length,            color: 'bg-red-500',    light: 'bg-red-50',    text: 'text-red-700',    hover: 'hover:bg-red-100 hover:shadow-md',    border: 'border-red-200'    },
+                ]).map(band => {
+                  const pct = validCycleDays.length > 0
+                    ? Math.round((band.count / validCycleDays.length) * 100)
+                    : 0
+                  return (
+                    <button
+                      key={band.key}
+                      onClick={() => setSlowModal(band.key)}
+                      className={`${band.light} border ${band.border}
+                                  rounded-xl p-3 text-left w-full
+                                  transition-all cursor-pointer ${band.hover}`}
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className={`text-xs font-bold ${band.text}`}>
+                          {band.label}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-sm font-bold ${band.text}`}>
+                            {band.count}
+                          </span>
+                          <span className="text-xs bg-white/80 border
+                                           px-1.5 py-0.5 rounded-md
+                                           opacity-60 font-medium">
+                            View →
+                          </span>
                         </div>
-                        <span className={`font-semibold ${
-                          rcrc.completionRate >= 80
-                            ? 'text-teal-600'
-                            : rcrc.completionRate >= 50
-                              ? 'text-yellow-600'
-                              : 'text-red-500'
-                        }`}>
-                          {rcrc.completionRate}%
-                        </span>
                       </div>
-                    </td>
-
-                    {/* Est. Value */}
-                    <td className="py-2.5 px-2 text-right font-bold
-                                   text-emerald-700 whitespace-nowrap">
-                      {fmtMoney(rcrc.totalValue)}
-                    </td>
-
-                    {/* Avg Per Closed MCL */}
-                    <td className="py-2.5 px-2 text-right
-                                   text-gray-500 whitespace-nowrap">
-                      {rcrc.closedMCLs > 0
-                        ? fmtMoney(
-                          rcrc.totalValue / rcrc.closedMCLs
-                        )
-                        : '—'
-                      }
-                    </td>
-
-                    {/* Total Pieces */}
-                    <td className="py-2.5 px-2 text-right
-                                   text-gray-600">
-                      {rcrc.totalPieces.toLocaleString()}
-                    </td>
-
-                    {/* Total Pallets */}
-                    <td className="py-2.5 px-2 text-right
-                                   text-gray-600">
-                      {rcrc.totalPallets > 0
-                        ? rcrc.totalPallets.toLocaleString()
-                        : '—'
-                      }
-                    </td>
-
-                    {/* Avg → Techemet */}
-                    <td className="py-2.5 px-2 text-right">
-                      {rcrc.avgTechhemetDays !== null ? (
-                        <span className={`font-semibold
-                          ${cycleColor(rcrc.avgTechhemetDays)}`}>
-                          {rcrc.avgTechhemetDays}d
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Avg → Scheduled */}
-                    <td className="py-2.5 px-2 text-right">
-                      {rcrc.avgScheduledDays !== null ? (
-                        <span className={`font-semibold
-                          ${cycleColor(rcrc.avgScheduledDays)}`}>
-                          {rcrc.avgScheduledDays}d
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Avg → Pickup */}
-                    <td className="py-2.5 px-2 text-right">
-                      {rcrc.avgPickupDays !== null ? (
-                        <span className={`font-semibold
-                          ${cycleColor(rcrc.avgPickupDays)}`}>
-                          {rcrc.avgPickupDays}d
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Avg → Invoice */}
-                    <td className="py-2.5 px-2 text-right">
-                      {rcrc.avgInvoiceDays !== null ? (
-                        <span className={`font-semibold
-                          ${cycleColor(rcrc.avgInvoiceDays)}`}>
-                          {rcrc.avgInvoiceDays}d
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Full Cycle */}
-                    <td className="py-2.5 px-2 text-right">
-                      {rcrc.avgCycleDays !== null ? (
-                        <span className={`inline-flex items-center
-                          gap-1 px-2 py-0.5 rounded-full font-bold
-                          text-xs
-                          ${cycleLabelBg(rcrc.avgCycleDays)}`}>
-                          {rcrc.avgCycleDays}d
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Value Bar */}
-                    <td className="py-2.5 px-2 w-28">
-                      <div className="h-2 bg-gray-100 rounded-full
-                                      overflow-hidden">
+                      <div className="h-2 bg-white/70 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-emerald-400
-                                     rounded-full"
-                          style={{ width: `${valueBarPct}%` }}
+                          className={`h-full ${band.color} rounded-full`}
+                          style={{ width: `${pct}%` }}
                         />
                       </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-
-            {/* Totals Footer */}
-            <tfoot>
-              <tr className="border-t-2 border-gray-200 bg-gray-50">
-                <td className="py-2.5 px-2 font-bold
-                               text-gray-400 text-center">
-                  Σ
-                </td>
-                <td className="py-2.5 px-2 font-bold text-gray-700">
-                  {rcrcList.length} RCRCs
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold
-                               text-gray-700">
-                  {total}
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold
-                               text-teal-600">
-                  {closed.length}
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold
-                               text-teal-600">
-                  {total > 0
-                    ? Math.round((closed.length / total) * 100)
-                    : 0}%
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold
-                               text-emerald-700 whitespace-nowrap">
-                  {fmtMoney(totalValue)}
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold
-                               text-gray-600 whitespace-nowrap">
-                  {fmtMoney(avgValuePerMCL)}
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold
-                               text-gray-700">
-                  {totalPieces.toLocaleString()}
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold
-                               text-gray-700">
-                  {totalPallets.toLocaleString()}
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold">
-                  <span className={cycleColor(avgToTechemet)}>
-                    {avgToTechemet !== null
-                      ? `${avgToTechemet}d`
-                      : '—'
-                    }
-                  </span>
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold">
-                  <span className={cycleColor(avgToScheduled)}>
-                    {avgToScheduled !== null
-                      ? `${avgToScheduled}d`
-                      : '—'
-                    }
-                  </span>
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold">
-                  <span className={cycleColor(avgToPickup)}>
-                    {avgToPickup !== null
-                      ? `${avgToPickup}d`
-                      : '—'
-                    }
-                  </span>
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold">
-                  <span className={cycleColor(avgToInvoice)}>
-                    {avgToInvoice !== null
-                      ? `${avgToInvoice}d`
-                      : '—'
-                    }
-                  </span>
-                </td>
-                <td className="py-2.5 px-2 text-right font-bold">
-                  <span className={cycleColor(avgFullCycle)}>
-                    {avgFullCycle !== null
-                      ? `${avgFullCycle}d avg`
-                      : '—'
-                    }
-                  </span>
-                </td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
+                      <p className={`text-xs mt-1 ${band.text}`}>
+                        {pct}% of closed MCLs
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* ── Row 5: Top Bar Charts ─────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        {/* Top 10 By Value */}
+        {/* ── Row 4: RCRC Analytics Table ──────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100
                         shadow-sm p-5">
-          <h3 className="text-sm font-bold text-gray-700 mb-4">
-            💰 Top 10 RCRCs by Value
-          </h3>
-          <div className="space-y-3">
-            {[...rcrcList]
-              .sort((a, b) => b.totalValue - a.totalValue)
-              .slice(0, 10)
-              .map((rcrc, i) => {
-                const pct = maxValue > 0
-                  ? (rcrc.totalValue / maxValue) * 100
-                  : 0
-                const barColors = [
-                  'bg-emerald-500', 'bg-emerald-400',
-                  'bg-teal-500',    'bg-teal-400',
-                  'bg-blue-500',    'bg-blue-400',
-                  'bg-indigo-500',  'bg-indigo-400',
-                  'bg-purple-500',  'bg-purple-400',
-                ]
-                return (
-                  <div key={`val-${rcrc.number}-${i}`}>
-                    <div className="flex justify-between
-                                    items-center mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold
-                                         text-gray-400 w-4">
-                          {i + 1}.
-                        </span>
-                        <span className="text-xs font-semibold
-                                         text-gray-700 truncate
-                                         max-w-[150px]">
+          <div className="flex items-center justify-between
+                          flex-wrap gap-3 mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-700">
+                🏢 RCRC Performance Analytics
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {rcrcList.length} unique RCRCs • Test records excluded
+              </p>
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {([
+                { key: 'value'      as const, label: '💰 Value'     },
+                { key: 'mcls'       as const, label: '📋 MCLs'      },
+                { key: 'pieces'     as const, label: '🔩 Pieces'     },
+                { key: 'days'       as const, label: '⏱ Fastest'    },
+                { key: 'completion' as const, label: '✅ Completion' },
+              ]).map(s => (
+                <button
+                  key={s.key}
+                  onClick={() => setRcrcSort(s.key)}
+                  className={`text-xs px-3 py-1.5 rounded-lg
+                             font-semibold transition-colors ${
+                    rcrcSort === s.key
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b-2 border-gray-100">
+                  {[
+                    { label: '#',           align: 'text-left'  },
+                    { label: 'RCRC',        align: 'text-left'  },
+                    { label: 'MCLs',        align: 'text-right' },
+                    { label: 'Closed',      align: 'text-right' },
+                    { label: 'Complete%',   align: 'text-right' },
+                    { label: 'Est. Value',  align: 'text-right' },
+                    { label: 'Avg / MCL',   align: 'text-right' },
+                    { label: 'Pieces',      align: 'text-right' },
+                    { label: 'Pallets',     align: 'text-right' },
+                    { label: '→ Techemet',  align: 'text-right' },
+                    { label: '→ Scheduled', align: 'text-right' },
+                    { label: '→ Pickup',    align: 'text-right' },
+                    { label: '→ Invoice',   align: 'text-right' },
+                    { label: 'Full Cycle',  align: 'text-right' },
+                    { label: 'Value Bar',   align: 'text-left'  },
+                  ].map(h => (
+                    <th
+                      key={h.label}
+                      className={`${h.align} py-2 px-2 font-bold
+                                 text-gray-500 whitespace-nowrap`}
+                    >
+                      {h.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {sortedRCRC.map((rcrc, i) => {
+                  const valueBarPct = maxValue > 0
+                    ? (rcrc.totalValue / maxValue) * 100
+                    : 0
+                  const rowColors = [
+                    'bg-yellow-50/60',
+                    'bg-gray-50/40',
+                    'bg-orange-50/40',
+                  ]
+                  return (
+                    <tr
+                      key={`${rcrc.number}-${i}`}
+                      className={`border-b border-gray-50
+                                 hover:bg-blue-50/30 transition-colors ${
+                        i < 3 ? rowColors[i] : ''
+                      }`}
+                    >
+                      {/* Rank */}
+                      <td className="py-2.5 px-2 font-bold
+                                     text-gray-400 text-center">
+                        {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                      </td>
+
+                      {/* RCRC Name */}
+                      <td className="py-2.5 px-2">
+                        <p className="font-bold text-gray-800 whitespace-nowrap">
                           {rcrc.name}
-                        </span>
-                        <span className="text-xs text-gray-400">
+                        </p>
+                        <p className="text-gray-400 text-xs">
                           #{rcrc.number}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">
-                          {rcrc.totalMCLs} MCLs
-                        </span>
-                        <span className="text-xs font-bold
-                                         text-emerald-700">
-                          {fmtMoney(rcrc.totalValue)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2.5 bg-gray-100 rounded-full
-                                    overflow-hidden">
-                      <div
-                        className={`h-full ${
-                          barColors[i] ?? 'bg-gray-400'
-                        } rounded-full transition-all duration-500`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+                        </p>
+                      </td>
+
+                      {/* Total MCLs */}
+                      <td className="py-2.5 px-2 text-right
+                                     font-bold text-gray-700">
+                        {rcrc.totalMCLs}
+                      </td>
+
+                      {/* Closed */}
+                      <td className="py-2.5 px-2 text-right
+                                     text-teal-600 font-semibold">
+                        {rcrc.closedMCLs}
+                      </td>
+
+                      {/* Completion % */}
+                      <td className="py-2.5 px-2 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <div className="w-12 h-1.5 bg-gray-100
+                                          rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                rcrc.completionRate >= 80
+                                  ? 'bg-teal-500'
+                                  : rcrc.completionRate >= 50
+                                    ? 'bg-yellow-500'
+                                    : 'bg-red-400'
+                              }`}
+                              style={{ width: `${rcrc.completionRate}%` }}
+                            />
+                          </div>
+                          <span className={`font-semibold ${
+                            rcrc.completionRate >= 80
+                              ? 'text-teal-600'
+                              : rcrc.completionRate >= 50
+                                ? 'text-yellow-600'
+                                : 'text-red-500'
+                          }`}>
+                            {rcrc.completionRate}%
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Est. Value */}
+                      <td className="py-2.5 px-2 text-right font-bold
+                                     text-emerald-700 whitespace-nowrap">
+                        {fmtMoney(rcrc.totalValue)}
+                      </td>
+
+                      {/* Avg Per Closed MCL */}
+                      <td className="py-2.5 px-2 text-right
+                                     text-gray-500 whitespace-nowrap">
+                        {rcrc.closedMCLs > 0
+                          ? fmtMoney(rcrc.totalValue / rcrc.closedMCLs)
+                          : '—'
+                        }
+                      </td>
+
+                      {/* Total Pieces */}
+                      <td className="py-2.5 px-2 text-right text-gray-600">
+                        {rcrc.totalPieces.toLocaleString()}
+                      </td>
+
+                      {/* Total Pallets */}
+                      <td className="py-2.5 px-2 text-right text-gray-600">
+                        {rcrc.totalPallets > 0
+                          ? rcrc.totalPallets.toLocaleString()
+                          : '—'
+                        }
+                      </td>
+
+                      {/* Avg → Techemet */}
+                      <td className="py-2.5 px-2 text-right">
+                        {rcrc.avgTechhemetDays !== null ? (
+                          <span className={`font-semibold
+                            ${cycleColor(rcrc.avgTechhemetDays)}`}>
+                            {rcrc.avgTechhemetDays}d
+                          </span>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Avg → Scheduled */}
+                      <td className="py-2.5 px-2 text-right">
+                        {rcrc.avgScheduledDays !== null ? (
+                          <span className={`font-semibold
+                            ${cycleColor(rcrc.avgScheduledDays)}`}>
+                            {rcrc.avgScheduledDays}d
+                          </span>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Avg → Pickup */}
+                      <td className="py-2.5 px-2 text-right">
+                        {rcrc.avgPickupDays !== null ? (
+                          <span className={`font-semibold
+                            ${cycleColor(rcrc.avgPickupDays)}`}>
+                            {rcrc.avgPickupDays}d
+                          </span>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Avg → Invoice */}
+                      <td className="py-2.5 px-2 text-right">
+                        {rcrc.avgInvoiceDays !== null ? (
+                          <span className={`font-semibold
+                            ${cycleColor(rcrc.avgInvoiceDays)}`}>
+                            {rcrc.avgInvoiceDays}d
+                          </span>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Full Cycle */}
+                      <td className="py-2.5 px-2 text-right">
+                        {rcrc.avgCycleDays !== null ? (
+                          <span className={`inline-flex items-center
+                            gap-1 px-2 py-0.5 rounded-full font-bold
+                            text-xs ${cycleLabelBg(rcrc.avgCycleDays)}`}>
+                            {rcrc.avgCycleDays}d
+                          </span>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Value Bar */}
+                      <td className="py-2.5 px-2 w-28">
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-400 rounded-full"
+                            style={{ width: `${valueBarPct}%` }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+
+              {/* Totals Footer */}
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <td className="py-2.5 px-2 font-bold text-gray-400 text-center">Σ</td>
+                  <td className="py-2.5 px-2 font-bold text-gray-700">
+                    {rcrcList.length} RCRCs
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">
+                    {total}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold text-teal-600">
+                    {closed.length}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold text-teal-600">
+                    {total > 0
+                      ? Math.round((closed.length / total) * 100)
+                      : 0}%
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold
+                                 text-emerald-700 whitespace-nowrap">
+                    {fmtMoney(totalValue)}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold
+                                 text-gray-600 whitespace-nowrap">
+                    {fmtMoney(avgValuePerMCL)}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">
+                    {totalPieces.toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">
+                    {totalPallets.toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold">
+                    <span className={cycleColor(avgToTechemet)}>
+                      {avgToTechemet !== null ? `${avgToTechemet}d` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold">
+                    <span className={cycleColor(avgToScheduled)}>
+                      {avgToScheduled !== null ? `${avgToScheduled}d` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold">
+                    <span className={cycleColor(avgToPickup)}>
+                      {avgToPickup !== null ? `${avgToPickup}d` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold">
+                    <span className={cycleColor(avgToInvoice)}>
+                      {avgToInvoice !== null ? `${avgToInvoice}d` : '—'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-bold">
+                    <span className={cycleColor(avgFullCycle)}>
+                      {avgFullCycle !== null ? `${avgFullCycle}d avg` : '—'}
+                    </span>
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
 
-        {/* Top 10 By Avg Cycle Days (Fastest) */}
-        <div className="bg-white rounded-2xl border border-gray-100
-                        shadow-sm p-5">
-          <h3 className="text-sm font-bold text-gray-700 mb-4">
-            ⚡ Fastest RCRCs — Avg Cycle Time
-          </h3>
-          <div className="space-y-3">
-            {[...rcrcList]
-              .filter(r => r.avgCycleDays !== null && r.closedMCLs >= 2)
-              .sort((a, b) =>
-                (a.avgCycleDays ?? 999) - (b.avgCycleDays ?? 999)
-              )
-              .slice(0, 10)
-              .map((rcrc, i) => {
-                const days = rcrc.avgCycleDays ?? 0
-                const pct  = maxCycle > 0
-                  ? (days / maxCycle) * 100
-                  : 0
-                return (
-                  <div key={`spd-${rcrc.number}-${i}`}>
-                    <div className="flex justify-between
-                                    items-center mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold
-                                         text-gray-400 w-4">
-                          {i + 1}.
-                        </span>
-                        <span className="text-xs font-semibold
-                                         text-gray-700 truncate
-                                         max-w-[150px]">
-                          {rcrc.name}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          ({rcrc.closedMCLs} closed)
+        {/* ── Row 5: Top Bar Charts ─────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+          {/* Top 10 By Value */}
+          <div className="bg-white rounded-2xl border border-gray-100
+                          shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-700 mb-4">
+              💰 Top 10 RCRCs by Value
+            </h3>
+            <div className="space-y-3">
+              {[...rcrcList]
+                .sort((a, b) => b.totalValue - a.totalValue)
+                .slice(0, 10)
+                .map((rcrc, i) => {
+                  const pct = maxValue > 0
+                    ? (rcrc.totalValue / maxValue) * 100
+                    : 0
+                  const barColors = [
+                    'bg-emerald-500', 'bg-emerald-400',
+                    'bg-teal-500',    'bg-teal-400',
+                    'bg-blue-500',    'bg-blue-400',
+                    'bg-indigo-500',  'bg-indigo-400',
+                    'bg-purple-500',  'bg-purple-400',
+                  ]
+                  return (
+                    <div key={`val-${rcrc.number}-${i}`}>
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-gray-400 w-4">
+                            {i + 1}.
+                          </span>
+                          <span className="text-xs font-semibold text-gray-700
+                                           truncate max-w-[150px]">
+                            {rcrc.name}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            #{rcrc.number}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400">
+                            {rcrc.totalMCLs} MCLs
+                          </span>
+                          <span className="text-xs font-bold text-emerald-700">
+                            {fmtMoney(rcrc.totalValue)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${
+                            barColors[i] ?? 'bg-gray-400'
+                          } rounded-full transition-all duration-500`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+
+          {/* Top 10 Fastest RCRCs by Avg Cycle Time */}
+          <div className="bg-white rounded-2xl border border-gray-100
+                          shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-700 mb-4">
+              ⚡ Fastest RCRCs — Avg Cycle Time
+            </h3>
+            <div className="space-y-3">
+              {[...rcrcList]
+                .filter(r => r.avgCycleDays !== null && r.closedMCLs >= 2)
+                .sort((a, b) =>
+                  (a.avgCycleDays ?? 999) - (b.avgCycleDays ?? 999)
+                )
+                .slice(0, 10)
+                .map((rcrc, i) => {
+                  const days = rcrc.avgCycleDays ?? 0
+                  const pct  = maxCycleForBar > 0
+                    ? (days / maxCycleForBar) * 100
+                    : 0
+                  return (
+                    <div key={`spd-${rcrc.number}-${i}`}>
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-gray-400 w-4">
+                            {i + 1}.
+                          </span>
+                          <span className="text-xs font-semibold text-gray-700
+                                           truncate max-w-[150px]">
+                            {rcrc.name}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            ({rcrc.closedMCLs} closed)
+                          </span>
+                        </div>
+                        <span className={`text-xs font-bold px-2 py-0.5
+                                          rounded-full ${cycleLabelBg(days)}`}>
+                          {days}d avg
                         </span>
                       </div>
-                      <span className={`text-xs font-bold px-2 py-0.5
-                                        rounded-full
-                                        ${cycleLabelBg(days)}`}>
-                        {days}d avg
-                      </span>
+                      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            days <= 14
+                              ? 'bg-green-500'
+                              : days <= 21
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2.5 bg-gray-100 rounded-full
-                                    overflow-hidden">
-                      <div
-                        className={`h-full rounded-full
-                                   transition-all duration-500 ${
-                          days <= 14
-                            ? 'bg-green-500'
-                            : days <= 21
-                              ? 'bg-yellow-500'
-                              : 'bg-red-500'
-                        }`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+            </div>
           </div>
+
         </div>
 
       </div>
-
     </div>
   )
 }
@@ -1361,9 +1981,9 @@ function RequestCard({
     { key: TabKey; label: string; icon: string } | null
   > = {
     total_requests:   null,
-    sent_for_pickup:  { key: 'in_transit',       label: 'Mark In Transit', icon: '🔄' },
-    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',   icon: '✅' },
-    shipment_arrived: { key: 'closed',            label: 'Close MCL',      icon: '🧾' },
+    sent_for_pickup:  { key: 'in_transit',      label: 'Mark In Transit', icon: '🔄' },
+    in_transit:       { key: 'shipment_arrived', label: 'Mark Arrived',   icon: '✅' },
+    shipment_arrived: { key: 'closed',           label: 'Close MCL',      icon: '🧾' },
     closed:           null,
   }
 
@@ -1389,12 +2009,11 @@ function RequestCard({
     <div className="bg-white rounded-2xl border border-gray-100
                     shadow-sm p-4 flex flex-col gap-3
                     hover:shadow-md transition-shadow">
+
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs text-gray-400 font-medium">
-            MCL Number
-          </p>
+          <p className="text-xs text-gray-400 font-medium">MCL Number</p>
           <p className="text-base font-bold text-gray-800">
             {req.mcl_number ?? '—'}
           </p>
@@ -1439,8 +2058,7 @@ function RequestCard({
       </div>
 
       {/* Dates */}
-      <div className="text-xs space-y-1 pt-2
-                      border-t border-gray-50">
+      <div className="text-xs space-y-1 pt-2 border-t border-gray-50">
         <div className="flex justify-between">
           <span className="text-gray-400">Requested</span>
           <span className="text-gray-600">
@@ -1537,9 +2155,9 @@ function ViewModal({
   onStatusChange: (id: number, newStatus: TabKey) => Promise<void>
   onSave:         (id: number, data: Partial<PickupRequest>) => Promise<void>
 }) {
-  const [editing, setEditing]   = useState(false)
-  const [saving,  setSaving]    = useState(false)
-  const [form,    setForm]      = useState<Partial<PickupRequest>>({
+  const [editing, setEditing] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [form,    setForm]    = useState<Partial<PickupRequest>>({
     mcl_number:             req.mcl_number,
     fcsd_offer_amount:      req.fcsd_offer_amount,
     admin_notes:            req.admin_notes,
@@ -1599,12 +2217,16 @@ function ViewModal({
           <input
             type={type}
             value={val?.toString() ?? ''}
-            onChange={e => setForm(prev => ({
-  ...prev,
-  [field]: type === 'number'
-    ? (e.target.value === '' ? undefined : Number(e.target.value))
-    : e.target.value || undefined,
-}))}
+            onChange={e =>
+              setForm(prev => ({
+                ...prev,
+                [field]: type === 'number'
+                  ? (e.target.value === ''
+                      ? undefined
+                      : Number(e.target.value))
+                  : e.target.value || undefined,
+              }))
+            }
             className="w-full text-sm font-semibold text-gray-700
                        bg-white border border-blue-200 rounded-lg
                        px-2 py-1 focus:outline-none focus:ring-2
@@ -1621,13 +2243,13 @@ function ViewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center
-                 justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center
+                 bg-black/40 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl shadow-2xl w-full
-                   max-w-2xl max-h-[90vh] overflow-y-auto p-6"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl
+                   max-h-[90vh] overflow-y-auto p-6"
         onClick={e => e.stopPropagation()}
       >
         {/* ── Header ─────────────────────────────────── */}
@@ -1643,8 +2265,8 @@ function ViewModal({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setEditing(prev => !prev)}
-              className={`text-xs px-3 py-1.5 rounded-lg
-                         font-semibold transition-colors ${
+              className={`text-xs px-3 py-1.5 rounded-lg font-semibold
+                         transition-colors ${
                 editing
                   ? 'bg-gray-200 text-gray-600'
                   : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
@@ -1656,33 +2278,31 @@ function ViewModal({
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600
                          text-2xl leading-none"
-            >
-              ×
-            </button>
+            >×</button>
           </div>
         </div>
 
         {/* ── Fields Grid ────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3 mb-5">
-          <Field label="MCL Number"         field="mcl_number"             />
-          <Field label="Est. Value ($)"     field="fcsd_offer_amount"      type="number" />
-          <Field label="RCRC Name"          field="rcrc_name"              />
-          <Field label="RCRC Number"        field="rcrc_number"            />
-          <Field label="Contact Person"     field="rcrc_contact_person"    />
-          <Field label="Email"              field="rcrc_email"             />
-          <Field label="Phone"              field="rcrc_phone_number"      />
-          <Field label="Address"            field="rcrc_address"           />
-          <Field label="City"               field="city"                   />
-          <Field label="State"              field="state"                  />
-          <Field label="ZIP"                field="rcrc_zip_code"          />
-          <Field label="Time Window"        field="time_window"            />
-          <Field label="Pallets"            field="pallet_quantity"        type="number" />
-          <Field label="Pieces"             field="total_pieces_quantity"  type="number" />
-          <Field label="Requested Date"     field="requested_pickup_date"  type="date" />
-          <Field label="Sent to Techemet"   field="date_sent_to_techemet"  type="date" />
-          <Field label="Scheduled Date"     field="scheduled_pickup_date"  type="date" />
-          <Field label="Actual Pickup"      field="actual_pickup_date"     type="date" />
-          <Field label="Invoice Submitted"  field="invoice_submitted_date" type="date" />
+          <Field label="MCL Number"          field="mcl_number"             />
+          <Field label="Est. Value ($)"      field="fcsd_offer_amount"      type="number" />
+          <Field label="RCRC Name"           field="rcrc_name"              />
+          <Field label="RCRC Number"         field="rcrc_number"            />
+          <Field label="Contact Person"      field="rcrc_contact_person"    />
+          <Field label="Email"               field="rcrc_email"             />
+          <Field label="Phone"               field="rcrc_phone_number"      />
+          <Field label="Address"             field="rcrc_address"           />
+          <Field label="City"                field="city"                   />
+          <Field label="State"               field="state"                  />
+          <Field label="ZIP"                 field="rcrc_zip_code"          />
+          <Field label="Time Window"         field="time_window"            />
+          <Field label="Pallets"             field="pallet_quantity"        type="number" />
+          <Field label="Pieces"              field="total_pieces_quantity"  type="number" />
+          <Field label="Requested Date"      field="requested_pickup_date"  type="date"   />
+          <Field label="Sent to Techemet"    field="date_sent_to_techemet"  type="date"   />
+          <Field label="Scheduled Date"      field="scheduled_pickup_date"  type="date"   />
+          <Field label="Actual Pickup"       field="actual_pickup_date"     type="date"   />
+          <Field label="Invoice Submitted"   field="invoice_submitted_date" type="date"   />
         </div>
 
         {/* ── Admin Notes ─────────────────────────────── */}
@@ -1691,10 +2311,12 @@ function ViewModal({
           {editing ? (
             <textarea
               value={form.admin_notes ?? ''}
-              onChange={e => setForm(prev => ({
-  ...prev,
-  admin_notes: e.target.value || undefined,
-}))}
+              onChange={e =>
+                setForm(prev => ({
+                  ...prev,
+                  admin_notes: e.target.value || undefined,
+                }))
+              }
               rows={3}
               className="w-full text-sm font-semibold text-gray-700
                          bg-white border border-blue-200 rounded-lg
@@ -1724,9 +2346,8 @@ function ViewModal({
                 onClick={handleSave}
                 disabled={saving}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600
-                           hover:bg-emerald-700 text-white
-                           font-semibold text-sm transition-colors
-                           disabled:opacity-50"
+                           hover:bg-emerald-700 text-white font-semibold
+                           text-sm transition-colors disabled:opacity-50"
               >
                 {saving ? '⏳ Saving...' : '💾 Save Changes'}
               </button>
@@ -1748,8 +2369,8 @@ function ViewModal({
                     onClose()
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-blue-600
-                             hover:bg-blue-700 text-white
-                             font-semibold text-sm transition-colors"
+                             hover:bg-blue-700 text-white font-semibold
+                             text-sm transition-colors"
                 >
                   {next.icon} {next.label}
                 </button>
@@ -1762,8 +2383,9 @@ function ViewModal({
     </div>
   )
 }
-
-// ── Main AdminDashboard ──────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// AdminDashboard — main export
+// ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [requests,      setRequests]      = useState<PickupRequest[]>([])
   const [loading,       setLoading]       = useState(true)
@@ -1849,7 +2471,6 @@ export default function AdminDashboard() {
   const handleSync = useCallback(async () => {
     setSyncing(true)
     setSyncMsg('🔄 Checking sync API...')
-
     try {
       const healthRes = await fetch(
         '/api/admin/sync-from-powerautomate',
@@ -1873,61 +2494,6 @@ export default function AdminDashboard() {
       setTimeout(() => setSyncMsg(''), 5000)
     }
   }, [fetchRequests])
-
-  // ── Export CSV ────────────────────────────────────────
-  function exportCSV() {
-    const headers = [
-      'ID', 'MCL #', 'RCRC Name', 'RCRC #',
-      'Contact', 'Email', 'Phone',
-      'Address', 'City', 'State', 'ZIP',
-      'Time Window', 'Pallets', 'Total Pieces', 'Est Value',
-      'Requested Pickup', 'Scheduled Pickup', 'Actual Pickup',
-      'Date Sent to Techemet', 'Invoice Submitted Date',
-      'Status', 'Admin Notes', 'Submitted',
-    ]
-
-    const rows = filtered.map(r => [
-      r.id,
-      r.mcl_number              ?? '',
-      r.rcrc_name               ?? '',
-      r.rcrc_number             ?? '',
-      r.rcrc_contact_person     ?? '',
-      r.rcrc_email              ?? '',
-      r.rcrc_phone_number       ?? '',
-      r.rcrc_address            ?? '',
-      r.city                    ?? '',
-      r.state                   ?? '',
-      r.rcrc_zip_code           ?? '',
-      r.time_window             ?? '',
-      r.pallet_quantity         ?? '',
-      r.total_pieces_quantity   ?? '',
-      r.fcsd_offer_amount       ?? '',
-      fmtDate(r.requested_pickup_date),
-      fmtDate(r.scheduled_pickup_date),
-      fmtDate(r.actual_pickup_date),
-      fmtDate(r.date_sent_to_techemet),
-      fmtDate(r.invoice_submitted_date),
-      r.status,
-      r.admin_notes             ?? '',
-      fmtDate(r.created_at),
-    ])
-
-    const csv = [headers, ...rows]
-      .map(row =>
-        row
-          .map(v => `"${String(v).replace(/"/g, '""')}"`)
-          .join(',')
-      )
-      .join('\n')
-
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
-    a.download = `mcl-requests-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
 
   // ── Counts ────────────────────────────────────────────
   const counts: Record<TabKey, number> = {
@@ -1953,15 +2519,71 @@ export default function AdminDashboard() {
     )
   })
 
+  // ── Export CSV ────────────────────────────────────────
+  function exportCSV() {
+    const headers = [
+      'ID', 'MCL #', 'RCRC Name', 'RCRC #',
+      'Contact', 'Email', 'Phone',
+      'Address', 'City', 'State', 'ZIP',
+      'Time Window', 'Pallets', 'Total Pieces', 'Est Value',
+      'Requested Pickup', 'Scheduled Pickup', 'Actual Pickup',
+      'Date Sent to Techemet', 'Invoice Submitted Date',
+      'Status', 'Admin Notes', 'Submitted',
+    ]
+
+    const rows = filtered.map(r => [
+      r.id,
+      r.mcl_number            ?? '',
+      r.rcrc_name             ?? '',
+      r.rcrc_number           ?? '',
+      r.rcrc_contact_person   ?? '',
+      r.rcrc_email            ?? '',
+      r.rcrc_phone_number     ?? '',
+      r.rcrc_address          ?? '',
+      r.city                  ?? '',
+      r.state                 ?? '',
+      r.rcrc_zip_code         ?? '',
+      r.time_window           ?? '',
+      r.pallet_quantity       ?? '',
+      r.total_pieces_quantity ?? '',
+      r.fcsd_offer_amount     ?? '',
+      fmtDate(r.requested_pickup_date),
+      fmtDate(r.scheduled_pickup_date),
+      fmtDate(r.actual_pickup_date),
+      fmtDate(r.date_sent_to_techemet),
+      fmtDate(r.invoice_submitted_date),
+      r.status,
+      r.admin_notes           ?? '',
+      fmtDate(r.created_at),
+    ])
+
+    const csv = [headers, ...rows]
+      .map(row =>
+        row
+          .map(v => `"${String(v).replace(/"/g, '""')}"`)
+          .join(',')
+      )
+      .join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `mcl-requests-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // ── Render ────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
 
       {/* ── Top Bar ──────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 sticky top-0
-                      z-30 shadow-sm">
+      <div className="bg-white border-b border-gray-100
+                      sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center justify-between
+                          gap-3 flex-wrap">
 
             {/* Title */}
             <div className="flex items-center gap-2">
@@ -1978,7 +2600,8 @@ export default function AdminDashboard() {
 
               {/* Sync Message */}
               {syncMsg && (
-                <span className={`text-xs px-3 py-1.5 rounded-lg font-medium ${
+                <span className={`text-xs px-3 py-1.5 rounded-lg
+                                 font-medium ${
                   syncMsg.startsWith('✅')
                     ? 'bg-green-100 text-green-700'
                     : syncMsg.startsWith('❌')
@@ -2011,10 +2634,14 @@ export default function AdminDashboard() {
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                {syncing
-                  ? (<><span className="animate-spin inline-block">⏳</span> Syncing...</>)
-                  : <>🔄 Sync Excel</>
-                }
+                {syncing ? (
+                  <>
+                    <span className="animate-spin inline-block">⏳</span>
+                    Syncing...
+                  </>
+                ) : (
+                  <>🔄 Sync Excel</>
+                )}
               </button>
 
               {/* Export CSV */}
@@ -2053,21 +2680,22 @@ export default function AdminDashboard() {
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl
-                          p-4 mb-4 text-sm text-red-700">
+          <div className="bg-red-50 border border-red-200
+                          rounded-xl p-4 mb-4 text-sm text-red-700">
             ❌ {error}
           </div>
         )}
 
         {/* Tab Bar */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-5 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-5
+                        scrollbar-hide">
           {TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5
-                         rounded-xl text-sm font-semibold transition-all
-                         duration-200 border ${
+              className={`flex-shrink-0 flex items-center gap-2
+                         px-4 py-2.5 rounded-xl text-sm font-semibold
+                         transition-all duration-200 border ${
                 activeTab === tab.key
                   ? `${tab.bg} ${tab.color} ${tab.border} shadow-sm`
                   : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -2075,7 +2703,8 @@ export default function AdminDashboard() {
             >
               <span>{tab.icon}</span>
               <span className="hidden sm:block">{tab.label}</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+              <span className={`text-xs px-1.5 py-0.5 rounded-full
+                               font-bold ${
                 activeTab === tab.key
                   ? `${tab.color} bg-white/70`
                   : 'bg-gray-100 text-gray-500'
@@ -2093,11 +2722,14 @@ export default function AdminDashboard() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by MCL #, RCRC name, contact..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200
-                       rounded-xl text-sm focus:ring-2 focus:ring-blue-500
-                       focus:border-transparent outline-none transition"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border
+                       border-gray-200 rounded-xl text-sm
+                       focus:ring-2 focus:ring-blue-500
+                       focus:border-transparent outline-none
+                       transition"
           />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span className="absolute left-3 top-1/2
+                           -translate-y-1/2 text-gray-400">
             🔍
           </span>
           {search && (
@@ -2126,7 +2758,9 @@ export default function AdminDashboard() {
               <div className="w-10 h-10 border-4 border-blue-600
                              border-t-transparent rounded-full
                              animate-spin mx-auto mb-3" />
-              <p className="text-sm text-gray-500">Loading requests...</p>
+              <p className="text-sm text-gray-500">
+                Loading requests...
+              </p>
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -2160,7 +2794,7 @@ export default function AdminDashboard() {
 
       </div>
 
-      {/* View & Edit Modal */}
+      {/* ── View & Edit Modal ────────────────────────── */}
       {viewReq && (
         <ViewModal
           req={viewReq}
