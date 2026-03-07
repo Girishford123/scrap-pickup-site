@@ -2466,31 +2466,25 @@ function ViewModal({
 // ─────────────────────────────────────────────────────────
 // AdminDashboard  (default export)
 // ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// AdminDashboard  (default export)
+// ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { data: session, status } = useSession()
 
-  const [requests,    setRequests]    = useState<PickupRequest[]>([])
-  const [loading,     setLoading]     = useState(true)
-  const [activeTab,   setActiveTab]   = useState<TabKey>('total_requests')
-  const [viewReq,     setViewReq]     = useState<PickupRequest | null>(null)
-  const [deleteReq,   setDeleteReq]   = useState<PickupRequest | null>(null)
+  // ── ALL hooks must come before any early returns ──────
+  const [requests,      setRequests]      = useState<PickupRequest[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [activeTab,     setActiveTab]     = useState<TabKey>('total_requests')
+  const [viewReq,       setViewReq]       = useState<PickupRequest | null>(null)
+  const [deleteReq,     setDeleteReq]     = useState<PickupRequest | null>(null)
   const [showAnalytics, setShowAnalytics] = useState(false)
-  const [search,      setSearch]      = useState('')
-  const [sortField,   setSortField]   = useState<keyof PickupRequest>('created_at')
-  const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc')
-  const [savingId,    setSavingId]    = useState<number | null>(null)
+  const [search,        setSearch]        = useState('')
+  const [sortField,     setSortField]     = useState<keyof PickupRequest>('created_at')
+  const [sortDir,       setSortDir]       = useState<'asc' | 'desc'>('desc')
+  const [savingId,      setSavingId]      = useState<number | null>(null)
 
-  // ── Guard: Loading ───────────────────────────────────
-  if (status === 'loading') return <AuthLoadingScreen />
-
-  // ── Guard: Not signed in ─────────────────────────────
-  if (!session) return <NotSignedInScreen />
-
-  // ── Guard: Unauthorized ──────────────────────────────
-  const userEmail = session.user?.email ?? ''
-  if (!ADMIN_EMAILS.includes(userEmail)) {
-    return <UnauthorizedScreen email={userEmail} />
-  }
+  const userEmail = session?.user?.email ?? ''
 
   // ── Fetch Requests ───────────────────────────────────
   const fetchRequests = useCallback(async () => {
@@ -2504,11 +2498,14 @@ export default function AdminDashboard() {
   }, [])
 
   useEffect(() => {
-    fetchRequests()
-  }, [fetchRequests])
+    if (status === 'authenticated' && ADMIN_EMAILS.includes(userEmail)) {
+      fetchRequests()
+    }
+  }, [fetchRequests, status, userEmail])
 
   // ── Real-time subscription ───────────────────────────
   useEffect(() => {
+    if (status !== 'authenticated' || !ADMIN_EMAILS.includes(userEmail)) return
     const channel = supabase
       .channel('pickup_requests_changes')
       .on(
@@ -2518,7 +2515,18 @@ export default function AdminDashboard() {
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [fetchRequests])
+  }, [fetchRequests, status, userEmail])
+
+  // ── Guard: Loading ───────────────────────────────────
+  if (status === 'loading') return <AuthLoadingScreen />
+
+  // ── Guard: Not signed in ─────────────────────────────
+  if (!session) return <NotSignedInScreen />
+
+  // ── Guard: Unauthorized ──────────────────────────────
+  if (!ADMIN_EMAILS.includes(userEmail)) {
+    return <UnauthorizedScreen email={userEmail} />
+  }
 
   // ── Status Change ────────────────────────────────────
   async function handleStatusChange(
@@ -2601,11 +2609,11 @@ export default function AdminDashboard() {
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return (
-      r.mcl_number?.toLowerCase().includes(q)        ||
-      r.rcrc_name?.toLowerCase().includes(q)          ||
-      r.rcrc_number?.toLowerCase().includes(q)        ||
-      r.rcrc_email?.toLowerCase().includes(q)         ||
-      r.rcrc_contact_person?.toLowerCase().includes(q)||
+      r.mcl_number?.toLowerCase().includes(q)         ||
+      r.rcrc_name?.toLowerCase().includes(q)           ||
+      r.rcrc_number?.toLowerCase().includes(q)         ||
+      r.rcrc_email?.toLowerCase().includes(q)          ||
+      r.rcrc_contact_person?.toLowerCase().includes(q) ||
       r.description?.toLowerCase().includes(q)
     )
   })
@@ -2778,9 +2786,9 @@ export default function AdminDashboard() {
           </div>
           <div className="flex gap-1.5">
             {([
-              { field: 'created_at'          as const, label: '📅 Date'   },
-              { field: 'rcrc_name'           as const, label: '🏢 RCRC'   },
-              { field: 'fcsd_offer_amount'   as const, label: '💰 Value'  },
+              { field: 'created_at'            as const, label: '📅 Date'   },
+              { field: 'rcrc_name'             as const, label: '🏢 RCRC'   },
+              { field: 'fcsd_offer_amount'     as const, label: '💰 Value'  },
               { field: 'requested_pickup_date' as const, label: '📦 Pickup' },
             ]).map(s => (
               <button
@@ -2818,7 +2826,7 @@ export default function AdminDashboard() {
               <span className="ml-1">
                 for{' '}
                 <span className="font-bold text-blue-600">
-                  "{search}"
+                  &quot;{search}&quot;
                 </span>
               </span>
             )}
