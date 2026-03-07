@@ -1,5 +1,5 @@
 // app/api/auth/[...nextauth]/route.ts
-import NextAuth from 'next-auth'
+import NextAuth        from 'next-auth'
 import AzureADProvider from 'next-auth/providers/azure-ad'
 
 const handler = NextAuth({
@@ -18,7 +18,7 @@ const handler = NextAuth({
       ]
       return allowed.includes(user.email ?? '')
     },
-    async session({ session, token }) {
+    async session({ session }) {
       return session
     },
   },
