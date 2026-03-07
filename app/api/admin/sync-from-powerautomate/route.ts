@@ -375,14 +375,13 @@ export async function POST(request: Request) {
           if (mapped.invoice_submitted_date) updatePayload.invoice_submitted_date = mapped.invoice_submitted_date
           if (mapped.admin_notes)            updatePayload.admin_notes            = mapped.admin_notes
 
-          // ── Auto-close if invoice date exists ──────────
-          if (mapped.invoice_submitted_date) {
-            updatePayload.status            = 'closed'
-            updatePayload.status_updated_at = new Date().toISOString()
-            console.log(
-              `🧾 Auto-closing MCL ${mapped.mcl_number} ` +
-              `— invoice date: ${mapped.invoice_submitted_date}`
-            )
+          // ── Auto-determine status based on dates ───────
+          const autoStatus = determineStatus(mapped)
+          updatePayload.status            = autoStatus
+          updatePayload.status_updated_at = new Date().toISOString()
+          console.log(
+            `📊 Auto status update MCL ${mapped.mcl_number}: ${autoStatus}`
+          )
           }
 
           const { error } = await supabase

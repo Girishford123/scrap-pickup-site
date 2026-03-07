@@ -199,917 +199,1153 @@ function ProgressBar({ status }: { status: TabKey }) {
   )
 }
 
-// ── AnalyticsDashboard ───────────────────────────────────
+// ── Analytics Dashboard ──────────────────────────────────
 function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
-  const activeRequests = requests.filter(
-    r => r.status !== 'shipment_arrived' && r.status !== 'closed'
+
+  // ── Filter out test records (RCRC 9999) ─────────────────
+  const realRequests = requests.filter(r =>
+    r.rcrc_number !== '9999' &&
+    r.rcrc_name   !== 'Test RCRC' &&
+    r.rcrc_name   !== 'Girish RCRC' &&
+    r.rcrc_name   !== 'Girish load' &&
+    r.rcrc_name   !== 'Girish' &&
+    r.rcrc_name   !== 'GIrish' &&
+    r.rcrc_name   !== 'Siva' &&
+    r.rcrc_name   !== 'FMC'
   )
-  const totalActive    = activeRequests.length
-  const totalArrived   = requests.filter(r => r.status === 'shipment_arrived').length
-  const totalClosed    = requests.filter(r => r.status === 'closed').length
 
-  const totalPallets   = requests.reduce((s, r) => s + (r.pallet_quantity        ?? 0), 0)
-  const totalPieces    = requests.reduce((s, r) => s + (r.total_pieces_quantity   ?? 0), 0)
-  const totalValue     = requests.reduce((s, r) => s + (r.fcsd_offer_amount       ?? 0), 0)
-
-  const quickStats = [
-    {
-      label:      'Total MCLs',
-      value:      requests.length,
-      icon:       '📋',
-      color:      'text-blue-700',
-      bg:         'bg-blue-50',
-      border:     'border-blue-200',
-      isMonetary: false,
-    },
-    {
-      label:      'Active',
-      value:      totalActive,
-      icon:       '⚡',
-      color:      'text-yellow-700',
-      bg:         'bg-yellow-50',
-      border:     'border-yellow-200',
-      isMonetary: false,
-    },
-    {
-      label:      'Arrived',
-      value:      totalArrived,
-      icon:       '✅',
-      color:      'text-green-700',
-      bg:         'bg-green-50',
-      border:     'border-green-200',
-      isMonetary: false,
-    },
-    {
-      label:      'Closed & Invoiced',
-      value:      totalClosed,
-      icon:       '🧾',
-      color:      'text-teal-700',
-      bg:         'bg-teal-50',
-      border:     'border-teal-200',
-      isMonetary: false,
-    },
-    {
-      label:      'Total Pallets',
-      value:      totalPallets,
-      icon:       '📦',
-      color:      'text-purple-700',
-      bg:         'bg-purple-50',
-      border:     'border-purple-200',
-      isMonetary: false,
-    },
-    {
-      label:      'Total Pieces',
-      value:      totalPieces,
-      icon:       '🔩',
-      color:      'text-indigo-700',
-      bg:         'bg-indigo-50',
-      border:     'border-indigo-200',
-      isMonetary: false,
-    },
-    {
-      label:      'Est. Total Value',
-      value:      totalValue,
-      icon:       '💰',
-      color:      'text-emerald-700',
-      bg:         'bg-emerald-50',
-      border:     'border-emerald-200',
-      isMonetary: true,
-    },
-  ]
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
-      {quickStats.map(stat => (
-        <div
-          key={stat.label}
-          className={`rounded-xl border ${stat.bg} ${stat.border} p-3 flex flex-col gap-1`}
-        >
-          <span className="text-lg">{stat.icon}</span>
-          <p className={`text-xl font-bold ${stat.color}`}>
-            {stat.isMonetary
-              ? fmtMoney(stat.value)
-              : stat.value.toLocaleString()
-            }
-          </p>
-          <p className="text-xs text-gray-500 font-medium leading-tight">
-            {stat.label}
-          </p>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ── RequestCard ──────────────────────────────────────────
-function RequestCard({
-  req,
-  onView,
-  onStatusChange,
-}: {
-  req:            PickupRequest
-  onView:         (r: PickupRequest) => void
-  onStatusChange: (id: number, status: TabKey) => void
-}) {
-  const nextMap: Record<TabKey, { key: TabKey; label: string; icon: string } | null> = {
-    total_requests:   { key: 'sent_for_pickup',  label: 'Send for Pickup', icon: '🚚' },
-    sent_for_pickup:  { key: 'in_transit',        label: 'Mark In Transit', icon: '🔄' },
-    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',    icon: '✅' },
-    shipment_arrived: { key: 'closed',            label: 'Close MCL',       icon: '🧾' },
-    closed:           null,
+  // ── Normalize RCRC Names (fix case issues) ────────────────
+  function normalizeRCRC(name?: string | null): string {
+    if (!name) return 'Unknown'
+    const lower = name.toLowerCase().trim()
+    if (lower === 'aer')       return 'AER'
+    if (lower === 'fredjones') return 'FredJones'
+    if (lower === 'holman')    return 'Holman'
+    return name.trim()
   }
 
-  const next = nextMap[req.status]
+  // ── Core Stats ──────────────────────────────────────────
+  const total         = realRequests.length
+  const closed        = realRequests.filter(r => r.status === 'closed')
+  const active        = realRequests.filter(r => r.status !== 'closed')
+  const inTransit     = realRequests.filter(r => r.status === 'in_transit')
+  const arrived       = realRequests.filter(r => r.status === 'shipment_arrived')
+  const sentForPickup = realRequests.filter(r => r.status === 'sent_for_pickup')
+  const newRequests   = realRequests.filter(r => r.status === 'total_requests')
 
-  const dates: [string, string | undefined, string][] = [
-    ['📥 Received',              req.vendor_request_received_at, 'text-gray-700'  ],
-    ['📤 Sent to Techemet',      req.techemet_request_sent_at,   'text-gray-700'  ],
-    ['📬 Date Sent to Techemet', req.date_sent_to_techemet,      'text-blue-700'  ],
-    ['📅 Scheduled',             req.scheduled_pickup_date,      'text-blue-700'  ],
-    ['🚛 Actual Pickup',         req.actual_pickup_date,         'text-green-700' ],
-    ['🧾 Invoice Submitted',     req.invoice_submitted_date,     'text-teal-700'  ],
-  ]
-
-  return (
-    <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-md
-                     transition-all duration-200 overflow-hidden ${
-      req.status === 'closed'
-        ? 'border-teal-200'
-        : 'border-gray-100'
-    }`}>
-
-      {/* Card Header */}
-      <div className={`px-4 pt-4 pb-3 flex items-start justify-between gap-2 ${
-        req.status === 'closed' ? 'bg-teal-50/50' : ''
-      }`}>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {req.mcl_number && (
-              <span className="text-xs font-bold text-white bg-gray-800
-                               px-2 py-0.5 rounded-lg">
-                MCL {req.mcl_number}
-              </span>
-            )}
-            <StatusBadge status={req.status} />
-            {req.invoice_submitted_date && (
-              <span className="text-xs font-bold text-teal-700 bg-teal-100
-                               px-2 py-0.5 rounded-lg">
-                🧾 Invoiced
-              </span>
-            )}
-          </div>
-          <p className="text-sm font-semibold text-gray-900 mt-1 truncate">
-            {req.rcrc_name || req.customer_name || 'Unknown RCRC'}
-          </p>
-          {req.rcrc_number && (
-            <p className="text-xs text-gray-400">RCRC #{req.rcrc_number}</p>
-          )}
-        </div>
-        {req.fcsd_offer_amount != null && (
-          <span className="text-sm font-bold text-emerald-700 whitespace-nowrap">
-            {fmtMoney(req.fcsd_offer_amount)}
-          </span>
-        )}
-      </div>
-
-      {/* Progress Bar */}
-      <div className="px-4 pb-2">
-        <ProgressBar status={req.status} />
-      </div>
-
-      {/* Key Dates */}
-      <div className="px-4 pb-3 space-y-1">
-        {dates.map(([label, val, cls]) =>
-          val ? (
-            <div key={label} className="flex justify-between text-xs">
-              <span className="text-gray-400">{label}</span>
-              <span className={`font-medium ${cls}`}>{fmtDate(val)}</span>
-            </div>
-          ) : null
-        )}
-      </div>
-
-      {/* Quantities */}
-      {(req.pallet_quantity || req.total_pieces_quantity) && (
-        <div className="px-4 pb-3 flex gap-3 flex-wrap">
-          {req.pallet_quantity ? (
-            <span className="text-xs text-gray-500">
-              📦 {req.pallet_quantity.toLocaleString()} pallets
-            </span>
-          ) : null}
-          {req.total_pieces_quantity ? (
-            <span className="text-xs text-gray-500">
-              🔩 {req.total_pieces_quantity.toLocaleString()} pcs
-            </span>
-          ) : null}
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="px-4 pb-4 flex gap-2">
-        <button
-          onClick={() => onView(req)}
-          className="flex-1 py-2 px-3 rounded-xl bg-gray-100
-                     hover:bg-gray-200 text-gray-700 text-xs
-                     font-semibold transition-colors"
-        >
-          👁 View &amp; Edit
-        </button>
-
-        {next ? (
-          <button
-            onClick={() => onStatusChange(req.id, next.key)}
-            className="flex-1 py-2 px-3 rounded-xl bg-blue-600
-                       hover:bg-blue-700 text-white text-xs
-                       font-semibold transition-colors"
-          >
-            {next.icon} {next.label}
-          </button>
-        ) : (
-          <div className={`flex-1 py-2 px-3 rounded-xl text-xs
-                          font-semibold text-center border ${
-            req.status === 'closed'
-              ? 'bg-teal-50 text-teal-700 border-teal-200'
-              : 'bg-green-50 text-green-700 border-green-200'
-          }`}>
-            {req.status === 'closed' ? '🧾 Closed' : '✅ Completed'}
-          </div>
-        )}
-      </div>
-    </div>
+  const totalValue    = realRequests.reduce(
+    (s, r) => s + (r.fcsd_offer_amount     ?? 0), 0
   )
-}
+  const closedValue   = closed.reduce(
+    (s, r) => s + (r.fcsd_offer_amount     ?? 0), 0
+  )
+  const totalPallets  = realRequests.reduce(
+    (s, r) => s + (r.pallet_quantity       ?? 0), 0
+  )
+  const totalPieces   = realRequests.reduce(
+    (s, r) => s + (r.total_pieces_quantity ?? 0), 0
+  )
+  const avgValuePerMCL = closed.length > 0
+    ? closedValue / closed.length
+    : 0
 
-// ── ViewModal ────────────────────────────────────────────
-function ViewModal({
-  req,
-  onClose,
-  onSave,
-  onStatusChange,
-}: {
-  req:            PickupRequest
-  onClose:        () => void
-  onSave:         (id: number, data: Partial<PickupRequest>) => Promise<void>
-  onStatusChange: (id: number, status: TabKey) => void
-}) {
-  const [activeTab, setActiveTab] = useState<'info' | 'admin' | 'attachments'>('info')
-  const [saving,    setSaving]    = useState(false)
-  const [saved,     setSaved]     = useState(false)
+  // ── Day Calculations ────────────────────────────────────
+  function daysBetween(
+    start?: string | null,
+    end?:   string | null
+  ): number | null {
+    if (!start || !end) return null
+    const s = new Date(start)
+    const e = new Date(end)
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return null
+    const diff = Math.round(
+      (e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    // Filter out impossible values
+    // (typos like year 2205 or negative full cycles)
+    if (Math.abs(diff) > 365) return null
+    return diff >= 0 ? diff : null
+  }
 
-  const [form, setForm] = useState<AdminEditForm>({
-    mcl_number:                 req.mcl_number                    ?? '',
-    fcsd_offer_amount:          req.fcsd_offer_amount?.toString() ?? '',
-    vendor_request_received_at: req.vendor_request_received_at    ?? '',
-    techemet_request_sent_at:   req.techemet_request_sent_at      ?? '',
-    requested_pickup_date:      req.requested_pickup_date         ?? '',
-    scheduled_pickup_date:      req.scheduled_pickup_date         ?? '',
-    actual_pickup_date:         req.actual_pickup_date            ?? '',
-    date_sent_to_techemet:      req.date_sent_to_techemet         ?? '',
-    invoice_submitted_date:     req.invoice_submitted_date        ?? '',
-    admin_notes:                req.admin_notes                   ?? '',
-    status:                     req.status,
+  function avgDays(vals: (number | null)[]): number | null {
+    const valid = vals.filter((v): v is number => v !== null && v >= 0)
+    if (valid.length === 0) return null
+    return Math.round(
+      valid.reduce((s, v) => s + v, 0) / valid.length
+    )
+  }
+
+  // Stage cycle times
+  const fullCycleDays   = realRequests.map(r =>
+    daysBetween(r.requested_pickup_date, r.invoice_submitted_date)
+  )
+  const daysToTechemet  = realRequests.map(r =>
+    daysBetween(r.requested_pickup_date, r.date_sent_to_techemet)
+  )
+  const daysToScheduled = realRequests.map(r =>
+    daysBetween(r.date_sent_to_techemet, r.scheduled_pickup_date)
+  )
+  const daysToPickup    = realRequests.map(r =>
+    daysBetween(r.scheduled_pickup_date, r.actual_pickup_date)
+  )
+  const daysToInvoice   = realRequests.map(r =>
+    daysBetween(r.actual_pickup_date, r.invoice_submitted_date)
+  )
+
+  const avgFullCycle   = avgDays(fullCycleDays)
+  const avgToTechemet  = avgDays(daysToTechemet)
+  const avgToScheduled = avgDays(daysToScheduled)
+  const avgToPickup    = avgDays(daysToPickup)
+  const avgToInvoice   = avgDays(daysToInvoice)
+
+  // Valid cycle days for distribution
+  const validCycleDays = fullCycleDays.filter(
+    (v): v is number => v !== null
+  )
+  const minCycle = validCycleDays.length > 0
+    ? Math.min(...validCycleDays) : 0
+  const maxCycle = validCycleDays.length > 0
+    ? Math.max(...validCycleDays) : 0
+
+  // ── RCRC Analytics ──────────────────────────────────────
+  const rcrcMap = new Map<string, {
+    name:          string
+    number:        string
+    totalMCLs:     number
+    closedMCLs:    number
+    totalValue:    number
+    totalPieces:   number
+    totalPallets:  number
+    cycleDays:     (number | null)[]
+    techhemetDays: (number | null)[]
+    scheduledDays: (number | null)[]
+    pickupDays:    (number | null)[]
+    invoiceDays:   (number | null)[]
+  }>()
+
+  realRequests.forEach(r => {
+    const normalName = normalizeRCRC(r.rcrc_name)
+    const key        = r.rcrc_number
+      ? `${normalName}-${r.rcrc_number}`
+      : normalName
+
+    if (!rcrcMap.has(key)) {
+      rcrcMap.set(key, {
+        name:          normalName,
+        number:        r.rcrc_number  ?? '—',
+        totalMCLs:     0,
+        closedMCLs:    0,
+        totalValue:    0,
+        totalPieces:   0,
+        totalPallets:  0,
+        cycleDays:     [],
+        techhemetDays: [],
+        scheduledDays: [],
+        pickupDays:    [],
+        invoiceDays:   [],
+      })
+    }
+
+    const rcrc       = rcrcMap.get(key)!
+    rcrc.totalMCLs++
+    rcrc.totalValue   += r.fcsd_offer_amount     ?? 0
+    rcrc.totalPieces  += r.total_pieces_quantity ?? 0
+    rcrc.totalPallets += r.pallet_quantity       ?? 0
+
+    if (r.status === 'closed') rcrc.closedMCLs++
+
+    rcrc.cycleDays.push(
+      daysBetween(r.requested_pickup_date, r.invoice_submitted_date)
+    )
+    rcrc.techhemetDays.push(
+      daysBetween(r.requested_pickup_date, r.date_sent_to_techemet)
+    )
+    rcrc.scheduledDays.push(
+      daysBetween(r.date_sent_to_techemet, r.scheduled_pickup_date)
+    )
+    rcrc.pickupDays.push(
+      daysBetween(r.scheduled_pickup_date, r.actual_pickup_date)
+    )
+    rcrc.invoiceDays.push(
+      daysBetween(r.actual_pickup_date, r.invoice_submitted_date)
+    )
   })
 
-  const nextMap: Record<TabKey, { key: TabKey; label: string; icon: string } | null> = {
-    total_requests:   { key: 'sent_for_pickup',  label: 'Send for Pickup', icon: '🚚' },
-    sent_for_pickup:  { key: 'in_transit',        label: 'Mark In Transit', icon: '🔄' },
-    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',    icon: '✅' },
-    shipment_arrived: { key: 'closed',            label: 'Close MCL',       icon: '🧾' },
-    closed:           null,
-  }
+  const rcrcList = Array.from(rcrcMap.values())
+    .map(r => ({
+      ...r,
+      avgCycleDays:    avgDays(r.cycleDays),
+      avgTechhemetDays: avgDays(r.techhemetDays),
+      avgScheduledDays: avgDays(r.scheduledDays),
+      avgPickupDays:    avgDays(r.pickupDays),
+      avgInvoiceDays:   avgDays(r.invoiceDays),
+      completionRate:   r.totalMCLs > 0
+        ? Math.round((r.closedMCLs / r.totalMCLs) * 100)
+        : 0,
+    }))
+    .sort((a, b) => b.totalValue - a.totalValue)
 
-  const next = nextMap[form.status]
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      const payload: Partial<PickupRequest> = {
-        mcl_number:                 form.mcl_number                 || undefined,
-        fcsd_offer_amount:          form.fcsd_offer_amount
-                                      ? Number(form.fcsd_offer_amount)
-                                      : undefined,
-        vendor_request_received_at: form.vendor_request_received_at || undefined,
-        techemet_request_sent_at:   form.techemet_request_sent_at   || undefined,
-        requested_pickup_date:      form.requested_pickup_date      || undefined,
-        scheduled_pickup_date:      form.scheduled_pickup_date      || undefined,
-        actual_pickup_date:         form.actual_pickup_date         || undefined,
-        date_sent_to_techemet:      form.date_sent_to_techemet      || undefined,
-        invoice_submitted_date:     form.invoice_submitted_date     || undefined,
-        admin_notes:                form.admin_notes                || undefined,
-        status:                     form.status,
-      }
-
-      // Auto-close if invoice date is set
-      if (form.invoice_submitted_date && form.status !== 'closed') {
-        payload.status = 'closed'
-        setForm(f => ({ ...f, status: 'closed' }))
-      }
-
-      await onSave(req.id, payload)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const modalTabs = [
-    { key: 'info'        as const, label: 'Info',         icon: '📋' },
-    { key: 'admin'       as const, label: 'Admin Fields', icon: '⚙️' },
-    { key: 'attachments' as const, label: 'Attachments',  icon: '📎' },
+  // ── Pipeline ────────────────────────────────────────────
+  const pipeline = [
+    {
+      key:   'total_requests',
+      label: 'New',
+      icon:  '📋',
+      count: newRequests.length,
+      color: 'bg-blue-500',
+      light: 'bg-blue-50',
+      text:  'text-blue-700',
+      border: 'border-blue-200',
+    },
+    {
+      key:   'sent_for_pickup',
+      label: 'Sent',
+      icon:  '🚚',
+      count: sentForPickup.length,
+      color: 'bg-yellow-500',
+      light: 'bg-yellow-50',
+      text:  'text-yellow-700',
+      border: 'border-yellow-200',
+    },
+    {
+      key:   'in_transit',
+      label: 'In Transit',
+      icon:  '🔄',
+      count: inTransit.length,
+      color: 'bg-purple-500',
+      light: 'bg-purple-50',
+      text:  'text-purple-700',
+      border: 'border-purple-200',
+    },
+    {
+      key:   'shipment_arrived',
+      label: 'Arrived',
+      icon:  '✅',
+      count: arrived.length,
+      color: 'bg-green-500',
+      light: 'bg-green-50',
+      text:  'text-green-700',
+      border: 'border-green-200',
+    },
+    {
+      key:   'closed',
+      label: 'Closed',
+      icon:  '🧾',
+      count: closed.length,
+      color: 'bg-teal-500',
+      light: 'bg-teal-50',
+      text:  'text-teal-700',
+      border: 'border-teal-200',
+    },
   ]
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50
-                    flex items-end sm:items-center justify-center
-                    p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-2xl rounded-t-3xl
-                      sm:rounded-3xl shadow-2xl max-h-[92vh]
-                      flex flex-col overflow-hidden">
+  // ── Color helpers ───────────────────────────────────────
+  function cycleColor(days: number | null): string {
+    if (days === null) return 'text-gray-400'
+    if (days <= 14)    return 'text-green-600'
+    if (days <= 21)    return 'text-yellow-600'
+    return 'text-red-600'
+  }
 
-        {/* Modal Header */}
-        <div className={`px-5 py-4 flex items-start justify-between
-                         gap-3 border-b ${
-          form.status === 'closed'
-            ? 'bg-teal-50 border-teal-100'
-            : 'bg-gray-50 border-gray-100'
-        }`}>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {req.mcl_number && (
-                <span className="text-xs font-bold text-white bg-gray-800
-                                 px-2 py-0.5 rounded-lg">
-                  MCL {req.mcl_number}
+  function cycleBg(days: number | null): string {
+    if (days === null) return 'bg-gray-50'
+    if (days <= 14)    return 'bg-green-50'
+    if (days <= 21)    return 'bg-yellow-50'
+    return 'bg-red-50'
+  }
+
+  function cycleBorder(days: number | null): string {
+    if (days === null) return 'border-gray-200'
+    if (days <= 14)    return 'border-green-200'
+    if (days <= 21)    return 'border-yellow-200'
+    return 'border-red-200'
+  }
+
+  function cycleLabel(days: number | null): string {
+    if (days === null) return '—'
+    if (days <= 14)    return '✅ Fast'
+    if (days <= 21)    return '⚠️ Normal'
+    return '🔴 Slow'
+  }
+
+  function cycleLabelBg(days: number | null): string {
+    if (days === null) return 'bg-gray-100 text-gray-500'
+    if (days <= 14)    return 'bg-green-100 text-green-700'
+    if (days <= 21)    return 'bg-yellow-100 text-yellow-700'
+    return 'bg-red-100 text-red-700'
+  }
+
+  // ── RCRC Sort State ─────────────────────────────────────
+  const [rcrcSort, setRcrcSort] = useState<
+    'value' | 'mcls' | 'days' | 'pieces' | 'completion'
+  >('value')
+
+  const sortedRCRC = [...rcrcList].sort((a, b) => {
+    switch (rcrcSort) {
+      case 'value':      return b.totalValue    - a.totalValue
+      case 'mcls':       return b.totalMCLs     - a.totalMCLs
+      case 'pieces':     return b.totalPieces   - a.totalPieces
+      case 'completion': return b.completionRate - a.completionRate
+      case 'days': {
+        const aD = a.avgCycleDays ?? 9999
+        const bD = b.avgCycleDays ?? 9999
+        return aD - bD
+      }
+      default: return 0
+    }
+  })
+
+  const maxValue  = Math.max(...rcrcList.map(r => r.totalValue),  1)
+  const maxPieces = Math.max(...rcrcList.map(r => r.totalPieces), 1)
+
+  // ── Render ──────────────────────────────────────────────
+  return (
+    <div className="space-y-5 mb-8">
+
+      {/* ── Row 1: KPI Cards ─────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4
+                      xl:grid-cols-8 gap-3">
+        {[
+          {
+            label:  'Total MCLs',
+            value:  total.toLocaleString(),
+            icon:   '📋',
+            color:  'text-blue-700',
+            bg:     'bg-blue-50',
+            border: 'border-blue-200',
+            sub:    `${active.length} active`,
+          },
+          {
+            label:  'Total Est. Value',
+            value:  fmtMoney(totalValue),
+            icon:   '💰',
+            color:  'text-emerald-700',
+            bg:     'bg-emerald-50',
+            border: 'border-emerald-200',
+            sub:    fmtMoney(closedValue) + ' closed',
+          },
+          {
+            label:  'Avg Value / MCL',
+            value:  fmtMoney(avgValuePerMCL),
+            icon:   '📈',
+            color:  'text-indigo-700',
+            bg:     'bg-indigo-50',
+            border: 'border-indigo-200',
+            sub:    `from ${closed.length} closed`,
+          },
+          {
+            label:  'Closed & Invoiced',
+            value:  closed.length.toLocaleString(),
+            icon:   '🧾',
+            color:  'text-teal-700',
+            bg:     'bg-teal-50',
+            border: 'border-teal-200',
+            sub:    `${total > 0
+              ? Math.round((closed.length / total) * 100)
+              : 0}% completion`,
+          },
+          {
+            label:  'Total Pallets',
+            value:  totalPallets.toLocaleString(),
+            icon:   '📦',
+            color:  'text-orange-700',
+            bg:     'bg-orange-50',
+            border: 'border-orange-200',
+            sub:    'all MCLs',
+          },
+          {
+            label:  'Total Pieces',
+            value:  totalPieces.toLocaleString(),
+            icon:   '🔩',
+            color:  'text-purple-700',
+            bg:     'bg-purple-50',
+            border: 'border-purple-200',
+            sub:    'all MCLs',
+          },
+          {
+            label:  'Avg Cycle Days',
+            value:  avgFullCycle !== null
+              ? `${avgFullCycle}d`
+              : '—',
+            icon:   '⏱',
+            color:  cycleColor(avgFullCycle),
+            bg:     cycleBg(avgFullCycle),
+            border: cycleBorder(avgFullCycle),
+            sub:    'request → invoice',
+          },
+          {
+            label:  'Fastest / Slowest',
+            value:  validCycleDays.length > 0
+              ? `${minCycle}d / ${maxCycle}d`
+              : '—',
+            icon:   '⚡',
+            color:  'text-gray-700',
+            bg:     'bg-gray-50',
+            border: 'border-gray-200',
+            sub:    'min / max cycle',
+          },
+        ].map(stat => (
+          <div
+            key={stat.label}
+            className={`rounded-xl border ${stat.bg} ${stat.border}
+                        p-3 flex flex-col gap-1`}
+          >
+            <span className="text-base">{stat.icon}</span>
+            <p className={`text-lg font-bold ${stat.color}
+                          leading-tight`}>
+              {stat.value}
+            </p>
+            <p className="text-xs text-gray-500 font-medium
+                          leading-tight">
+              {stat.label}
+            </p>
+            <p className="text-xs text-gray-400 leading-tight">
+              {stat.sub}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Row 2: Pipeline + Completion ─────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100
+                      shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-gray-700">
+            📊 MCL Pipeline Overview
+          </h3>
+          <span className="text-xs text-gray-400">
+            {total} total records
+          </span>
+        </div>
+
+        {/* Pipeline Stages */}
+        <div className="grid grid-cols-5 gap-3 mb-5">
+          {pipeline.map(stage => {
+            const pct = total > 0
+              ? Math.round((stage.count / total) * 100)
+              : 0
+            return (
+              <div
+                key={stage.key}
+                className={`${stage.light} border ${stage.border}
+                            rounded-xl p-3 flex flex-col
+                            items-center text-center gap-1.5`}
+              >
+                <span className="text-2xl">{stage.icon}</span>
+                <span className={`text-2xl font-bold ${stage.text}`}>
+                  {stage.count}
                 </span>
-              )}
-              <StatusBadge status={form.status} />
-              {form.invoice_submitted_date && (
-                <span className="text-xs font-bold text-teal-700
-                                 bg-teal-100 px-2 py-0.5 rounded-lg">
-                  🧾 Invoiced &amp; Closed
+                <span className={`text-xs font-semibold ${stage.text}`}>
+                  {stage.label}
+                </span>
+                <div className="w-full bg-white/60
+                                rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className={`h-full ${stage.color} rounded-full`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-xs text-gray-400">
+                  {pct}%
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Overall Completion Bar */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500 font-medium">
+              Overall Completion Rate
+            </span>
+            <span className="font-bold text-teal-600">
+              {total > 0
+                ? Math.round((closed.length / total) * 100)
+                : 0}%
+              {' '}({closed.length} / {total} MCLs)
+            </span>
+          </div>
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-teal-400
+                         to-teal-600 rounded-full transition-all
+                         duration-700"
+              style={{
+                width: `${total > 0
+                  ? Math.round((closed.length / total) * 100)
+                  : 0}%`
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Row 3: Avg Days Per Stage ─────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100
+                      shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-gray-700">
+            ⏱ Average Days Per Stage — Full MCL Lifecycle
+          </h3>
+          <div className="flex gap-3 text-xs">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500
+                               inline-block" />
+              Fast ≤14d
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-yellow-500
+                               inline-block" />
+              Normal 15–21d
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500
+                               inline-block" />
+              Slow 21d+
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3
+                        lg:grid-cols-5 gap-3">
+          {([
+            {
+              label: 'Request → Techemet',
+              value: avgToTechemet,
+              icon:  '📤',
+              from:  'Requested Date',
+              to:    'Date Sent to Techemet',
+            },
+            {
+              label: 'Techemet → Scheduled',
+              value: avgToScheduled,
+              icon:  '📅',
+              from:  'Sent to Techemet',
+              to:    'Scheduled Pickup',
+            },
+            {
+              label: 'Scheduled → Picked Up',
+              value: avgToPickup,
+              icon:  '🚛',
+              from:  'Scheduled Date',
+              to:    'Actual Pickup',
+            },
+            {
+              label: 'Pickup → Invoice',
+              value: avgToInvoice,
+              icon:  '🧾',
+              from:  'Actual Pickup',
+              to:    'Invoice Submitted',
+            },
+            {
+              label: 'Total Cycle Time',
+              value: avgFullCycle,
+              icon:  '⏱',
+              from:  'Request Date',
+              to:    'Invoice Submitted',
+            },
+          ] as { label: string; value: number | null; icon: string; from: string; to: string }[])
+            .map(stage => (
+            <div
+              key={stage.label}
+              className={`rounded-xl p-4 border flex flex-col gap-2
+                         ${cycleBg(stage.value)}
+                         ${cycleBorder(stage.value)}`}
+            >
+              <span className="text-xl">{stage.icon}</span>
+              <p className={`text-4xl font-bold
+                            ${cycleColor(stage.value)}`}>
+                {stage.value !== null
+                  ? `${stage.value}d`
+                  : '—'
+                }
+              </p>
+              <div>
+                <p className="text-xs font-bold text-gray-700">
+                  {stage.label}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {stage.from} →
+                </p>
+                <p className="text-xs text-gray-400">{stage.to}</p>
+              </div>
+              {stage.value !== null && (
+                <span className={`text-xs font-bold px-2 py-0.5
+                                 rounded-full self-start
+                                 ${cycleLabelBg(stage.value)}`}>
+                  {cycleLabel(stage.value)}
                 </span>
               )}
             </div>
-            <p className="text-base font-bold text-gray-900 mt-1">
-              {req.rcrc_name || req.customer_name || 'Unknown RCRC'}
-            </p>
-            {req.rcrc_number && (
-              <p className="text-xs text-gray-400">RCRC #{req.rcrc_number}</p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1 rounded-lg
-                       hover:bg-gray-100 transition-colors flex-shrink-0 mt-1"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="px-5 py-2 bg-gray-50 border-b border-gray-100">
-          <ProgressBar status={form.status} />
-        </div>
-
-        {/* Modal Tab Navigation */}
-        <div className="flex border-b border-gray-100 bg-white">
-          {modalTabs.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`flex-1 py-3 text-xs font-semibold
-                         transition-colors ${
-                activeTab === t.key
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
           ))}
         </div>
 
-        {/* Modal Content */}
-        <div className="flex-1 overflow-y-auto">
-
-          {/* ── INFO TAB ───────────────────────────────── */}
-          {activeTab === 'info' && (
-            <div className="p-5 space-y-4">
-
-              {/* Closed Banner */}
-              {form.status === 'closed' && (
-                <div className="bg-teal-50 border-2 border-teal-300
-                                rounded-xl p-4 flex items-center gap-3">
-                  <span className="text-3xl">🧾</span>
-                  <div>
-                    <p className="text-teal-700 font-bold text-sm">
-                      MCL Closed — Invoice Submitted
+        {/* Cycle Time Distribution */}
+        {validCycleDays.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-gray-100">
+            <p className="text-xs font-bold text-gray-500
+                          uppercase tracking-wide mb-3">
+              Cycle Time Distribution (Closed MCLs)
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                {
+                  label:  'Fast (0–14 days)',
+                  count:  validCycleDays.filter(d => d <= 14).length,
+                  color:  'bg-green-500',
+                  light:  'bg-green-50',
+                  text:   'text-green-700',
+                },
+                {
+                  label:  'Normal (15–21 days)',
+                  count:  validCycleDays.filter(
+                    d => d > 14 && d <= 21
+                  ).length,
+                  color:  'bg-yellow-500',
+                  light:  'bg-yellow-50',
+                  text:   'text-yellow-700',
+                },
+                {
+                  label:  'Slow (21+ days)',
+                  count:  validCycleDays.filter(d => d > 21).length,
+                  color:  'bg-red-500',
+                  light:  'bg-red-50',
+                  text:   'text-red-700',
+                },
+              ].map(band => {
+                const pct = validCycleDays.length > 0
+                  ? Math.round(
+                    (band.count / validCycleDays.length) * 100
+                  )
+                  : 0
+                return (
+                  <div
+                    key={band.label}
+                    className={`${band.light} rounded-xl p-3`}
+                  >
+                    <div className="flex justify-between
+                                    items-center mb-1.5">
+                      <span className={`text-xs font-bold
+                                        ${band.text}`}>
+                        {band.label}
+                      </span>
+                      <span className={`text-sm font-bold
+                                        ${band.text}`}>
+                        {band.count}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-white/70 rounded-full
+                                    overflow-hidden">
+                      <div
+                        className={`h-full ${band.color}
+                                   rounded-full`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className={`text-xs mt-1 ${band.text}`}>
+                      {pct}% of closed MCLs
                     </p>
-                    <p className="text-teal-600 text-xs mt-0.5">
-                      Invoice date: {fmtDate(form.invoice_submitted_date) || '—'}
-                    </p>
                   </div>
-                </div>
-              )}
-
-              {/* RCRC Details */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <h3 className="text-xs font-bold text-gray-500
-                               uppercase tracking-wide">
-                  RCRC Details
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {([
-                    ['RCRC Name',   req.rcrc_name           ],
-                    ['RCRC #',      req.rcrc_number         ],
-                    ['Contact',     req.rcrc_contact_person ],
-                    ['Email',       req.rcrc_email          ],
-                    ['Phone',       req.rcrc_phone_number   ],
-                    ['Address',     req.rcrc_address        ],
-                    ['City',        req.city                ],
-                    ['State',       req.state               ],
-                    ['ZIP',         req.rcrc_zip_code       ],
-                    ['Time Window', req.time_window         ],
-                  ] as [string, string | undefined][]).map(([label, val]) =>
-                    val ? (
-                      <div key={label}>
-                        <p className="text-xs text-gray-400">{label}</p>
-                        <p className="text-sm font-medium text-gray-800 break-words">
-                          {val}
-                        </p>
-                      </div>
-                    ) : null
-                  )}
-                </div>
-              </div>
-
-              {/* Customer Info */}
-              {(req.customer_name || req.email || req.phone) && (
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <h3 className="text-xs font-bold text-gray-500
-                                 uppercase tracking-wide">
-                    Customer
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {([
-                      ['Name',  req.customer_name ],
-                      ['Email', req.email         ],
-                      ['Phone', req.phone         ],
-                    ] as [string, string | undefined][]).map(([label, val]) =>
-                      val ? (
-                        <div key={label}>
-                          <p className="text-xs text-gray-400">{label}</p>
-                          <p className="text-sm font-medium text-gray-800">
-                            {val}
-                          </p>
-                        </div>
-                      ) : null
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Quantities */}
-              {(req.pallet_quantity ||
-                req.total_pieces_quantity ||
-                req.fcsd_offer_amount) && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h3 className="text-xs font-bold text-gray-500
-                                 uppercase tracking-wide mb-2">
-                    Quantities &amp; Value
-                  </h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    {req.pallet_quantity != null && (
-                      <div>
-                        <p className="text-xs text-gray-400">Pallets</p>
-                        <p className="text-sm font-bold text-gray-800">
-                          {req.pallet_quantity.toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                    {req.total_pieces_quantity != null && (
-                      <div>
-                        <p className="text-xs text-gray-400">Total Pieces</p>
-                        <p className="text-sm font-bold text-gray-800">
-                          {req.total_pieces_quantity.toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                    {req.fcsd_offer_amount != null && (
-                      <div>
-                        <p className="text-xs text-gray-400">Est. Value</p>
-                        <p className="text-sm font-bold text-emerald-700">
-                          {fmtMoney(req.fcsd_offer_amount)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Key Dates */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-500
-                               uppercase tracking-wide mb-2">
-                  Key Dates
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {req.date_sent_to_techemet && (
-                    <div className="bg-blue-50 border border-blue-200
-                                    rounded-xl p-3">
-                      <p className="text-xs font-bold text-blue-600 mb-0.5">
-                        📬 Date Sent to Techemet
-                      </p>
-                      <p className="text-sm font-semibold text-blue-800">
-                        {fmtDate(req.date_sent_to_techemet)}
-                      </p>
-                    </div>
-                  )}
-                  {req.invoice_submitted_date && (
-                    <div className="bg-teal-50 border border-teal-200
-                                    rounded-xl p-3">
-                      <p className="text-xs font-bold text-teal-600 mb-0.5">
-                        🧾 Invoice Submitted
-                      </p>
-                      <p className="text-sm font-semibold text-teal-800">
-                        {fmtDate(req.invoice_submitted_date)}
-                      </p>
-                    </div>
-                  )}
-                  {req.requested_pickup_date && (
-                    <div className="bg-gray-50 border border-gray-200
-                                    rounded-xl p-3">
-                      <p className="text-xs font-bold text-gray-600 mb-0.5">
-                        📅 Requested Pickup
-                      </p>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {fmtDate(req.requested_pickup_date)}
-                      </p>
-                    </div>
-                  )}
-                  {req.scheduled_pickup_date && (
-                    <div className="bg-gray-50 border border-gray-200
-                                    rounded-xl p-3">
-                      <p className="text-xs font-bold text-gray-600 mb-0.5">
-                        🗓 Scheduled Pickup
-                      </p>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {fmtDate(req.scheduled_pickup_date)}
-                      </p>
-                    </div>
-                  )}
-                  {req.actual_pickup_date && (
-                    <div className="bg-green-50 border border-green-200
-                                    rounded-xl p-3">
-                      <p className="text-xs font-bold text-green-600 mb-0.5">
-                        🚛 Actual Pickup
-                      </p>
-                      <p className="text-sm font-semibold text-green-800">
-                        {fmtDate(req.actual_pickup_date)}
-                      </p>
-                    </div>
-                  )}
-                  {req.vendor_request_received_at && (
-                    <div className="bg-gray-50 border border-gray-200
-                                    rounded-xl p-3">
-                      <p className="text-xs font-bold text-gray-600 mb-0.5">
-                        📥 Vendor Received
-                      </p>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {fmtDate(req.vendor_request_received_at)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Admin Notes */}
-              {req.admin_notes && (
-                <div className="bg-amber-50 border border-amber-200
-                                rounded-xl p-3">
-                  <p className="text-xs font-bold text-amber-600 mb-1">
-                    📝 Admin Notes
-                  </p>
-                  <p className="text-sm text-gray-800">{req.admin_notes}</p>
-                </div>
-              )}
-
-              {/* Next Status Action */}
-              {next && form.status !== 'closed' && (
-                <button
-                  onClick={() => {
-                    onStatusChange(req.id, next.key)
-                    setForm(f => ({ ...f, status: next.key }))
-                    onClose()
-                  }}
-                  className="w-full py-3 rounded-xl bg-blue-600
-                             hover:bg-blue-700 text-white font-semibold
-                             text-sm transition-colors"
-                >
-                  {next.icon} {next.label}
-                </button>
-              )}
+                )
+              })}
             </div>
-          )}
+          </div>
+        )}
+      </div>
 
-          {/* ── ADMIN TAB ──────────────────────────────── */}
-          {activeTab === 'admin' && (
-            <div className="p-5 space-y-4">
+      {/* ── Row 4: RCRC Analytics Table ──────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100
+                      shadow-sm p-5">
+        <div className="flex items-center justify-between
+                        flex-wrap gap-3 mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-gray-700">
+              🏢 RCRC Performance Analytics
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {rcrcList.length} unique RCRCs •
+              Test records excluded
+            </p>
+          </div>
 
-              {/* Closed Banner — Admin Tab Top */}
-              {form.status === 'closed' && (
-                <div className="bg-teal-50 border-2 border-teal-300
-                                rounded-xl p-4 flex items-center gap-3">
-                  <span className="text-3xl">🧾</span>
-                  <div>
-                    <p className="text-teal-700 font-bold text-sm">
-                      MCL Closed — Invoice Submitted
-                    </p>
-                    <p className="text-teal-600 text-xs mt-0.5">
-                      Invoice date: {fmtDate(form.invoice_submitted_date) || '—'}
-                    </p>
-                    <p className="text-teal-500 text-xs mt-0.5">
-                      This MCL is fully complete. Edit fields below if needed.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* MCL Number */}
-              <div>
-                <label className="block text-xs font-bold text-gray-600
-                                  mb-1 uppercase tracking-wide">
-                  MCL Number
-                </label>
-                <input
-                  type="text"
-                  value={form.mcl_number}
-                  onChange={e =>
-                    setForm(f => ({ ...f, mcl_number: e.target.value }))
-                  }
-                  placeholder="e.g. 3255"
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200
-                             rounded-xl text-sm text-gray-800 focus:ring-2
-                             focus:ring-blue-500 focus:border-transparent
-                             outline-none transition"
-                />
-              </div>
-
-              {/* Est. Offer Amount */}
-              <div>
-                <label className="block text-xs font-bold text-gray-600
-                                  mb-1 uppercase tracking-wide">
-                  Est. Offer Amount ($)
-                </label>
-                <input
-                  type="number"
-                  value={form.fcsd_offer_amount}
-                  onChange={e =>
-                    setForm(f => ({ ...f, fcsd_offer_amount: e.target.value }))
-                  }
-                  placeholder="0.00"
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200
-                             rounded-xl text-sm text-gray-800 focus:ring-2
-                             focus:ring-blue-500 focus:border-transparent
-                             outline-none transition"
-                />
-              </div>
-
-              {/* Status Selector */}
-              <div>
-                <label className="block text-xs font-bold text-gray-600
-                                  mb-1 uppercase tracking-wide">
-                  Status
-                </label>
-                <select
-                  value={form.status}
-                  onChange={e =>
-                    setForm(f => ({ ...f, status: e.target.value as TabKey }))
-                  }
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200
-                             rounded-xl text-sm text-gray-800 focus:ring-2
-                             focus:ring-blue-500 focus:border-transparent
-                             outline-none transition"
-                >
-                  {TABS.map(t => (
-                    <option key={t.key} value={t.key}>
-                      {t.icon} {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  {
-                    key:   'vendor_request_received_at' as keyof AdminEditForm,
-                    label: '📥 Vendor Request Received',
-                    type:  'datetime-local',
-                  },
-                  {
-                    key:   'techemet_request_sent_at' as keyof AdminEditForm,
-                    label: '📤 Techemet Request Sent',
-                    type:  'datetime-local',
-                  },
-                  {
-                    key:   'requested_pickup_date' as keyof AdminEditForm,
-                    label: '📅 Requested Pickup Date',
-                    type:  'date',
-                  },
-                  {
-                    key:   'scheduled_pickup_date' as keyof AdminEditForm,
-                    label: '🗓 Scheduled Pickup Date',
-                    type:  'date',
-                  },
-                  {
-                    key:   'actual_pickup_date' as keyof AdminEditForm,
-                    label: '🚛 Actual Pickup Date',
-                    type:  'date',
-                  },
-                ]).map(field => (
-                  <div key={field.key}>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">
-                      {field.label}
-                    </label>
-                    <input
-                      type={field.type}
-                      value={form[field.key] as string}
-                      onChange={e =>
-                        setForm(f => ({ ...f, [field.key]: e.target.value }))
-                      }
-                      className="w-full px-3 py-2.5 bg-white border border-gray-200
-                                 rounded-xl text-sm text-gray-800 focus:ring-2
-                                 focus:ring-blue-500 focus:border-transparent
-                                 outline-none transition"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Date Sent to Techemet + Invoice Submitted */}
-              <div className="grid grid-cols-2 gap-4">
-
-                {/* Date Sent to Techemet */}
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                  <label className="block text-xs font-bold text-blue-600
-                                    mb-1 uppercase tracking-wide">
-                    📬 Date Sent to Techemet
-                  </label>
-                  <input
-                    type="date"
-                    value={form.date_sent_to_techemet}
-                    onChange={e =>
-                      setForm(f => ({
-                        ...f,
-                        date_sent_to_techemet: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-2.5 bg-white border border-blue-300
-                               rounded-xl text-sm text-gray-800 focus:ring-2
-                               focus:ring-blue-600 focus:border-transparent
-                               outline-none transition"
-                  />
-                  <p className="text-xs text-blue-500 mt-1.5">
-                    Synced from Excel
-                  </p>
-                </div>
-
-                {/* Invoice Submitted Date */}
-                <div className="bg-teal-50 border-2 border-teal-200 rounded-xl p-4">
-                  <label className="block text-xs font-bold text-teal-600
-                                    mb-1 uppercase tracking-wide">
-                    🧾 Invoice Submitted Date
-                  </label>
-                  <input
-                    type="date"
-                    value={form.invoice_submitted_date}
-                    onChange={e => {
-                      const val = e.target.value
-                      setForm(f => ({
-                        ...f,
-                        invoice_submitted_date: val,
-                        status: val ? 'closed' : f.status,
-                      }))
-                    }}
-                    className="w-full px-3 py-2.5 bg-white border border-teal-300
-                               rounded-xl text-sm text-gray-800 focus:ring-2
-                               focus:ring-teal-600 focus:border-transparent
-                               outline-none transition"
-                  />
-                  <p className="text-xs text-teal-500 mt-1.5">
-                    ⚡ Setting date auto-closes MCL
-                  </p>
-                </div>
-
-              </div>
-
-              {/* Admin Notes */}
-              <div>
-                <label className="block text-xs font-bold text-gray-600
-                                  mb-1 uppercase tracking-wide">
-                  📝 Admin Notes
-                </label>
-                <textarea
-                  value={form.admin_notes}
-                  onChange={e =>
-                    setForm(f => ({ ...f, admin_notes: e.target.value }))
-                  }
-                  rows={3}
-                  placeholder="Internal notes..."
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200
-                             rounded-xl text-sm text-gray-800 focus:ring-2
-                             focus:ring-blue-500 focus:border-transparent
-                             outline-none transition resize-none"
-                />
-              </div>
-
-              {/* Closed Confirmation Banner — before Save */}
-              {form.status === 'closed' && (
-                <div className="bg-teal-50 border-2 border-teal-300
-                                rounded-xl p-4 flex items-center gap-3">
-                  <span className="text-2xl">🧾</span>
-                  <div>
-                    <p className="text-teal-700 font-bold text-sm">
-                      This MCL will be saved as Closed
-                    </p>
-                    <p className="text-teal-600 text-xs mt-0.5">
-                      Invoice date: {fmtDate(form.invoice_submitted_date) || '—'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Save Button */}
+          {/* Sort Controls */}
+          <div className="flex gap-1.5 flex-wrap">
+            {([
+              { key: 'value'      as const, label: '💰 Value'      },
+              { key: 'mcls'       as const, label: '📋 MCLs'       },
+              { key: 'pieces'     as const, label: '🔩 Pieces'      },
+              { key: 'days'       as const, label: '⏱ Fastest'     },
+              { key: 'completion' as const, label: '✅ Completion'  },
+            ]).map(s => (
               <button
-                onClick={handleSave}
-                disabled={saving}
-                className={`w-full py-3 rounded-xl font-semibold text-sm
-                           transition-all duration-200 ${
-                  saving
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : saved
-                      ? 'bg-green-500 text-white'
-                      : form.status === 'closed'
-                        ? 'bg-teal-600 hover:bg-teal-700 text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                key={s.key}
+                onClick={() => setRcrcSort(s.key)}
+                className={`text-xs px-3 py-1.5 rounded-lg
+                           font-semibold transition-colors ${
+                  rcrcSort === s.key
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {saving
-                  ? '⏳ Saving...'
-                  : saved
-                    ? '✅ Saved!'
-                    : form.status === 'closed'
-                      ? '🧾 Save & Close MCL'
-                      : '💾 Save Changes'
-                }
+                {s.label}
               </button>
-            </div>
-          )}
+            ))}
+          </div>
+        </div>
 
-          {/* ── ATTACHMENTS TAB ────────────────────────── */}
-          {activeTab === 'attachments' && (
-            <div className="p-5">
-              {req.attachments && req.attachments.length > 0 ? (
-                <div className="space-y-3">
-                  {req.attachments.map((att, i) => (
-                    <a
-                      key={i}
-                      href={att.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-gray-50
-                                 border border-gray-200 rounded-xl
-                                 hover:bg-gray-100 transition-colors group"
-                    >
-                      <span className="text-2xl">📎</span>
-                      <span className="text-sm text-gray-700
-                                       group-hover:text-blue-600
-                                       font-medium flex-1 truncate">
-                        {att.name}
-                      </span>
-                      <span className="text-xs text-blue-500">Open ↗</span>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-400">
-                  <p className="text-4xl mb-2">📎</p>
-                  <p className="text-sm">No attachments</p>
-                </div>
-              )}
-            </div>
-          )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b-2 border-gray-100">
+                {[
+                  { label: '#',            align: 'text-left'  },
+                  { label: 'RCRC',         align: 'text-left'  },
+                  { label: 'MCLs',         align: 'text-right' },
+                  { label: 'Closed',       align: 'text-right' },
+                  { label: 'Complete%',    align: 'text-right' },
+                  { label: 'Est. Value',   align: 'text-right' },
+                  { label: 'Avg / MCL',    align: 'text-right' },
+                  { label: 'Pieces',       align: 'text-right' },
+                  { label: 'Pallets',      align: 'text-right' },
+                  { label: '→ Techemet',   align: 'text-right' },
+                  { label: '→ Scheduled',  align: 'text-right' },
+                  { label: '→ Pickup',     align: 'text-right' },
+                  { label: '→ Invoice',    align: 'text-right' },
+                  { label: 'Full Cycle',   align: 'text-right' },
+                  { label: 'Value Bar',    align: 'text-left'  },
+                ].map(h => (
+                  <th
+                    key={h.label}
+                    className={`${h.align} py-2 px-2 font-bold
+                               text-gray-500 whitespace-nowrap`}
+                  >
+                    {h.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
+            <tbody>
+              {sortedRCRC.map((rcrc, i) => {
+                const valueBarPct = maxValue > 0
+                  ? (rcrc.totalValue / maxValue) * 100
+                  : 0
+
+                const rowColors = [
+                  'bg-yellow-50/60', // 🏆 #1
+                  'bg-gray-50/40',   // 🥈 #2
+                  'bg-orange-50/40', // 🥉 #3
+                ]
+
+                return (
+                  <tr
+                    key={`${rcrc.number}-${i}`}
+                    className={`border-b border-gray-50
+                               hover:bg-blue-50/30
+                               transition-colors ${
+                      i < 3 ? rowColors[i] : ''
+                    }`}
+                  >
+                    {/* Rank */}
+                    <td className="py-2.5 px-2 font-bold
+                                   text-gray-400 text-center">
+                      {i === 0
+                        ? '🏆'
+                        : i === 1
+                          ? '🥈'
+                          : i === 2
+                            ? '🥉'
+                            : i + 1
+                      }
+                    </td>
+
+                    {/* RCRC Name */}
+                    <td className="py-2.5 px-2">
+                      <p className="font-bold text-gray-800
+                                    whitespace-nowrap">
+                        {rcrc.name}
+                      </p>
+                      <p className="text-gray-400 text-xs">
+                        #{rcrc.number}
+                      </p>
+                    </td>
+
+                    {/* Total MCLs */}
+                    <td className="py-2.5 px-2 text-right
+                                   font-bold text-gray-700">
+                      {rcrc.totalMCLs}
+                    </td>
+
+                    {/* Closed */}
+                    <td className="py-2.5 px-2 text-right
+                                   text-teal-600 font-semibold">
+                      {rcrc.closedMCLs}
+                    </td>
+
+                    {/* Completion % */}
+                    <td className="py-2.5 px-2 text-right">
+                      <div className="flex items-center
+                                      justify-end gap-1.5">
+                        <div className="w-12 h-1.5 bg-gray-100
+                                        rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              rcrc.completionRate >= 80
+                                ? 'bg-teal-500'
+                                : rcrc.completionRate >= 50
+                                  ? 'bg-yellow-500'
+                                  : 'bg-red-400'
+                            }`}
+                            style={{
+                              width: `${rcrc.completionRate}%`
+                            }}
+                          />
+                        </div>
+                        <span className={`font-semibold ${
+                          rcrc.completionRate >= 80
+                            ? 'text-teal-600'
+                            : rcrc.completionRate >= 50
+                              ? 'text-yellow-600'
+                              : 'text-red-500'
+                        }`}>
+                          {rcrc.completionRate}%
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Est. Value */}
+                    <td className="py-2.5 px-2 text-right font-bold
+                                   text-emerald-700 whitespace-nowrap">
+                      {fmtMoney(rcrc.totalValue)}
+                    </td>
+
+                    {/* Avg Per Closed MCL */}
+                    <td className="py-2.5 px-2 text-right
+                                   text-gray-500 whitespace-nowrap">
+                      {rcrc.closedMCLs > 0
+                        ? fmtMoney(
+                          rcrc.totalValue / rcrc.closedMCLs
+                        )
+                        : '—'
+                      }
+                    </td>
+
+                    {/* Total Pieces */}
+                    <td className="py-2.5 px-2 text-right
+                                   text-gray-600">
+                      {rcrc.totalPieces.toLocaleString()}
+                    </td>
+
+                    {/* Total Pallets */}
+                    <td className="py-2.5 px-2 text-right
+                                   text-gray-600">
+                      {rcrc.totalPallets > 0
+                        ? rcrc.totalPallets.toLocaleString()
+                        : '—'
+                      }
+                    </td>
+
+                    {/* Avg → Techemet */}
+                    <td className="py-2.5 px-2 text-right">
+                      {rcrc.avgTechhemetDays !== null ? (
+                        <span className={`font-semibold
+                          ${cycleColor(rcrc.avgTechhemetDays)}`}>
+                          {rcrc.avgTechhemetDays}d
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+
+                    {/* Avg → Scheduled */}
+                    <td className="py-2.5 px-2 text-right">
+                      {rcrc.avgScheduledDays !== null ? (
+                        <span className={`font-semibold
+                          ${cycleColor(rcrc.avgScheduledDays)}`}>
+                          {rcrc.avgScheduledDays}d
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+
+                    {/* Avg → Pickup */}
+                    <td className="py-2.5 px-2 text-right">
+                      {rcrc.avgPickupDays !== null ? (
+                        <span className={`font-semibold
+                          ${cycleColor(rcrc.avgPickupDays)}`}>
+                          {rcrc.avgPickupDays}d
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+
+                    {/* Avg → Invoice */}
+                    <td className="py-2.5 px-2 text-right">
+                      {rcrc.avgInvoiceDays !== null ? (
+                        <span className={`font-semibold
+                          ${cycleColor(rcrc.avgInvoiceDays)}`}>
+                          {rcrc.avgInvoiceDays}d
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+
+                    {/* Full Cycle */}
+                    <td className="py-2.5 px-2 text-right">
+                      {rcrc.avgCycleDays !== null ? (
+                        <span className={`inline-flex items-center
+                          gap-1 px-2 py-0.5 rounded-full font-bold
+                          text-xs
+                          ${cycleLabelBg(rcrc.avgCycleDays)}`}>
+                          {rcrc.avgCycleDays}d
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+
+                    {/* Value Bar */}
+                    <td className="py-2.5 px-2 w-28">
+                      <div className="h-2 bg-gray-100 rounded-full
+                                      overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-400
+                                     rounded-full"
+                          style={{ width: `${valueBarPct}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+
+            {/* Totals Footer */}
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 bg-gray-50">
+                <td className="py-2.5 px-2 font-bold
+                               text-gray-400 text-center">
+                  Σ
+                </td>
+                <td className="py-2.5 px-2 font-bold text-gray-700">
+                  {rcrcList.length} RCRCs
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold
+                               text-gray-700">
+                  {total}
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold
+                               text-teal-600">
+                  {closed.length}
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold
+                               text-teal-600">
+                  {total > 0
+                    ? Math.round((closed.length / total) * 100)
+                    : 0}%
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold
+                               text-emerald-700 whitespace-nowrap">
+                  {fmtMoney(totalValue)}
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold
+                               text-gray-600 whitespace-nowrap">
+                  {fmtMoney(avgValuePerMCL)}
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold
+                               text-gray-700">
+                  {totalPieces.toLocaleString()}
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold
+                               text-gray-700">
+                  {totalPallets.toLocaleString()}
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold">
+                  <span className={cycleColor(avgToTechemet)}>
+                    {avgToTechemet !== null
+                      ? `${avgToTechemet}d`
+                      : '—'
+                    }
+                  </span>
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold">
+                  <span className={cycleColor(avgToScheduled)}>
+                    {avgToScheduled !== null
+                      ? `${avgToScheduled}d`
+                      : '—'
+                    }
+                  </span>
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold">
+                  <span className={cycleColor(avgToPickup)}>
+                    {avgToPickup !== null
+                      ? `${avgToPickup}d`
+                      : '—'
+                    }
+                  </span>
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold">
+                  <span className={cycleColor(avgToInvoice)}>
+                    {avgToInvoice !== null
+                      ? `${avgToInvoice}d`
+                      : '—'
+                    }
+                  </span>
+                </td>
+                <td className="py-2.5 px-2 text-right font-bold">
+                  <span className={cycleColor(avgFullCycle)}>
+                    {avgFullCycle !== null
+                      ? `${avgFullCycle}d avg`
+                      : '—'
+                    }
+                  </span>
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
+
+      {/* ── Row 5: Top Bar Charts ─────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Top 10 By Value */}
+        <div className="bg-white rounded-2xl border border-gray-100
+                        shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-700 mb-4">
+            💰 Top 10 RCRCs by Value
+          </h3>
+          <div className="space-y-3">
+            {[...rcrcList]
+              .sort((a, b) => b.totalValue - a.totalValue)
+              .slice(0, 10)
+              .map((rcrc, i) => {
+                const pct = maxValue > 0
+                  ? (rcrc.totalValue / maxValue) * 100
+                  : 0
+                const barColors = [
+                  'bg-emerald-500', 'bg-emerald-400',
+                  'bg-teal-500',    'bg-teal-400',
+                  'bg-blue-500',    'bg-blue-400',
+                  'bg-indigo-500',  'bg-indigo-400',
+                  'bg-purple-500',  'bg-purple-400',
+                ]
+                return (
+                  <div key={`val-${rcrc.number}-${i}`}>
+                    <div className="flex justify-between
+                                    items-center mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold
+                                         text-gray-400 w-4">
+                          {i + 1}.
+                        </span>
+                        <span className="text-xs font-semibold
+                                         text-gray-700 truncate
+                                         max-w-[150px]">
+                          {rcrc.name}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          #{rcrc.number}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">
+                          {rcrc.totalMCLs} MCLs
+                        </span>
+                        <span className="text-xs font-bold
+                                         text-emerald-700">
+                          {fmtMoney(rcrc.totalValue)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded-full
+                                    overflow-hidden">
+                      <div
+                        className={`h-full ${
+                          barColors[i] ?? 'bg-gray-400'
+                        } rounded-full transition-all duration-500`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
+
+        {/* Top 10 By Avg Cycle Days (Fastest) */}
+        <div className="bg-white rounded-2xl border border-gray-100
+                        shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-700 mb-4">
+            ⚡ Fastest RCRCs — Avg Cycle Time
+          </h3>
+          <div className="space-y-3">
+            {[...rcrcList]
+              .filter(r => r.avgCycleDays !== null && r.closedMCLs >= 2)
+              .sort((a, b) =>
+                (a.avgCycleDays ?? 999) - (b.avgCycleDays ?? 999)
+              )
+              .slice(0, 10)
+              .map((rcrc, i) => {
+                const days = rcrc.avgCycleDays ?? 0
+                const pct  = maxCycle > 0
+                  ? (days / maxCycle) * 100
+                  : 0
+                return (
+                  <div key={`spd-${rcrc.number}-${i}`}>
+                    <div className="flex justify-between
+                                    items-center mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold
+                                         text-gray-400 w-4">
+                          {i + 1}.
+                        </span>
+                        <span className="text-xs font-semibold
+                                         text-gray-700 truncate
+                                         max-w-[150px]">
+                          {rcrc.name}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          ({rcrc.closedMCLs} closed)
+                        </span>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-0.5
+                                        rounded-full
+                                        ${cycleLabelBg(days)}`}>
+                        {days}d avg
+                      </span>
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded-full
+                                    overflow-hidden">
+                      <div
+                        className={`h-full rounded-full
+                                   transition-all duration-500 ${
+                          days <= 14
+                            ? 'bg-green-500'
+                            : days <= 21
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
+
+      </div>
+
     </div>
   )
 }
+
 
 // ── Main AdminDashboard ──────────────────────────────────
 export default function AdminDashboard() {
