@@ -1,13 +1,12 @@
 // app/api/auth/[...nextauth]/route.ts
-import NextAuth        from 'next-auth'
-import AzureADProvider from 'next-auth/providers/azure-ad'
+import NextAuth      from 'next-auth'
+import GoogleProvider from 'next-auth/providers/google'
 
 const handler = NextAuth({
   providers: [
-    AzureADProvider({
-      clientId:     process.env.AZURE_AD_CLIENT_ID!,
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId:     process.env.AZURE_AD_TENANT_ID!,
+    GoogleProvider({
+      clientId:     process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
   callbacks: {
