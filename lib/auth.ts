@@ -1,32 +1,29 @@
-// lib/auth.ts
-export interface User {
-  id: string
-  email: string
-  full_name: string
-  role: 'admin' | 'requestor'
-}
+// lib/authOptions.ts
+import { NextAuthOptions } from 'next-auth'
+import AzureADProvider from 'next-auth/providers/azure-ad'
 
-const SESSION_KEY = 'user_session'
-
-export function saveUserSession(user: User): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user))
-  }
-}
-
-export function getUserSession(): User | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as User
-  } catch {
-    return null
-  }
-}
-
-export function clearUserSession(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(SESSION_KEY)
-  }
+export const authOptions: NextAuthOptions = {
+  providers: [
+    AzureADProvider({
+      clientId:     process.env.AZURE_AD_CLIENT_ID!,
+      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
+      tenantId:     process.env.AZURE_AD_TENANT_ID!,
+    }),
+  ],
+  callbacks: {
+    async signIn({ user }) {
+      const allowed = [
+        'gkulkara@ford.com',
+        'mrideno2@ford.com',
+      ]
+      return allowed.includes(user.email ?? '')
+    },
+    async session({ session }) {
+      return session
+    },
+  },
+  pages: {
+    signIn: '/admin/login',
+    error:  '/admin/login',
+  },
 }
