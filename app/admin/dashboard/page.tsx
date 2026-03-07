@@ -274,9 +274,7 @@ function SlowMCLsModal({
             new Date().toISOString().slice(0, 10)
           ),
     }))
-    .filter(
-      r => r.cycleDays !== null && config.filter(r.cycleDays!)
-    )
+    .filter(r => r.cycleDays !== null && config.filter(r.cycleDays!))
     .sort((a, b) => {
       switch (sortBy) {
         case 'days':  return (b.cycleDays ?? 0) - (a.cycleDays ?? 0)
@@ -402,7 +400,6 @@ function SlowMCLsModal({
                   ))}
                 </tr>
               </thead>
-
               <tbody>
                 {mcls.map((r, i) => {
                   const delayStage =
@@ -474,7 +471,6 @@ function SlowMCLsModal({
                   )
                 })}
               </tbody>
-
               <tfoot>
                 <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold">
                   <td colSpan={7} className="py-2.5 px-2 text-gray-600">
@@ -519,6 +515,7 @@ function SlowMCLsModal({
             Close
           </button>
         </div>
+
       </div>
     </div>
   )
@@ -971,8 +968,8 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
               { label: 'Request → Techemet',    value: avgToTechemet,  icon: '📤', from: 'Requested Date',   to: 'Date Sent to Techemet' },
               { label: 'Techemet → Scheduled',  value: avgToScheduled, icon: '📅', from: 'Sent to Techemet', to: 'Scheduled Pickup'      },
               { label: 'Scheduled → Picked Up', value: avgToPickup,    icon: '🚛', from: 'Scheduled Date',   to: 'Actual Pickup'         },
-              { label: 'Pickup → Invoice',       value: avgToInvoice,   icon: '🧾', from: 'Actual Pickup',    to: 'Invoice Submitted'     },
-              { label: 'Total Cycle Time',       value: avgFullCycle,   icon: '⏱', from: 'Request Date',     to: 'Invoice Submitted'     },
+              { label: 'Pickup → Invoice',      value: avgToInvoice,   icon: '🧾', from: 'Actual Pickup',    to: 'Invoice Submitted'     },
+              { label: 'Total Cycle Time',      value: avgFullCycle,   icon: '⏱', from: 'Request Date',     to: 'Invoice Submitted'     },
             ] as { label: string; value: number | null; icon: string; from: string; to: string }[])
               .map(stage => (
                 <div
@@ -1076,8 +1073,8 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
               {([
                 { key: 'value'      as const, label: '💰 Value'     },
                 { key: 'mcls'       as const, label: '📋 MCLs'      },
-                { key: 'pieces'     as const, label: '🔩 Pieces'     },
-                { key: 'days'       as const, label: '⏱ Fastest'    },
+                { key: 'pieces'     as const, label: '🔩 Pieces'    },
+                { key: 'days'       as const, label: '⏱ Fastest'   },
                 { key: 'completion' as const, label: '✅ Completion' },
               ]).map(s => (
                 <button
@@ -1437,18 +1434,243 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
   )
 }
 // ─────────────────────────────────────────────────────────
+// DeleteModal
+// ─────────────────────────────────────────────────────────
+function DeleteModal({
+  req,
+  onClose,
+  onConfirm,
+}: {
+  req:       PickupRequest
+  onClose:   () => void
+  onConfirm: (
+    id:           number,
+    reason:       string,
+    reasonDetail: string
+  ) => Promise<void>
+}) {
+  const [reason,       setReason]       = useState('')
+  const [reasonDetail, setReasonDetail] = useState('')
+  const [deleting,     setDeleting]     = useState(false)
+  const [confirmed,    setConfirmed]    = useState(false)
+
+  const reasons = [
+    { key: 'duplicate',         label: '🔁 Duplicate Request'               },
+    { key: 'test_record',       label: '🧪 Test / Demo Record'              },
+    { key: 'wrong_information', label: '❌ Incorrect Information Submitted'  },
+    { key: 'cancelled_by_rcrc', label: '🚫 Cancelled by RCRC'              },
+    { key: 'no_longer_needed',  label: '📭 No Longer Needed'                },
+    { key: 'other',             label: '📝 Other'                           },
+  ]
+
+  async function handleConfirm() {
+    if (!reason)    return
+    if (!confirmed) return
+    setDeleting(true)
+    await onConfirm(req.id, reason, reasonDetail)
+    setDeleting(false)
+  }
+
+  const canDelete = reason && confirmed && !deleting
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center
+                 bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-red-50 border-b border-red-100
+                        rounded-t-3xl px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🗑️</span>
+            <div>
+              <h2 className="text-lg font-bold text-red-700">
+                Delete Request
+              </h2>
+              <p className="text-xs text-red-400 mt-0.5">
+                This action cannot be undone
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Request Summary */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">MCL #</span>
+              <span className="font-bold text-gray-700">
+                {req.mcl_number ?? '—'}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">RCRC</span>
+              <span className="font-semibold text-gray-700">
+                {req.rcrc_name ?? '—'}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">Status</span>
+              <span className="font-semibold text-gray-700 capitalize">
+                {req.status.replace(/_/g, ' ')}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">Requestor Email</span>
+              <span className="font-semibold text-blue-600
+                               truncate max-w-[180px]">
+                {req.rcrc_email ?? req.email ?? '—'}
+              </span>
+            </div>
+          </div>
+
+          {/* Reason Selector */}
+          <div>
+            <label className="block text-xs font-bold
+                              text-gray-600 mb-2">
+              Reason for Deletion{' '}
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="space-y-1.5">
+              {reasons.map(r => (
+                <button
+                  key={r.key}
+                  onClick={() => setReason(r.key)}
+                  className={`w-full text-left text-sm px-4 py-2.5
+                             rounded-xl border font-medium
+                             transition-all ${
+                    reason === r.key
+                      ? 'bg-red-50 border-red-300 text-red-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {r.label}
+                  {reason === r.key && (
+                    <span className="float-right text-red-500">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Optional Notes */}
+          <div>
+            <label className="block text-xs font-bold
+                              text-gray-600 mb-1.5">
+              Additional Notes{' '}
+              <span className="text-gray-400 font-normal ml-1">
+                (optional)
+              </span>
+            </label>
+            <textarea
+              value={reasonDetail}
+              onChange={e => setReasonDetail(e.target.value)}
+              placeholder="Add any additional context..."
+              rows={2}
+              className="w-full text-sm border border-gray-200
+                         rounded-xl px-3 py-2 resize-none
+                         focus:outline-none focus:ring-2
+                         focus:ring-red-300 bg-gray-50"
+            />
+          </div>
+
+          {/* Email Notice */}
+          <div className="flex items-start gap-2 bg-blue-50
+                          border border-blue-100 rounded-xl p-3">
+            <span className="text-base mt-0.5">📧</span>
+            <p className="text-xs text-blue-700">
+              An email will be sent to{' '}
+              <strong>
+                {req.rcrc_email ?? req.email ?? 'the requestor'}
+              </strong>{' '}
+              notifying them of this deletion and its reason.
+            </p>
+          </div>
+
+          {/* Audit Notice */}
+          <div className="flex items-start gap-2 bg-amber-50
+                          border border-amber-100 rounded-xl p-3">
+            <span className="text-base mt-0.5">📋</span>
+            <p className="text-xs text-amber-700">
+              This request will be permanently deleted from
+              the main table but{' '}
+              <strong>archived in Supabase</strong> under{' '}
+              <code className="bg-amber-100 px-1 rounded text-xs">
+                deleted_requests
+              </code>{' '}
+              for audit purposes.
+            </p>
+          </div>
+
+          {/* Confirm Checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={e => setConfirmed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-red-600 cursor-pointer"
+            />
+            <span className="text-xs text-gray-600">
+              I understand this will delete MCL{' '}
+              <strong>
+                {req.mcl_number ?? `#${req.id}`}
+              </strong>{' '}
+              and notify the requestor by email. This record
+              will be archived for audit purposes.
+            </span>
+          </label>
+
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl bg-gray-100
+                       hover:bg-gray-200 text-gray-700
+                       font-semibold text-sm transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!canDelete}
+            className={`flex-1 py-2.5 rounded-xl font-semibold
+                       text-sm transition-all ${
+              canDelete
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {deleting ? '⏳ Deleting...' : '🗑️ Delete & Notify'}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
 // RequestCard
 // ─────────────────────────────────────────────────────────
 function RequestCard({
   req,
   onStatusChange,
   onView,
-  onDelete,          // ← ADD THIS LINE
+  onDelete,
 }: {
   req:            PickupRequest
   onStatusChange: (id: number, newStatus: TabKey) => void
   onView:         (req: PickupRequest) => void
-  onDelete:       (req: PickupRequest) => void  // ← ADD THIS LINE
+  onDelete:       (req: PickupRequest) => void
 }) {
   const nextMap: Record<
     TabKey,
@@ -1573,36 +1795,37 @@ function RequestCard({
       </div>
 
       {/* Action Buttons */}
-<div className="flex gap-2 pt-1">
+      <div className="flex gap-2 pt-1">
 
-  {/* 👁 View Button — already exists, keep it */}
-  <button
-    onClick={() => onView(req)}
-    className="flex-1 py-2 px-3 rounded-xl bg-gray-100
-               hover:bg-gray-200 text-gray-700 text-xs
-               font-semibold transition-colors"
-  >
-    👁 View
-  </button>
+        {/* View Button */}
+        <button
+          onClick={() => onView(req)}
+          className="flex-1 py-2 px-3 rounded-xl bg-gray-100
+                     hover:bg-gray-200 text-gray-700 text-xs
+                     font-semibold transition-colors"
+        >
+          👁 View
+        </button>
 
-  {/* ↓↓↓ ADD THIS NEW DELETE BUTTON ↓↓↓ */}
-  <button
-    onClick={() => onDelete(req)}
-    className="py-2 px-3 rounded-xl bg-red-50
-               hover:bg-red-100 text-red-500 text-xs
-               font-semibold transition-colors
-               border border-red-100"
-  >
-    🗑️
-  </button>
-  {/* ↑↑↑ END OF NEW BUTTON ↑↑↑ */}
+        {/* Delete Button */}
+        <button
+          onClick={() => onDelete(req)}
+          className="py-2 px-3 rounded-xl bg-red-50
+                     hover:bg-red-100 text-red-500 text-xs
+                     font-semibold transition-colors
+                     border border-red-100"
+        >
+          🗑️
+        </button>
 
-  {next ? (
-    <button
-      onClick={() => onStatusChange(req.id, next.key)}
-      ...
-    >
-
+        {/* Status Button */}
+        {next ? (
+          <button
+            onClick={() => onStatusChange(req.id, next.key)}
+            className="flex-1 py-2 px-3 rounded-xl bg-blue-600
+                       hover:bg-blue-700 text-white text-xs
+                       font-semibold transition-colors"
+          >
             {next.icon} {next.label}
           </button>
         ) : (
@@ -1621,6 +1844,7 @@ function RequestCard({
                 : '✅ Completed'}
           </div>
         )}
+
       </div>
     </div>
   )
@@ -1634,11 +1858,13 @@ function ViewModal({
   onClose,
   onStatusChange,
   onSave,
+  onDelete,
 }: {
   req:            PickupRequest
   onClose:        () => void
   onStatusChange: (id: number, newStatus: TabKey) => Promise<void>
   onSave:         (id: number, data: Partial<PickupRequest>) => Promise<void>
+  onDelete:       () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [saving,  setSaving]  = useState(false)
@@ -1779,17 +2005,17 @@ function ViewModal({
           <Field label="Email"               field="rcrc_email"             />
           <Field label="Phone"               field="rcrc_phone_number"      />
           <Field label="Address"             field="rcrc_address"           />
-          <Field label="City"                field="city"                   />
-          <Field label="State"               field="state"                  />
-          <Field label="ZIP"                 field="rcrc_zip_code"          />
-          <Field label="Time Window"         field="time_window"            />
-          <Field label="Pallets"             field="pallet_quantity"        type="number" />
-          <Field label="Pieces"              field="total_pieces_quantity"  type="number" />
-          <Field label="Requested Date"      field="requested_pickup_date"  type="date"   />
-          <Field label="Sent to Techemet"    field="date_sent_to_techemet"  type="date"   />
-          <Field label="Scheduled Date"      field="scheduled_pickup_date"  type="date"   />
-          <Field label="Actual Pickup"       field="actual_pickup_date"     type="date"   />
-          <Field label="Invoice Submitted"   field="invoice_submitted_date" type="date"   />
+          <Field label="City"               field="city"                    />
+          <Field label="State"              field="state"                   />
+          <Field label="ZIP"                field="rcrc_zip_code"           />
+          <Field label="Time Window"        field="time_window"             />
+          <Field label="Pallets"            field="pallet_quantity"         type="number" />
+          <Field label="Pieces"             field="total_pieces_quantity"   type="number" />
+          <Field label="Requested Date"     field="requested_pickup_date"   type="date"   />
+          <Field label="Sent to Techemet"   field="date_sent_to_techemet"   type="date"   />
+          <Field label="Scheduled Date"     field="scheduled_pickup_date"   type="date"   />
+          <Field label="Actual Pickup"      field="actual_pickup_date"      type="date"   />
+          <Field label="Invoice Submitted"  field="invoice_submitted_date"  type="date"   />
         </div>
 
         {/* ── Admin Notes ─────────────────────────────── */}
@@ -1841,43 +2067,42 @@ function ViewModal({
             </>
           ) : (
             <>
-             <>
-            {/* Close button — already exists, keep it */}
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-gray-100
-                         hover:bg-gray-200 text-gray-700
-                         font-semibold text-sm transition-colors"
-            >
-              Close
-            </button>
-
-            {/* ↓↓↓ ADD DELETE BUTTON HERE ↓↓↓ */}
-            <button
-              onClick={onDelete}
-              className="py-2.5 px-4 rounded-xl bg-red-50
-                         hover:bg-red-100 text-red-600
-                         font-semibold text-sm transition-colors
-                         border border-red-100"
-            >
-              🗑️ Delete
-            </button>
-            {/* ↑↑↑ END OF DELETE BUTTON ↑↑↑ */}
-
-            {next && (
+              {/* Close */}
               <button
-                onClick={() => {
-                  onStatusChange(req.id, next.key)
-                  onClose()
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600
-                           hover:bg-blue-700 text-white font-semibold
-                           text-sm transition-colors"
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100
+                           hover:bg-gray-200 text-gray-700
+                           font-semibold text-sm transition-colors"
               >
-                {next.icon} {next.label}
+                Close
               </button>
-            )}
-          </>
+
+              {/* Delete */}
+              <button
+                onClick={onDelete}
+                className="py-2.5 px-4 rounded-xl bg-red-50
+                           hover:bg-red-100 text-red-600
+                           font-semibold text-sm transition-colors
+                           border border-red-100"
+              >
+                🗑️ Delete
+              </button>
+
+              {/* Status Advance */}
+              {next && (
+                <button
+                  onClick={() => {
+                    onStatusChange(req.id, next.key)
+                    onClose()
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600
+                             hover:bg-blue-700 text-white font-semibold
+                             text-sm transition-colors"
+                >
+                  {next.icon} {next.label}
+                </button>
+              )}
+            </>
           )}
         </div>
 
@@ -1894,13 +2119,12 @@ export default function AdminDashboard() {
   const [activeTab,     setActiveTab]     = useState<TabKey>('total_requests')
   const [search,        setSearch]        = useState('')
   const [viewReq,       setViewReq]       = useState<PickupRequest | null>(null)
+  const [deleteReq,     setDeleteReq]     = useState<PickupRequest | null>(null)
+  const [deleteMsg,     setDeleteMsg]     = useState('')
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [syncing,       setSyncing]       = useState(false)
   const [syncMsg,       setSyncMsg]       = useState('')
-  const [error,      setError]      = useState('')
-  const [deleteReq,  setDeleteReq]  = useState<PickupRequest | null>(null)
-  const [deleteMsg,  setDeleteMsg]  = useState('')
-
+  const [error,         setError]         = useState('')
 
   // ── Fetch All Requests ────────────────────────────────
   const fetchRequests = useCallback(async () => {
@@ -1950,7 +2174,9 @@ export default function AdminDashboard() {
             )
           } else if (payload.eventType === 'DELETE') {
             setRequests(prev =>
-              prev.filter(r => r.id !== (payload.old as PickupRequest).id)
+              prev.filter(
+                r => r.id !== (payload.old as PickupRequest).id
+              )
             )
           }
         }
@@ -2008,38 +2234,41 @@ export default function AdminDashboard() {
       setViewReq(prev => prev ? { ...prev, ...updated } : null)
     }
   }, [viewReq])
-// ── Handle Delete ─────────────────────────────────────
-const handleDelete = useCallback(async (
-  id:           number,
-  reason:       string,
-  reasonDetail: string
-) => {
-  try {
-    const res = await fetch('/api/admin/delete-request', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, reason, reasonDetail }),
-    })
 
-    const data = await res.json()
+  // ── Handle Delete ─────────────────────────────────────
+  const handleDelete = useCallback(async (
+    id:           number,
+    reason:       string,
+    reasonDetail: string
+  ) => {
+    try {
+      const res = await fetch('/api/admin/delete-request', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, reason, reasonDetail }),
+      })
 
-    if (!res.ok) throw new Error(data.error ?? 'Delete failed')
+      const data = await res.json()
 
-    // Remove from local state
-    setRequests(prev => prev.filter(r => r.id !== id))
-    setDeleteReq(null)
-    setViewReq(null)
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed')
 
-    setDeleteMsg(
-      `✅ Deleted & archived. Email sent: ${data.emailSent ? 'Yes' : 'No email on file'}`
-    )
-    setTimeout(() => setDeleteMsg(''), 6000)
+      // Remove from local state
+      setRequests(prev => prev.filter(r => r.id !== id))
+      setDeleteReq(null)
+      setViewReq(null)
 
-  } catch (e) {
-    alert(e instanceof Error ? e.message : 'Delete failed')
-  }
-}, [])
-  
+      setDeleteMsg(
+        `✅ Deleted & archived. Email sent: ${
+          data.emailSent ? 'Yes' : 'No email on file'
+        }`
+      )
+      setTimeout(() => setDeleteMsg(''), 6000)
+
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Delete failed')
+    }
+  }, [])
+
   // ── Sync Button ───────────────────────────────────────
   const handleSync = useCallback(async () => {
     setSyncing(true)
@@ -2057,7 +2286,9 @@ const handleDelete = useCallback(async (
       }
 
       await fetchRequests()
-      setSyncMsg(`✅ Refreshed! ${new Date().toLocaleTimeString()}`)
+      setSyncMsg(
+        `✅ Refreshed! ${new Date().toLocaleTimeString()}`
+      )
     } catch (e) {
       setSyncMsg(
         e instanceof Error ? `❌ ${e.message}` : '❌ Sync failed'
@@ -2107,27 +2338,27 @@ const handleDelete = useCallback(async (
 
     const rows = requests.map(r => [
       r.id,
-      r.mcl_number            ?? '',
-      r.rcrc_name             ?? '',
-      r.rcrc_number           ?? '',
-      r.rcrc_contact_person   ?? '',
-      r.rcrc_email            ?? '',
-      r.rcrc_phone_number     ?? '',
-      r.rcrc_address          ?? '',
-      r.city                  ?? '',
-      r.state                 ?? '',
-      r.rcrc_zip_code         ?? '',
-      r.time_window           ?? '',
-      r.pallet_quantity       ?? '',
-      r.total_pieces_quantity ?? '',
-      r.fcsd_offer_amount     ?? '',
+      r.mcl_number             ?? '',
+      r.rcrc_name              ?? '',
+      r.rcrc_number            ?? '',
+      r.rcrc_contact_person    ?? '',
+      r.rcrc_email             ?? '',
+      r.rcrc_phone_number      ?? '',
+      r.rcrc_address           ?? '',
+      r.city                   ?? '',
+      r.state                  ?? '',
+      r.rcrc_zip_code          ?? '',
+      r.time_window            ?? '',
+      r.pallet_quantity        ?? '',
+      r.total_pieces_quantity  ?? '',
+      r.fcsd_offer_amount      ?? '',
       r.requested_pickup_date  ?? '',
       r.date_sent_to_techemet  ?? '',
       r.scheduled_pickup_date  ?? '',
       r.actual_pickup_date     ?? '',
       r.invoice_submitted_date ?? '',
       r.status,
-      r.admin_notes           ?? '',
+      r.admin_notes            ?? '',
       fmtDate(r.created_at),
     ])
 
@@ -2143,7 +2374,9 @@ const handleDelete = useCallback(async (
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `mcl-requests-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `mcl-requests-${
+      new Date().toISOString().slice(0, 10)
+    }.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -2196,7 +2429,7 @@ const handleDelete = useCallback(async (
                 📊 {showAnalytics ? 'Hide Analytics' : 'Analytics'}
               </button>
 
-              {/* Sync Excel Button */}
+              {/* Sync Excel */}
               <button
                 onClick={handleSync}
                 disabled={syncing}
@@ -2254,32 +2487,28 @@ const handleDelete = useCallback(async (
           </div>
         )}
 
-        {/* Error */}
+        {/* Error Banner */}
         {error && (
-          {/* Error */}
-{error && (
-  <div className="bg-red-50 border border-red-200
-                  rounded-xl p-4 mb-4 text-sm text-red-700">
-    ❌ {error}
-  </div>
-)}
+          <div className="bg-red-50 border border-red-200
+                          rounded-xl p-4 mb-4 text-sm text-red-700">
+            ❌ {error}
+          </div>
+        )}
 
-{/* ↓↓↓ ADD THIS RIGHT HERE ↓↓↓ */}
-{deleteMsg && (
-  <div className="bg-green-50 border border-green-200
-                  rounded-xl p-4 mb-4 text-sm
-                  text-green-700 flex justify-between
-                  items-center">
-    <span>{deleteMsg}</span>
-    <button
-      onClick={() => setDeleteMsg('')}
-      className="text-green-400 hover:text-green-600 ml-3"
-    >
-      ✕
-    </button>
-  </div>
-)}
-
+        {/* Delete Success Banner */}
+        {deleteMsg && (
+          <div className="bg-green-50 border border-green-200
+                          rounded-xl p-4 mb-4 text-sm text-green-700
+                          flex justify-between items-center">
+            <span>{deleteMsg}</span>
+            <button
+              onClick={() => setDeleteMsg('')}
+              className="text-green-400 hover:text-green-600 ml-3"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Tab Bar */}
         <div className="flex gap-2 overflow-x-auto pb-1 mb-5
@@ -2322,7 +2551,8 @@ const handleDelete = useCallback(async (
             </p>
           </div>
           <span className="text-xs text-gray-400 font-medium">
-            {filtered.length} record{filtered.length !== 1 ? 's' : ''}
+            {filtered.length} record
+            {filtered.length !== 1 ? 's' : ''}
           </span>
         </div>
 
@@ -2346,8 +2576,9 @@ const handleDelete = useCallback(async (
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2
-                         text-gray-400 hover:text-gray-600 text-sm"
+              className="absolute right-3 top-1/2
+                         -translate-y-1/2 text-gray-400
+                         hover:text-gray-600 text-sm"
             >
               ✕
             </button>
@@ -2377,27 +2608,30 @@ const handleDelete = useCallback(async (
             <p className="text-sm">
               {search
                 ? 'Try a different search term'
-                : `No ${TABS.find(t => t.key === activeTab)?.label} yet`
+                : `No ${
+                    TABS.find(t => t.key === activeTab)?.label
+                  } yet`
               }
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2
-                lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  {filtered.map(req => (
-    <RequestCard
-      key={req.id}
-      req={req}
-      onView={setViewReq}
-      onStatusChange={handleStatusChange}
-      onDelete={setDeleteReq}    {/* ← ADD THIS LINE */}
-    />
-  ))}
-</div>
+                          lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map(req => (
+              <RequestCard
+                key={req.id}
+                req={req}
+                onView={setViewReq}
+                onDelete={setDeleteReq}
+                onStatusChange={handleStatusChange}
+              />
+            ))}
+          </div>
         )}
 
       </div>
-        {/* ── View & Edit Modal ────────────────────────── */}
+
+      {/* ── View & Edit Modal ────────────────────────── */}
       {viewReq && (
         <ViewModal
           req={viewReq}
@@ -2411,7 +2645,7 @@ const handleDelete = useCallback(async (
         />
       )}
 
-      {/* ↓↓↓ ADD DELETE MODAL HERE ↓↓↓ */}
+      {/* ── Delete Modal ──────────────────────────────── */}
       {deleteReq && (
         <DeleteModal
           req={deleteReq}
@@ -2419,228 +2653,7 @@ const handleDelete = useCallback(async (
           onConfirm={handleDelete}
         />
       )}
-      {/* ↑↑↑ END OF DELETE MODAL ↑↑↑ */}
 
-    </div>  {/* ← this closes the outer min-h-screen div */}
-  )
-}
-// ─────────────────────────────────────────────────────────
-// DeleteModal
-// ─────────────────────────────────────────────────────────
-function DeleteModal({
-  req,
-  onClose,
-  onConfirm,
-}: {
-  req:       PickupRequest
-  onClose:   () => void
-  onConfirm: (
-    id:           number,
-    reason:       string,
-    reasonDetail: string
-  ) => Promise<void>
-}) {
-  const [reason,       setReason]       = useState('')
-  const [reasonDetail, setReasonDetail] = useState('')
-  const [deleting,     setDeleting]     = useState(false)
-  const [confirmed,    setConfirmed]    = useState(false)
-
-  const reasons = [
-    { key: 'duplicate',         label: '🔁 Duplicate Request'              },
-    { key: 'test_record',       label: '🧪 Test / Demo Record'             },
-    { key: 'wrong_information', label: '❌ Incorrect Information Submitted' },
-    { key: 'cancelled_by_rcrc', label: '🚫 Cancelled by RCRC'             },
-    { key: 'no_longer_needed',  label: '📭 No Longer Needed'               },
-    { key: 'other',             label: '📝 Other'                          },
-  ]
-
-  async function handleConfirm() {
-    if (!reason)    return
-    if (!confirmed) return
-    setDeleting(true)
-    await onConfirm(req.id, reason, reasonDetail)
-    setDeleting(false)
-  }
-
-  const canDelete = reason && confirmed && !deleting
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center
-                 bg-black/50 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-md"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-red-50 border-b border-red-100
-                        rounded-t-3xl px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🗑️</span>
-            <div>
-              <h2 className="text-lg font-bold text-red-700">
-                Delete Request
-              </h2>
-              <p className="text-xs text-red-400 mt-0.5">
-                This action cannot be undone
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
-
-          {/* Request Summary */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">MCL #</span>
-              <span className="font-bold text-gray-700">
-                {req.mcl_number ?? '—'}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">RCRC</span>
-              <span className="font-semibold text-gray-700">
-                {req.rcrc_name ?? '—'}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">Status</span>
-              <span className="font-semibold text-gray-700 capitalize">
-                {req.status.replace(/_/g, ' ')}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400">Requestor Email</span>
-              <span className="font-semibold text-blue-600 truncate
-                               max-w-[180px]">
-                {req.rcrc_email ?? req.email ?? '—'}
-              </span>
-            </div>
-          </div>
-
-          {/* Reason Dropdown */}
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-2">
-              Reason for Deletion <span className="text-red-500">*</span>
-            </label>
-            <div className="space-y-1.5">
-              {reasons.map(r => (
-                <button
-                  key={r.key}
-                  onClick={() => setReason(r.key)}
-                  className={`w-full text-left text-sm px-4 py-2.5
-                             rounded-xl border font-medium
-                             transition-all ${
-                    reason === r.key
-                      ? 'bg-red-50 border-red-300 text-red-700'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {r.label}
-                  {reason === r.key && (
-                    <span className="float-right text-red-500">✓</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Optional Detail */}
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-1.5">
-              Additional Notes
-              <span className="text-gray-400 font-normal ml-1">
-                (optional)
-              </span>
-            </label>
-            <textarea
-              value={reasonDetail}
-              onChange={e => setReasonDetail(e.target.value)}
-              placeholder="Add any additional context..."
-              rows={2}
-              className="w-full text-sm border border-gray-200
-                         rounded-xl px-3 py-2 resize-none
-                         focus:outline-none focus:ring-2
-                         focus:ring-red-300 bg-gray-50"
-            />
-          </div>
-
-          {/* Email Notice */}
-          <div className="flex items-start gap-2 bg-blue-50
-                          border border-blue-100 rounded-xl p-3">
-            <span className="text-base mt-0.5">📧</span>
-            <p className="text-xs text-blue-700">
-              An email will be sent to{' '}
-              <strong>
-                {req.rcrc_email ?? req.email ?? 'the requestor'}
-              </strong>{' '}
-              notifying them of this deletion and its reason.
-            </p>
-          </div>
-
-          {/* Audit Notice */}
-          <div className="flex items-start gap-2 bg-amber-50
-                          border border-amber-100 rounded-xl p-3">
-            <span className="text-base mt-0.5">📋</span>
-            <p className="text-xs text-amber-700">
-              This request will be permanently deleted from
-              the main table but <strong>archived in
-              Supabase</strong> under{' '}
-              <code className="bg-amber-100 px-1 rounded text-xs">
-                deleted_requests
-              </code>{' '}
-              for audit purposes.
-            </p>
-          </div>
-
-          {/* Confirm Checkbox */}
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={e => setConfirmed(e.target.checked)}
-              className="mt-0.5 w-4 h-4 accent-red-600 cursor-pointer"
-            />
-            <span className="text-xs text-gray-600">
-              I understand this will delete MCL{' '}
-              <strong>{req.mcl_number ?? `#${req.id}`}</strong> and
-              notify the requestor by email. This record will
-              be archived for audit purposes.
-            </span>
-          </label>
-
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 pb-6 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-gray-100
-                       hover:bg-gray-200 text-gray-700
-                       font-semibold text-sm transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!canDelete}
-            className={`flex-1 py-2.5 rounded-xl font-semibold
-                       text-sm transition-all ${
-              canDelete
-                ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {deleting
-              ? '⏳ Deleting...'
-              : '🗑️ Delete & Notify'}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }
