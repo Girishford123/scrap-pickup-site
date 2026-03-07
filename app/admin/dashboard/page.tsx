@@ -1344,6 +1344,297 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
     </div>
   )
 }
+// ─────────────────────────────────────────────────────────
+// RequestCard Component
+// ─────────────────────────────────────────────────────────
+function RequestCard({
+  req,
+  onStatusChange,
+  onView,
+}: {
+  req:            PickupRequest
+  onStatusChange: (id: number, newStatus: TabKey) => void
+  onView:         (req: PickupRequest) => void
+}) {
+  const nextMap: Record<
+    TabKey,
+    { key: TabKey; label: string; icon: string } | null
+  > = {
+    total_requests:   null,
+    sent_for_pickup:  { key: 'in_transit',       label: 'Mark In Transit', icon: '🔄' },
+    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',   icon: '✅' },
+    shipment_arrived: { key: 'closed',            label: 'Close MCL',      icon: '🧾' },
+    closed:           null,
+  }
+
+  const next = nextMap[req.status as TabKey] ?? null
+
+  const statusStyle: Record<string, string> = {
+    total_requests:   'bg-blue-100   text-blue-700',
+    sent_for_pickup:  'bg-yellow-100 text-yellow-700',
+    in_transit:       'bg-purple-100 text-purple-700',
+    shipment_arrived: 'bg-green-100  text-green-700',
+    closed:           'bg-teal-100   text-teal-700',
+  }
+
+  const statusLabel: Record<string, string> = {
+    total_requests:   '📋 New Request',
+    sent_for_pickup:  '🚚 Sent for Pickup',
+    in_transit:       '🔄 In Transit',
+    shipment_arrived: '✅ Shipment Arrived',
+    closed:           '🧾 Closed',
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100
+                    shadow-sm p-4 flex flex-col gap-3
+                    hover:shadow-md transition-shadow">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs text-gray-400 font-medium">
+            MCL Number
+          </p>
+          <p className="text-base font-bold text-gray-800">
+            {req.mcl_number ?? '—'}
+          </p>
+        </div>
+        <span className={`text-xs font-semibold px-2.5 py-1
+                         rounded-full whitespace-nowrap ${
+          statusStyle[req.status] ?? 'bg-gray-100 text-gray-600'
+        }`}>
+          {statusLabel[req.status] ?? req.status}
+        </span>
+      </div>
+
+      {/* RCRC Info */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <p className="text-gray-400">RCRC Name</p>
+          <p className="font-semibold text-gray-700 truncate">
+            {req.rcrc_name ?? '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-400">RCRC #</p>
+          <p className="font-semibold text-gray-700">
+            {req.rcrc_number ?? '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-400">Est. Value</p>
+          <p className="font-semibold text-emerald-600">
+            {req.fcsd_offer_amount
+              ? fmtMoney(req.fcsd_offer_amount)
+              : '—'
+            }
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-400">Pieces</p>
+          <p className="font-semibold text-gray-700">
+            {req.total_pieces_quantity?.toLocaleString() ?? '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Dates */}
+      <div className="text-xs space-y-1 pt-2
+                      border-t border-gray-50">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Requested</span>
+          <span className="text-gray-600">
+            {req.requested_pickup_date ?? '—'}
+          </span>
+        </div>
+        {req.date_sent_to_techemet && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Sent to Techemet</span>
+            <span className="text-yellow-600 font-semibold">
+              {req.date_sent_to_techemet}
+            </span>
+          </div>
+        )}
+        {req.scheduled_pickup_date && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Scheduled</span>
+            <span className="text-purple-600 font-semibold">
+              {req.scheduled_pickup_date}
+            </span>
+          </div>
+        )}
+        {req.actual_pickup_date && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Picked Up</span>
+            <span className="text-green-600 font-semibold">
+              {req.actual_pickup_date}
+            </span>
+          </div>
+        )}
+        {req.invoice_submitted_date && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Invoiced</span>
+            <span className="text-teal-600 font-semibold">
+              {req.invoice_submitted_date}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => onView(req)}
+          className="flex-1 py-2 px-3 rounded-xl bg-gray-100
+                     hover:bg-gray-200 text-gray-700 text-xs
+                     font-semibold transition-colors"
+        >
+          👁 View
+        </button>
+
+        {next ? (
+          <button
+            onClick={() => onStatusChange(req.id, next.key)}
+            className="flex-1 py-2 px-3 rounded-xl bg-blue-600
+                       hover:bg-blue-700 text-white text-xs
+                       font-semibold transition-colors"
+          >
+            {next.icon} {next.label}
+          </button>
+        ) : (
+          <div className={`flex-1 py-2 px-3 rounded-xl text-xs
+                          font-semibold text-center border ${
+            req.status === 'closed'
+              ? 'bg-teal-50 text-teal-700 border-teal-200'
+              : req.status === 'total_requests'
+                ? 'bg-blue-50 text-blue-600 border-blue-200'
+                : 'bg-green-50 text-green-700 border-green-200'
+          }`}>
+            {req.status === 'closed'
+              ? '🧾 Closed'
+              : req.status === 'total_requests'
+                ? '⏳ Awaiting Techemet'
+                : '✅ Completed'
+            }
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// ViewModal Component
+// ─────────────────────────────────────────────────────────
+function ViewModal({
+  req,
+  onClose,
+  onStatusChange,
+}: {
+  req:            PickupRequest
+  onClose:        () => void
+  onStatusChange: (id: number, newStatus: TabKey) => void
+}) {
+  const nextMap: Record<
+    TabKey,
+    { key: TabKey; label: string; icon: string } | null
+  > = {
+    total_requests:   null,
+    sent_for_pickup:  { key: 'in_transit',       label: 'Mark In Transit', icon: '🔄' },
+    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',   icon: '✅' },
+    shipment_arrived: { key: 'closed',            label: 'Close MCL',      icon: '🧾' },
+    closed:           null,
+  }
+
+  const next = nextMap[req.status as TabKey] ?? null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center
+                 justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl w-full
+                   max-w-2xl max-h-[90vh] overflow-y-auto p-6"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">
+              MCL #{req.mcl_number ?? '—'}
+            </h2>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {req.rcrc_name} • #{req.rcrc_number}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600
+                       text-2xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Details Grid */}
+        <div className="grid grid-cols-2 gap-4 text-sm mb-5">
+          {[
+            { label: 'Status',         value: req.status          },
+            { label: 'Est. Value',     value: req.fcsd_offer_amount
+                ? fmtMoney(req.fcsd_offer_amount) : '—'           },
+            { label: 'Pieces',         value: req.total_pieces_quantity
+                ?.toLocaleString() ?? '—'                          },
+            { label: 'Pallets',        value: req.pallet_quantity
+                ?.toString() ?? '—'                                },
+            { label: 'Requested Date', value: req.requested_pickup_date ?? '—' },
+            { label: 'Sent Techemet',  value: req.date_sent_to_techemet ?? '—' },
+            { label: 'Scheduled',      value: req.scheduled_pickup_date ?? '—' },
+            { label: 'Picked Up',      value: req.actual_pickup_date    ?? '—' },
+            { label: 'Invoiced',       value: req.invoice_submitted_date ?? '—' },
+            { label: 'Admin Notes',    value: req.admin_notes           ?? '—' },
+          ].map(item => (
+            <div key={item.label}
+                 className="bg-gray-50 rounded-xl p-3">
+              <p className="text-xs text-gray-400 mb-0.5">
+                {item.label}
+              </p>
+              <p className="font-semibold text-gray-700">
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Modal Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl bg-gray-100
+                       hover:bg-gray-200 text-gray-700
+                       font-semibold text-sm transition-colors"
+          >
+            Close
+          </button>
+          {next && (
+            <button
+              onClick={() => {
+                onStatusChange(req.id, next.key)
+                onClose()
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600
+                         hover:bg-blue-700 text-white
+                         font-semibold text-sm transition-colors"
+            >
+              {next.icon} {next.label}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 // ── Main AdminDashboard ──────────────────────────────────
 export default function AdminDashboard() {
   const [requests,      setRequests]      = useState<PickupRequest[]>([])
