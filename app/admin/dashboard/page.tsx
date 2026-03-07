@@ -198,7 +198,6 @@ function ProgressBar({ status }: { status: TabKey }) {
     </div>
   )
 }
-
 // ── Analytics Dashboard ──────────────────────────────────
 function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
 
@@ -1345,8 +1344,6 @@ function AnalyticsDashboard({ requests }: { requests: PickupRequest[] }) {
     </div>
   )
 }
-
-
 // ── Main AdminDashboard ──────────────────────────────────
 export default function AdminDashboard() {
   const [requests,      setRequests]      = useState<PickupRequest[]>([])
