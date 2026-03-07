@@ -1600,11 +1600,11 @@ function ViewModal({
             type={type}
             value={val?.toString() ?? ''}
             onChange={e => setForm(prev => ({
-              ...prev,
-              [field]: type === 'number'
-                ? Number(e.target.value)
-                : e.target.value || null,
-            }))}
+  ...prev,
+  [field]: type === 'number'
+    ? (e.target.value === '' ? undefined : Number(e.target.value))
+    : e.target.value || undefined,
+}))}
             className="w-full text-sm font-semibold text-gray-700
                        bg-white border border-blue-200 rounded-lg
                        px-2 py-1 focus:outline-none focus:ring-2
@@ -1692,9 +1692,9 @@ function ViewModal({
             <textarea
               value={form.admin_notes ?? ''}
               onChange={e => setForm(prev => ({
-                ...prev,
-                admin_notes: e.target.value || null,
-              }))}
+  ...prev,
+  admin_notes: e.target.value || undefined,
+}))}
               rows={3}
               className="w-full text-sm font-semibold text-gray-700
                          bg-white border border-blue-200 rounded-lg
