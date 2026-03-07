@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient }  from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,114 +45,206 @@ function cleanNum(val: unknown): number | null {
   return isNaN(n) ? null : n
 }
 
+// ── Find key ignoring leading/trailing spaces & case ────
+// Fixes " Invoice submitted" leading space issue
+function findKey(
+  row: Record<string, unknown>,
+  ...keys: string[]
+): unknown {
+  for (const key of keys) {
+    // Check 1 — Exact match
+    if (key in row) return row[key]
+
+    // Check 2 — Trim + lowercase match
+    const found = Object.keys(row).find(
+      k => k.trim().toLowerCase() === key.trim().toLowerCase()
+    )
+    if (found !== undefined) return row[found]
+  }
+  return undefined
+}
+
 // ── Map one Excel row → Supabase record ─────────────────
 function mapRow(row: Record<string, unknown>) {
-  return {
-    mcl_number: clean(row['mcl_number'])
-      || clean(row['MCL Number'])
-      || clean(row['MCL_Number'])
-      || null,
 
-    requested_pickup_date: excelDateToISO(
-      row['requested_pickup_date']
-      ?? row['Requested Pickup Date']
-      ?? row['RequestedPickupDate']
+  // Log all incoming keys to help debug
+  console.log(
+    '📋 Row keys:',
+    Object.keys(row).map(k => `"${k}"`).join(', ')
+  )
+
+  return {
+    mcl_number: clean(
+      findKey(row,
+        'mcl_number',
+        'MCL Number',
+        'MCL_Number',
+        'MCL#',
+        'MCL #',
+      )
     ),
 
-    rcrc_number: clean(row['RCRC Number'])
-      || clean(row['rcrc_number'])
-      || clean(row['RCRCNumber'])
-      || null,
+    requested_pickup_date: excelDateToISO(
+      findKey(row,
+        'requested_pickup_date',
+        'Requested Pickup Date',
+        'RequestedPickupDate',
+      )
+    ),
 
-    rcrc_name: clean(row['rcrc_name'])
-      || clean(row['RCRC Name'])
-      || clean(row['RCRCName'])
-      || null,
+    rcrc_number: clean(
+      findKey(row,
+        'RCRC Number',
+        'rcrc_number',
+        'RCRCNumber',
+        'RCRC#',
+      )
+    ),
 
-    rcrc_contact_person: clean(row['rcrc_contact_person'])
-      || clean(row['RCRC Contact Person'])
-      || null,
+    rcrc_name: clean(
+      findKey(row,
+        'rcrc_name',
+        'RCRC Name',
+        'RCRCName',
+      )
+    ),
 
-    rcrc_email: clean(row['rcrc_email'])
-      || clean(row['RCRC Email'])
-      || null,
+    rcrc_contact_person: clean(
+      findKey(row,
+        'rcrc_contact_person',
+        'RCRC Contact Person',
+        'Contact Person',
+      )
+    ),
 
-    rcrc_phone_number: clean(row['phone'])
-      || clean(row['Phone'])
-      || clean(row['rcrc_phone_number'])
-      || null,
+    rcrc_email: clean(
+      findKey(row,
+        'rcrc_email',
+        'RCRC Email',
+        'Email',
+      )
+    ),
 
-    rcrc_address: clean(row['RCRC Address'])
-      || clean(row['rcrc_address'])
-      || clean(row['RCRCAddress'])
-      || null,
+    rcrc_phone_number: clean(
+      findKey(row,
+        'phone',
+        'Phone',
+        'rcrc_phone_number',
+        'RCRC Phone',
+      )
+    ),
 
-    city: clean(row['city'])
-      || clean(row['City'])
-      || null,
+    rcrc_address: clean(
+      findKey(row,
+        'RCRC Address',
+        'rcrc_address',
+        'RCRCAddress',
+        'Address',
+      )
+    ),
 
-    state: clean(row['state'])
-      || clean(row['State'])
-      || null,
+    city: clean(
+      findKey(row, 'city', 'City')
+    ),
 
-    rcrc_zip_code: clean(row['zip'])
-      || clean(row['Zip'])
-      || clean(row['ZIP'])
-      || null,
+    state: clean(
+      findKey(row, 'state', 'State')
+    ),
 
-    time_window: clean(row['Pickup Hours'])
-      || clean(row['time_window'])
-      || clean(row['PickupHours'])
-      || null,
+    rcrc_zip_code: clean(
+      findKey(row,
+        'zip',
+        'Zip',
+        'ZIP',
+        'rcrc_zip_code',
+      )
+    ),
+
+    time_window: clean(
+      findKey(row,
+        'Pickup Hours',
+        'time_window',
+        'PickupHours',
+        'Time Window',
+      )
+    ),
 
     pallet_quantity: cleanNum(
-      row['Pallet Quantity']
-      ?? row['pallet_quantity']
-      ?? row['PalletQuantity']
+      findKey(row,
+        'Pallet Quantity',
+        'pallet_quantity',
+        'PalletQuantity',
+        'Pallets',
+      )
     ),
 
     total_pieces_quantity: cleanNum(
-      row['Total Pieces Quantity']
-      ?? row['total_pieces_quantity']
-      ?? row['TotalPiecesQuantity']
+      findKey(row,
+        'Total Pieces Quantity',
+        'total_pieces_quantity',
+        'TotalPiecesQuantity',
+        'Total Pieces',
+      )
     ),
 
     fcsd_offer_amount: cleanNum(
-      row['Ounce Calculator Est Amount']
-      ?? row['fcsd_offer_amount']
-      ?? row['OunceCalculatorEstAmount']
+      findKey(row,
+        'Ounce Calculator Est Amount',
+        'fcsd_offer_amount',
+        'OunceCalculatorEstAmount',
+        'Est Amount',
+      )
     ),
 
     date_sent_to_techemet: excelDateToISO(
-      row['Date sent to techemet']
-      ?? row['date_sent_to_techemet']
-      ?? row['DateSentToTechemet']
+      findKey(row,
+        'Date sent to techemet',
+        'date_sent_to_techemet',
+        'DateSentToTechemet',
+        'Date Sent to Techemet',
+      )
     ),
 
-    // Column S in Excel
+    // ── Column S — " Invoice submitted" (leading space in Excel) ──
     invoice_submitted_date: excelDateToISO(
-      row['invoice submitted']
-      ?? row['Invoice Submitted']
-      ?? row['invoice_submitted']
-      ?? row['InvoiceSubmitted']
-      ?? row['Invoice Submitted Date']
+      findKey(row,
+        ' Invoice submitted',      // exact Excel header with leading space
+        'Invoice submitted',       // without leading space
+        'invoice submitted',       // lowercase
+        ' invoice submitted',      // lowercase with leading space
+        'Invoice Submitted',       // title case
+        ' Invoice Submitted',      // title case with leading space
+        'Invoice Submitted Date',  // with Date suffix
+        'invoice_submitted',       // underscore
+        'invoice_submitted_date',  // full supabase name
+      )
     ),
 
     scheduled_pickup_date: excelDateToISO(
-      row['Scheduled Pickup Date (by Techemet)']
-      ?? row['scheduled_pickup_date']
-      ?? row['ScheduledPickupDate']
+      findKey(row,
+        'Scheduled Pickup Date (by Techemet)',
+        'scheduled_pickup_date',
+        'ScheduledPickupDate',
+        'Scheduled Pickup Date',
+      )
     ),
 
     actual_pickup_date: excelDateToISO(
-      row['Shipment Arrived Date']
-      ?? row['actual_pickup_date']
-      ?? row['ShipmentArrivedDate']
+      findKey(row,
+        'Shipment Arrived Date',
+        'actual_pickup_date',
+        'ShipmentArrivedDate',
+        'Shipment Arrived',
+      )
     ),
 
-    admin_notes: clean(row['Comments'])
-      || clean(row['admin_notes'])
-      || null,
+    admin_notes: clean(
+      findKey(row,
+        'Comments',
+        'admin_notes',
+        'Notes',
+      )
+    ),
   }
 }
 
@@ -183,13 +275,20 @@ export async function POST(request: Request) {
     }
 
     console.log(`📊 Total rows received: ${rows.length}`)
-    console.log('🔍 First row sample:', JSON.stringify(rows[0]))
+
+    // ── Log exact column names from first row ────────────
+    if (rows.length > 0) {
+      console.log('🔑 EXACT column names from Power Automate:')
+      Object.keys(rows[0]).forEach(k => {
+        console.log(`  → "${k}" (length: ${k.length})`)
+      })
+    }
 
     let inserted    = 0
     let updated     = 0
     let skipped     = 0
     let error_count = 0
-    const errors:   string[] = []
+    const errors: string[] = []
 
     for (const row of rows) {
       try {
@@ -199,9 +298,10 @@ export async function POST(request: Request) {
           `Processing → MCL: ${mapped.mcl_number} | ` +
           `RCRC: ${mapped.rcrc_number} | ` +
           `Name: ${mapped.rcrc_name} | ` +
-          `Invoice: ${mapped.invoice_submitted_date}`
+          `Invoice Date: ${mapped.invoice_submitted_date}`
         )
 
+        // Skip rows with no identifying info
         if (!mapped.mcl_number && !mapped.rcrc_number) {
           console.log('⏭️ Skipping row — no MCL or RCRC number')
           skipped++
@@ -209,7 +309,7 @@ export async function POST(request: Request) {
         }
 
         // ── Check if record exists ───────────────────────
-        let existing = null
+        let existing: { id: number; status: string } | null = null
 
         if (mapped.mcl_number) {
           const { data } = await supabase
@@ -220,7 +320,11 @@ export async function POST(request: Request) {
           existing = data
         }
 
-        if (!existing && mapped.rcrc_number && mapped.requested_pickup_date) {
+        if (
+          !existing &&
+          mapped.rcrc_number &&
+          mapped.requested_pickup_date
+        ) {
           const { data } = await supabase
             .from('pickup_request')
             .select('id, status')
@@ -236,33 +340,34 @@ export async function POST(request: Request) {
             updated_at: new Date().toISOString(),
           }
 
-          if (mapped.mcl_number)            updatePayload.mcl_number            = mapped.mcl_number
-          if (mapped.rcrc_number)           updatePayload.rcrc_number           = mapped.rcrc_number
-          if (mapped.rcrc_name)             updatePayload.rcrc_name             = mapped.rcrc_name
-          if (mapped.rcrc_contact_person)   updatePayload.rcrc_contact_person   = mapped.rcrc_contact_person
-          if (mapped.rcrc_email)            updatePayload.rcrc_email            = mapped.rcrc_email
-          if (mapped.rcrc_phone_number)     updatePayload.rcrc_phone_number     = mapped.rcrc_phone_number
-          if (mapped.rcrc_address)          updatePayload.rcrc_address          = mapped.rcrc_address
-          if (mapped.city)                  updatePayload.city                  = mapped.city
-          if (mapped.state)                 updatePayload.state                 = mapped.state
-          if (mapped.rcrc_zip_code)         updatePayload.rcrc_zip_code         = mapped.rcrc_zip_code
-          if (mapped.time_window)           updatePayload.time_window           = mapped.time_window
-          if (mapped.pallet_quantity)       updatePayload.pallet_quantity       = mapped.pallet_quantity
-          if (mapped.total_pieces_quantity) updatePayload.total_pieces_quantity = mapped.total_pieces_quantity
-          if (mapped.fcsd_offer_amount)     updatePayload.fcsd_offer_amount     = mapped.fcsd_offer_amount
-          if (mapped.requested_pickup_date) updatePayload.requested_pickup_date = mapped.requested_pickup_date
-          if (mapped.scheduled_pickup_date) updatePayload.scheduled_pickup_date = mapped.scheduled_pickup_date
-          if (mapped.actual_pickup_date)    updatePayload.actual_pickup_date    = mapped.actual_pickup_date
-          if (mapped.date_sent_to_techemet) updatePayload.date_sent_to_techemet = mapped.date_sent_to_techemet
+          if (mapped.mcl_number)             updatePayload.mcl_number             = mapped.mcl_number
+          if (mapped.rcrc_number)            updatePayload.rcrc_number            = mapped.rcrc_number
+          if (mapped.rcrc_name)              updatePayload.rcrc_name              = mapped.rcrc_name
+          if (mapped.rcrc_contact_person)    updatePayload.rcrc_contact_person    = mapped.rcrc_contact_person
+          if (mapped.rcrc_email)             updatePayload.rcrc_email             = mapped.rcrc_email
+          if (mapped.rcrc_phone_number)      updatePayload.rcrc_phone_number      = mapped.rcrc_phone_number
+          if (mapped.rcrc_address)           updatePayload.rcrc_address           = mapped.rcrc_address
+          if (mapped.city)                   updatePayload.city                   = mapped.city
+          if (mapped.state)                  updatePayload.state                  = mapped.state
+          if (mapped.rcrc_zip_code)          updatePayload.rcrc_zip_code          = mapped.rcrc_zip_code
+          if (mapped.time_window)            updatePayload.time_window            = mapped.time_window
+          if (mapped.pallet_quantity)        updatePayload.pallet_quantity        = mapped.pallet_quantity
+          if (mapped.total_pieces_quantity)  updatePayload.total_pieces_quantity  = mapped.total_pieces_quantity
+          if (mapped.fcsd_offer_amount)      updatePayload.fcsd_offer_amount      = mapped.fcsd_offer_amount
+          if (mapped.requested_pickup_date)  updatePayload.requested_pickup_date  = mapped.requested_pickup_date
+          if (mapped.scheduled_pickup_date)  updatePayload.scheduled_pickup_date  = mapped.scheduled_pickup_date
+          if (mapped.actual_pickup_date)     updatePayload.actual_pickup_date     = mapped.actual_pickup_date
+          if (mapped.date_sent_to_techemet)  updatePayload.date_sent_to_techemet  = mapped.date_sent_to_techemet
           if (mapped.invoice_submitted_date) updatePayload.invoice_submitted_date = mapped.invoice_submitted_date
-          if (mapped.admin_notes)           updatePayload.admin_notes           = mapped.admin_notes
+          if (mapped.admin_notes)            updatePayload.admin_notes            = mapped.admin_notes
 
           // ── Auto-close if invoice date exists ──────────
           if (mapped.invoice_submitted_date) {
             updatePayload.status            = 'closed'
             updatePayload.status_updated_at = new Date().toISOString()
             console.log(
-              `🧾 Auto-closing MCL ${mapped.mcl_number} — invoice date: ${mapped.invoice_submitted_date}`
+              `🧾 Auto-closing MCL ${mapped.mcl_number} ` +
+              `— invoice date: ${mapped.invoice_submitted_date}`
             )
           }
 
@@ -272,7 +377,10 @@ export async function POST(request: Request) {
             .eq('id', existing.id)
 
           if (error) {
-            console.error(`❌ Update error for ID ${existing.id}:`, error.message)
+            console.error(
+              `❌ Update error for ID ${existing.id}:`,
+              error.message
+            )
             errors.push(`Update ID ${existing.id}: ${error.message}`)
             error_count++
           } else {
@@ -282,14 +390,14 @@ export async function POST(request: Request) {
 
         } else {
           // ── INSERT new record ──────────────────────────
-          // Auto-close if invoice date already exists
           const insertStatus = mapped.invoice_submitted_date
             ? 'closed'
             : 'total_requests'
 
           if (insertStatus === 'closed') {
             console.log(
-              `🧾 Inserting as closed — MCL ${mapped.mcl_number} has invoice date`
+              `🧾 Inserting as CLOSED — MCL ${mapped.mcl_number} ` +
+              `has invoice date: ${mapped.invoice_submitted_date}`
             )
           }
 
@@ -308,21 +416,25 @@ export async function POST(request: Request) {
             console.error(
               `❌ Insert error:`,
               error.message,
-              '| Row:',
-              JSON.stringify(mapped)
+              '| MCL:',
+              mapped.mcl_number
             )
-            errors.push(`Insert MCL ${mapped.mcl_number}: ${error.message}`)
+            errors.push(
+              `Insert MCL ${mapped.mcl_number}: ${error.message}`
+            )
             error_count++
           } else {
             console.log(
-              `✅ Inserted MCL: ${mapped.mcl_number} | Status: ${insertStatus}`
+              `✅ Inserted MCL: ${mapped.mcl_number} | ` +
+              `Status: ${insertStatus}`
             )
             inserted++
           }
         }
 
       } catch (rowErr) {
-        const msg = rowErr instanceof Error ? rowErr.message : 'Unknown row error'
+        const msg =
+          rowErr instanceof Error ? rowErr.message : 'Unknown row error'
         console.error('❌ Row processing error:', msg)
         errors.push(`Row error: ${msg}`)
         error_count++
@@ -358,7 +470,8 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     message: 'Sync API is running ✅',
-    method:  'Use POST to sync data',
+    method:  'Use POST to sync Excel data',
+    note:    'findKey handles leading spaces in column names',
     columns_expected: [
       'mcl_number',
       'requested_pickup_date',
@@ -368,7 +481,9 @@ export async function GET() {
       'rcrc_email',
       'phone',
       'RCRC Address',
-      'city', 'state', 'zip',
+      'city',
+      'state',
+      'zip',
       'Pickup Hours',
       'Pallet Quantity',
       'Total Pieces Quantity',
@@ -376,7 +491,7 @@ export async function GET() {
       'Date sent to techemet',
       'Scheduled Pickup Date (by Techemet)',
       'Shipment Arrived Date',
-      'invoice submitted',
+      ' Invoice submitted',   // ← leading space is intentional!
       'Comments',
     ],
   })
