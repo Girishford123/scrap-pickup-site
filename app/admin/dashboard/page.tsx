@@ -1530,23 +1530,94 @@ function ViewModal({
   req,
   onClose,
   onStatusChange,
+  onSave,
 }: {
   req:            PickupRequest
   onClose:        () => void
-  onStatusChange: (id: number, newStatus: TabKey) => void
+  onStatusChange: (id: number, newStatus: TabKey) => Promise<void>
+  onSave:         (id: number, data: Partial<PickupRequest>) => Promise<void>
 }) {
+  const [editing, setEditing]   = useState(false)
+  const [saving,  setSaving]    = useState(false)
+  const [form,    setForm]      = useState<Partial<PickupRequest>>({
+    mcl_number:             req.mcl_number,
+    fcsd_offer_amount:      req.fcsd_offer_amount,
+    admin_notes:            req.admin_notes,
+    rcrc_name:              req.rcrc_name,
+    rcrc_number:            req.rcrc_number,
+    rcrc_contact_person:    req.rcrc_contact_person,
+    rcrc_email:             req.rcrc_email,
+    rcrc_phone_number:      req.rcrc_phone_number,
+    rcrc_address:           req.rcrc_address,
+    city:                   req.city,
+    state:                  req.state,
+    rcrc_zip_code:          req.rcrc_zip_code,
+    time_window:            req.time_window,
+    pallet_quantity:        req.pallet_quantity,
+    total_pieces_quantity:  req.total_pieces_quantity,
+    requested_pickup_date:  req.requested_pickup_date,
+    date_sent_to_techemet:  req.date_sent_to_techemet,
+    scheduled_pickup_date:  req.scheduled_pickup_date,
+    actual_pickup_date:     req.actual_pickup_date,
+    invoice_submitted_date: req.invoice_submitted_date,
+  })
+
   const nextMap: Record<
     TabKey,
     { key: TabKey; label: string; icon: string } | null
   > = {
     total_requests:   null,
-    sent_for_pickup:  { key: 'in_transit',       label: 'Mark In Transit', icon: '🔄' },
-    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',   icon: '✅' },
-    shipment_arrived: { key: 'closed',            label: 'Close MCL',      icon: '🧾' },
+    sent_for_pickup:  { key: 'in_transit',      label: 'Mark In Transit', icon: '🔄' },
+    in_transit:       { key: 'shipment_arrived', label: 'Mark Arrived',   icon: '✅' },
+    shipment_arrived: { key: 'closed',           label: 'Close MCL',      icon: '🧾' },
     closed:           null,
   }
 
   const next = nextMap[req.status as TabKey] ?? null
+
+  async function handleSave() {
+    setSaving(true)
+    await onSave(req.id, form)
+    setSaving(false)
+    setEditing(false)
+  }
+
+  function Field({
+    label,
+    field,
+    type = 'text',
+  }: {
+    label: string
+    field: keyof PickupRequest
+    type?: string
+  }) {
+    const val = form[field]
+    return (
+      <div className="bg-gray-50 rounded-xl p-3">
+        <p className="text-xs text-gray-400 mb-1">{label}</p>
+        {editing ? (
+          <input
+            type={type}
+            value={val?.toString() ?? ''}
+            onChange={e => setForm(prev => ({
+              ...prev,
+              [field]: type === 'number'
+                ? Number(e.target.value)
+                : e.target.value || null,
+            }))}
+            className="w-full text-sm font-semibold text-gray-700
+                       bg-white border border-blue-200 rounded-lg
+                       px-2 py-1 focus:outline-none focus:ring-2
+                       focus:ring-blue-300"
+          />
+        ) : (
+          <p className="font-semibold text-gray-700 text-sm">
+            {val?.toString() ?? '—'}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -1559,7 +1630,7 @@ function ViewModal({
                    max-w-2xl max-h-[90vh] overflow-y-auto p-6"
         onClick={e => e.stopPropagation()}
       >
-        {/* Modal Header */}
+        {/* ── Header ─────────────────────────────────── */}
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-xl font-bold text-gray-800">
@@ -1569,72 +1640,129 @@ function ViewModal({
               {req.rcrc_name} • #{req.rcrc_number}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600
-                       text-2xl leading-none"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Details Grid */}
-        <div className="grid grid-cols-2 gap-4 text-sm mb-5">
-          {[
-            { label: 'Status',         value: req.status          },
-            { label: 'Est. Value',     value: req.fcsd_offer_amount
-                ? fmtMoney(req.fcsd_offer_amount) : '—'           },
-            { label: 'Pieces',         value: req.total_pieces_quantity
-                ?.toLocaleString() ?? '—'                          },
-            { label: 'Pallets',        value: req.pallet_quantity
-                ?.toString() ?? '—'                                },
-            { label: 'Requested Date', value: req.requested_pickup_date ?? '—' },
-            { label: 'Sent Techemet',  value: req.date_sent_to_techemet ?? '—' },
-            { label: 'Scheduled',      value: req.scheduled_pickup_date ?? '—' },
-            { label: 'Picked Up',      value: req.actual_pickup_date    ?? '—' },
-            { label: 'Invoiced',       value: req.invoice_submitted_date ?? '—' },
-            { label: 'Admin Notes',    value: req.admin_notes           ?? '—' },
-          ].map(item => (
-            <div key={item.label}
-                 className="bg-gray-50 rounded-xl p-3">
-              <p className="text-xs text-gray-400 mb-0.5">
-                {item.label}
-              </p>
-              <p className="font-semibold text-gray-700">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Modal Actions */}
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-gray-100
-                       hover:bg-gray-200 text-gray-700
-                       font-semibold text-sm transition-colors"
-          >
-            Close
-          </button>
-          {next && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                onStatusChange(req.id, next.key)
-                onClose()
-              }}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600
-                         hover:bg-blue-700 text-white
-                         font-semibold text-sm transition-colors"
+              onClick={() => setEditing(prev => !prev)}
+              className={`text-xs px-3 py-1.5 rounded-lg
+                         font-semibold transition-colors ${
+                editing
+                  ? 'bg-gray-200 text-gray-600'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+              }`}
             >
-              {next.icon} {next.label}
+              {editing ? '✕ Cancel' : '✏️ Edit'}
             </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600
+                         text-2xl leading-none"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* ── Fields Grid ────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <Field label="MCL Number"         field="mcl_number"             />
+          <Field label="Est. Value ($)"     field="fcsd_offer_amount"      type="number" />
+          <Field label="RCRC Name"          field="rcrc_name"              />
+          <Field label="RCRC Number"        field="rcrc_number"            />
+          <Field label="Contact Person"     field="rcrc_contact_person"    />
+          <Field label="Email"              field="rcrc_email"             />
+          <Field label="Phone"              field="rcrc_phone_number"      />
+          <Field label="Address"            field="rcrc_address"           />
+          <Field label="City"               field="city"                   />
+          <Field label="State"              field="state"                  />
+          <Field label="ZIP"                field="rcrc_zip_code"          />
+          <Field label="Time Window"        field="time_window"            />
+          <Field label="Pallets"            field="pallet_quantity"        type="number" />
+          <Field label="Pieces"             field="total_pieces_quantity"  type="number" />
+          <Field label="Requested Date"     field="requested_pickup_date"  type="date" />
+          <Field label="Sent to Techemet"   field="date_sent_to_techemet"  type="date" />
+          <Field label="Scheduled Date"     field="scheduled_pickup_date"  type="date" />
+          <Field label="Actual Pickup"      field="actual_pickup_date"     type="date" />
+          <Field label="Invoice Submitted"  field="invoice_submitted_date" type="date" />
+        </div>
+
+        {/* ── Admin Notes ─────────────────────────────── */}
+        <div className="bg-gray-50 rounded-xl p-3 mb-5">
+          <p className="text-xs text-gray-400 mb-1">Admin Notes</p>
+          {editing ? (
+            <textarea
+              value={form.admin_notes ?? ''}
+              onChange={e => setForm(prev => ({
+                ...prev,
+                admin_notes: e.target.value || null,
+              }))}
+              rows={3}
+              className="w-full text-sm font-semibold text-gray-700
+                         bg-white border border-blue-200 rounded-lg
+                         px-2 py-1 focus:outline-none focus:ring-2
+                         focus:ring-blue-300 resize-none"
+            />
+          ) : (
+            <p className="text-sm font-semibold text-gray-700">
+              {req.admin_notes ?? '—'}
+            </p>
           )}
         </div>
+
+        {/* ── Action Buttons ──────────────────────────── */}
+        <div className="flex gap-3">
+          {editing ? (
+            <>
+              <button
+                onClick={() => setEditing(false)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100
+                           hover:bg-gray-200 text-gray-700
+                           font-semibold text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600
+                           hover:bg-emerald-700 text-white
+                           font-semibold text-sm transition-colors
+                           disabled:opacity-50"
+              >
+                {saving ? '⏳ Saving...' : '💾 Save Changes'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100
+                           hover:bg-gray-200 text-gray-700
+                           font-semibold text-sm transition-colors"
+              >
+                Close
+              </button>
+              {next && (
+                <button
+                  onClick={() => {
+                    onStatusChange(req.id, next.key)
+                    onClose()
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600
+                             hover:bg-blue-700 text-white
+                             font-semibold text-sm transition-colors"
+                >
+                  {next.icon} {next.label}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
       </div>
     </div>
   )
 }
+
 // ── Main AdminDashboard ──────────────────────────────────
 export default function AdminDashboard() {
   const [requests,      setRequests]      = useState<PickupRequest[]>([])
