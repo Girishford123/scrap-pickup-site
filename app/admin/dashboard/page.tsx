@@ -36,6 +36,7 @@ type Request = {
   requested_pickup_date?:       string
   scheduled_pickup_date?:       string
   actual_pickup_date?:          string
+  date_sent_to_techemet?:       string   // 🆕 NEW
   admin_notes?:                 string
   status:                       TabKey
   status_updated_at?:           string
@@ -50,6 +51,7 @@ type AdminEditForm = {
   requested_pickup_date:       string
   scheduled_pickup_date:       string
   actual_pickup_date:          string
+  date_sent_to_techemet:       string   // 🆕 NEW
   admin_notes:                 string
   status:                      TabKey
 }
@@ -223,44 +225,44 @@ function AnalyticsDashboard({
 
   const quickStats = [
     {
-      label:  'Active Requests',
-      value:  totalActive,
-      icon:   '📋',
-      color:  'text-blue-700',
-      bg:     'bg-blue-50',
-      border: 'border-blue-200',
+      label:      'Active Requests',
+      value:      totalActive,
+      icon:       '📋',
+      color:      'text-blue-700',
+      bg:         'bg-blue-50',
+      border:     'border-blue-200',
       isMonetary: false,
-      suffix: '',
+      suffix:     '',
     },
     {
-      label:  'Completed',
-      value:  totalCompleted,
-      icon:   '✅',
-      color:  'text-green-700',
-      bg:     'bg-green-50',
-      border: 'border-green-200',
+      label:      'Completed',
+      value:      totalCompleted,
+      icon:       '✅',
+      color:      'text-green-700',
+      bg:         'bg-green-50',
+      border:     'border-green-200',
       isMonetary: false,
-      suffix: '',
+      suffix:     '',
     },
     {
-      label:  'Total FCSD Value',
-      value:  totalValue,
-      icon:   '💰',
-      color:  'text-purple-700',
-      bg:     'bg-purple-50',
-      border: 'border-purple-200',
+      label:      'Total FCSD Value',
+      value:      totalValue,
+      icon:       '💰',
+      color:      'text-purple-700',
+      bg:         'bg-purple-50',
+      border:     'border-purple-200',
       isMonetary: true,
-      suffix: '',
+      suffix:     '',
     },
     {
-      label:  'Avg. Age',
-      value:  avgDays,
-      icon:   '⏱️',
-      color:  Number(avgDays) > 7 ? 'text-red-700'     : 'text-gray-700',
-      bg:     Number(avgDays) > 7 ? 'bg-red-50'        : 'bg-gray-50',
-      border: Number(avgDays) > 7 ? 'border-red-200'   : 'border-gray-200',
+      label:      'Avg. Age',
+      value:      avgDays,
+      icon:       '⏱️',
+      color:      Number(avgDays) > 7 ? 'text-red-700'   : 'text-gray-700',
+      bg:         Number(avgDays) > 7 ? 'bg-red-50'      : 'bg-gray-50',
+      border:     Number(avgDays) > 7 ? 'border-red-200' : 'border-gray-200',
       isMonetary: false,
-      suffix: ' days',
+      suffix:     ' days',
     },
   ]
 
@@ -540,10 +542,11 @@ function ViewModal({
     fcsd_offer_amount:          req.fcsd_offer_amount != null ? String(req.fcsd_offer_amount) : '',
     vendor_request_received_at: req.vendor_request_received_at ? req.vendor_request_received_at.slice(0, 16) : '',
     techemet_request_sent_at:   req.techemet_request_sent_at   ? req.techemet_request_sent_at.slice(0, 16)   : '',
-    requested_pickup_date:      req.requested_pickup_date ?? '',
-    scheduled_pickup_date:      req.scheduled_pickup_date ?? '',
-    actual_pickup_date:         req.actual_pickup_date    ?? '',
-    admin_notes:                req.admin_notes           ?? '',
+    requested_pickup_date:      req.requested_pickup_date      ?? '',
+    scheduled_pickup_date:      req.scheduled_pickup_date      ?? '',
+    actual_pickup_date:         req.actual_pickup_date         ?? '',
+    date_sent_to_techemet:      req.date_sent_to_techemet      ?? '',  // 🆕 NEW
+    admin_notes:                req.admin_notes                ?? '',
     status:                     req.status,
   })
 
@@ -636,10 +639,11 @@ function ViewModal({
             </button>
           </div>
 
-          {/* Admin Tab */}
+          {/* ── Admin Tab ─────────────────────────────── */}
           {tab === 'admin' && (
             <div className="space-y-5">
 
+              {/* MCL + FCSD */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>🔖 MCL Number</label>
@@ -663,6 +667,7 @@ function ViewModal({
                 </div>
               </div>
 
+              {/* Vendor + Techemet */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>📥 Vendor Request Received by FCSD</label>
@@ -684,6 +689,7 @@ function ViewModal({
                 </div>
               </div>
 
+              {/* Pickup Dates */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className={lbl}>📆 Requested Pickup Date (FCSD to Techemet)</label>
@@ -714,6 +720,28 @@ function ViewModal({
                 </div>
               </div>
 
+              {/* 🆕 NEW — Date Sent to Techemet */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                <label className="block text-xs font-bold text-blue-600 mb-1 uppercase tracking-wide">
+                  📬 Date Sent to Techemet 🆕
+                </label>
+                <input
+                  type="date"
+                  value={form.date_sent_to_techemet}
+                  onChange={e =>
+                    setForm(f => ({ ...f, date_sent_to_techemet: e.target.value }))
+                  }
+                  className="w-full px-3 py-2.5 bg-white border border-blue-300
+                             rounded-xl text-sm text-gray-800 focus:ring-2
+                             focus:ring-blue-600 focus:border-transparent
+                             outline-none transition"
+                />
+                <p className="text-xs text-blue-500 mt-1.5">
+                  📊 Synced from Excel — date Ford sent request to Techemet
+                </p>
+              </div>
+
+              {/* Status */}
               <div>
                 <label className={lbl}>📊 Update Status</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -736,6 +764,7 @@ function ViewModal({
                 </div>
               </div>
 
+              {/* Admin Notes */}
               <div>
                 <label className={lbl}>📝 Admin Notes</label>
                 <textarea
@@ -747,6 +776,7 @@ function ViewModal({
                 />
               </div>
 
+              {/* Save Button */}
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -763,7 +793,7 @@ function ViewModal({
             </div>
           )}
 
-          {/* Requestor Info Tab */}
+          {/* ── Requestor Info Tab ────────────────────── */}
           {tab === 'info' && (
             <div className="space-y-5">
 
@@ -807,6 +837,18 @@ function ViewModal({
                   <p className="text-2xl font-black text-[#003478] mt-0.5">{req.total_pieces_quantity ?? 0}</p>
                 </div>
               </div>
+
+              {/* 🆕 Date Sent to Techemet — read-only in Info Tab */}
+              {req.date_sent_to_techemet && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                  <p className="text-xs font-bold text-blue-600 mb-0.5">
+                    📬 Date Sent to Techemet
+                  </p>
+                  <p className="text-sm font-semibold text-blue-800">
+                    {fmtDate(req.date_sent_to_techemet)}
+                  </p>
+                </div>
+              )}
 
               {req.special_instructions && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
@@ -918,10 +960,11 @@ function RequestCard({
       {/* Timestamps */}
       <div className="space-y-1.5 text-xs">
         {([
-          ['📥 Received',         req.vendor_request_received_at, 'text-gray-700' ],
-          ['📤 Sent to Techemet', req.techemet_request_sent_at,   'text-gray-700' ],
-          ['📅 Scheduled',        req.scheduled_pickup_date,      'text-blue-700' ],
-          ['🚛 Actual Pickup',    req.actual_pickup_date,         'text-green-700'],
+          ['📥 Received',            req.vendor_request_received_at, 'text-gray-700'  ],
+          ['📤 Sent to Techemet',    req.techemet_request_sent_at,   'text-gray-700'  ],
+          ['📬 Date Sent to Techemet', req.date_sent_to_techemet,    'text-blue-700'  ],  // 🆕 NEW
+          ['📅 Scheduled',           req.scheduled_pickup_date,      'text-blue-700'  ],
+          ['🚛 Actual Pickup',       req.actual_pickup_date,         'text-green-700' ],
         ] as [string, string | undefined, string][]).map(([label, val, col]) => (
           <div key={label} className="flex items-center justify-between">
             <span className="text-gray-400">{label}</span>
@@ -937,7 +980,7 @@ function RequestCard({
         <span>Submitted: {fmtDate(req.created_at)}</span>
         <span className={`font-semibold ${days > 7 ? 'text-red-500' : days > 2 ? 'text-orange-500' : 'text-gray-400'}`}>
           {days === 0 ? 'Today' : days === 1 ? '1 day ago' : `${days} days ago`}
-          {days > 7 && ' 🔴'}
+          {days > 7  && ' 🔴'}
           {days > 2 && days <= 7 && ' ⚠️'}
         </span>
       </div>
@@ -1058,6 +1101,7 @@ export default function AdminDashboard() {
                   requested_pickup_date:      form.requested_pickup_date      || r.requested_pickup_date,
                   scheduled_pickup_date:      form.scheduled_pickup_date      || r.scheduled_pickup_date,
                   actual_pickup_date:         form.actual_pickup_date         || r.actual_pickup_date,
+                  date_sent_to_techemet:      form.date_sent_to_techemet      || r.date_sent_to_techemet,  // 🆕 NEW
                   admin_notes:                form.admin_notes                || r.admin_notes,
                   status:                     form.status,
                 }
@@ -1091,6 +1135,7 @@ export default function AdminDashboard() {
       'FCSD Offer', 'Vendor Request Received',
       'Techemet Request Sent', 'Requested Pickup Date',
       'Scheduled Pickup Date', 'Actual Pickup Date',
+      'Date Sent to Techemet',    // 🆕 NEW
       'Status', 'Admin Notes', 'Submitted',
     ]
     const rows = filteredRequests.map(r => [
@@ -1112,6 +1157,7 @@ export default function AdminDashboard() {
       fmtDate(r.requested_pickup_date),
       fmtDate(r.scheduled_pickup_date),
       fmtDate(r.actual_pickup_date),
+      fmtDate(r.date_sent_to_techemet),   // 🆕 NEW
       r.status,
       `"${(r.admin_notes || '').replace(/"/g, '""')}"`,
       fmtDateTime(r.created_at),
@@ -1271,7 +1317,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* ── ANALYTICS DASHBOARD ── */}
+        {/* Analytics Dashboard */}
         {!loading && (
           <AnalyticsDashboard
             requests={requests}

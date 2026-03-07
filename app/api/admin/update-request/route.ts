@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check record exists first
+    // ── Check Record Exists First ──────────────────────
     const { data: existing, error: findError } = await supabase
       .from('pickup_request')
       .select('id, mcl_number, status')
@@ -42,16 +42,22 @@ export async function POST(request: Request) {
 
     console.log('✅ Found existing record:', existing)
 
-    // Build update payload
+    // ── Build Update Payload ───────────────────────────
     const updateData: Record<string, unknown> = {
       status_updated_at: new Date().toISOString(),
     }
 
-    if (fields.mcl_number !== undefined && fields.mcl_number !== '') {
+    if (
+      fields.mcl_number !== undefined &&
+      fields.mcl_number !== ''
+    ) {
       updateData.mcl_number = String(fields.mcl_number).trim()
     }
 
-    if (fields.fcsd_offer_amount !== undefined && fields.fcsd_offer_amount !== '') {
+    if (
+      fields.fcsd_offer_amount !== undefined &&
+      fields.fcsd_offer_amount !== ''
+    ) {
       updateData.fcsd_offer_amount = Number(fields.fcsd_offer_amount)
     }
 
@@ -92,16 +98,29 @@ export async function POST(request: Request) {
       updateData.actual_pickup_date = fields.actual_pickup_date
     }
 
+    // ── 🆕 NEW — Date Sent to Techemet ────────────────
+    if (
+      fields.date_sent_to_techemet !== undefined &&
+      fields.date_sent_to_techemet !== ''
+    ) {
+      updateData.date_sent_to_techemet = fields.date_sent_to_techemet
+    }
+    // ── 🆕 END NEW ────────────────────────────────────
+
     if (fields.admin_notes !== undefined) {
       updateData.admin_notes = fields.admin_notes || null
     }
 
-    if (fields.status !== undefined && fields.status !== '') {
+    if (
+      fields.status !== undefined &&
+      fields.status !== ''
+    ) {
       updateData.status = fields.status
     }
 
     console.log('📤 Updating Supabase with:', JSON.stringify(updateData))
 
+    // ── Run Supabase Update ────────────────────────────
     const { data, error } = await supabase
       .from('pickup_request')
       .update(updateData)
