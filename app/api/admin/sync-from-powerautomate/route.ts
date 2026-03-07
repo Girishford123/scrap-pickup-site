@@ -8,11 +8,17 @@ const supabase = createClient(
 
 // ── Convert Excel Serial Date → YYYY-MM-DD ──────────────
 function excelDateToISO(value: unknown): string | null {
-  if (!value && value !== 0) return null
+  if (!value && value !== 0)  return null
+  if (value === 'null')       return null   // 🆕 handle "null" string
+  if (value === 'undefined')  return null   // 🆕 handle "undefined" string
+  if (value === 'N/A')        return null   // 🆕 handle N/A
+  if (value === '-')          return null   // 🆕 handle dash
 
   if (typeof value === 'string') {
     const trimmed = value.trim()
     if (!trimmed || trimmed === '') return null
+    if (trimmed.toLowerCase() === 'null') return null  // 🆕 case insensitive
+
     if (isNaN(Number(trimmed))) {
       const d = new Date(trimmed)
       return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
@@ -21,6 +27,7 @@ function excelDateToISO(value: unknown): string | null {
   }
 
   if (typeof value === 'number') {
+    if (value <= 0) return null   // 🆕 handle zero or negative
     const excelEpoch = new Date(1899, 11, 30)
     const msPerDay   = 86400000
     const date       = new Date(excelEpoch.getTime() + value * msPerDay)
@@ -31,19 +38,26 @@ function excelDateToISO(value: unknown): string | null {
   return null
 }
 
+
 // ── Clean string helper ─────────────────────────────────
 function clean(val: unknown): string | null {
   if (val === null || val === undefined) return null
   const s = String(val).trim()
-  return s === '' ? null : s
+  if (s === '')      return null
+  if (s === 'null')  return null   // 🆕
+  if (s === 'N/A')   return null   // 🆕
+  if (s === '-')     return null   // 🆕
+  return s
 }
 
 // ── Clean number helper ─────────────────────────────────
 function cleanNum(val: unknown): number | null {
   if (val === null || val === undefined || val === '') return null
+  if (val === 'null' || val === 'N/A' || val === '-')  return null  // 🆕
   const n = Number(val)
   return isNaN(n) ? null : n
 }
+
 
 // ── Find key ignoring leading/trailing spaces & case ────
 // Fixes " Invoice submitted" leading space issue
