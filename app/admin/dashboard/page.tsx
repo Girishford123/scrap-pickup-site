@@ -2404,21 +2404,23 @@ function ViewModal({
 }
 
 // ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
 // AdminDashboard — Main Component
 // ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { data: session, status } = useSession()
   const userEmail = session?.user?.email ?? ''
 
-  const [requests,     setRequests]     = useState<PickupRequest[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [activeTab,    setActiveTab]    = useState<TabKey>('total_requests')
-  const [viewReq,      setViewReq]      = useState<PickupRequest | null>(null)
-  const [deleteReq,    setDeleteReq]    = useState<PickupRequest | null>(null)
-  const [showAnalytics,setShowAnalytics]= useState(false)
-  const [search,       setSearch]       = useState('')
-  const [saving,       setSaving]       = useState(false)
-  const [toast,        setToast]        = useState<string | null>(null)
+  const [requests,      setRequests]      = useState<PickupRequest[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [activeTab,     setActiveTab]     = useState<TabKey>('total_requests')
+  const [viewReq,       setViewReq]       = useState<PickupRequest | null>(null)
+  const [deleteReq,     setDeleteReq]     = useState<PickupRequest | null>(null)
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [search,        setSearch]        = useState('')
+  const [saving,        setSaving]        = useState(false)
+  const [toast,         setToast]         = useState<string | null>(null)
+  const [lastSynced,    setLastSynced]    = useState<Date | null>(null)
 
   // ── Toast Helper ─────────────────────────────────────
   function showToast(msg: string) {
@@ -2427,27 +2429,27 @@ export default function AdminDashboard() {
   }
 
   // ── Fetch Requests ───────────────────────────────────
- const fetchRequests = useCallback(async () => {
-  try {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('pickup_request')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (error) throw error
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('pickup_request')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      const normalized = (data ?? []).map(r => ({
+        ...r,
+        status: r.status === 'pending' ? 'total_requests' : r.status,
+      }))
+      setRequests(normalized)
+      setLastSynced(new Date())
+    } catch (err) {
+      console.error('Fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-    // ✅ Map 'pending' → 'total_requests' so new requests always show
-    const normalized = (data ?? []).map(r => ({
-      ...r,
-      status: r.status === 'pending' ? 'total_requests' : r.status,
-    }))
-    setRequests(normalized)
-  } catch (err) {
-    console.error('Fetch error:', err)
-  } finally {
-    setLoading(false)
-  }
-}, [])
   // ── Auth: Fetch on login ─────────────────────────────
   useEffect(() => {
     if (status === 'authenticated') {
@@ -2469,23 +2471,17 @@ export default function AdminDashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [fetchRequests, status])
 
-  // ── Guard: Loading ────────────────────────────────────
-  if (status === 'loading') return <AuthLoadingScreen />
-
-  // ── Guard: Not signed in ─────────────────────────────
-  if (status === 'unauthenticated') return <NotSignedInScreen />
-
-  // ── Guard: Unauthorized ──────────────────────────────
-  if (!ADMIN_EMAILS.includes(userEmail)) {
-    return <UnauthorizedScreen email={userEmail} />
-  }
+  // ── Guards ───────────────────────────────────────────
+  if (status === 'loading')               return <AuthLoadingScreen />
+  if (status === 'unauthenticated')       return <NotSignedInScreen />
+  if (!ADMIN_EMAILS.includes(userEmail))  return <UnauthorizedScreen email={userEmail} />
 
   // ── Status Change ────────────────────────────────────
   async function handleStatusChange(id: number, newStatus: TabKey) {
     const { error } = await supabase
       .from('pickup_request')
       .update({
-        status:           newStatus,
+        status:            newStatus,
         status_updated_at: new Date().toISOString(),
         updated_at:        new Date().toISOString(),
       })
@@ -2498,7 +2494,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // ── Save (Edit Modal) ────────────────────────────────
+  // ── Save ─────────────────────────────────────────────
   async function handleSave(updated: Partial<PickupRequest>) {
     if (!viewReq) return
     setSaving(true)
@@ -2514,10 +2510,7 @@ export default function AdminDashboard() {
     } else {
       showToast('✅ Changes saved!')
       fetchRequests()
-      // Update viewReq with latest data
-      setViewReq(prev =>
-        prev ? { ...prev, ...updated } : null
-      )
+      setViewReq(prev => prev ? { ...prev, ...updated } : null)
     }
     setSaving(false)
   }
@@ -2531,7 +2524,6 @@ export default function AdminDashboard() {
     const req = requests.find(r => r.id === id)
     if (!req) return
 
-    // 1. Archive to deleted_requests
     await supabase.from('deleted_requests').insert({
       ...req,
       deleted_at:    new Date().toISOString(),
@@ -2540,7 +2532,6 @@ export default function AdminDashboard() {
       delete_notes:  reasonDetail,
     })
 
-    // 2. Send notification email
     try {
       await fetch('/api/delete-notify', {
         method:  'POST',
@@ -2557,7 +2548,6 @@ export default function AdminDashboard() {
       console.error('Email notify failed:', e)
     }
 
-    // 3. Delete from main table
     const { error } = await supabase
       .from('pickup_request')
       .delete()
@@ -2574,16 +2564,15 @@ export default function AdminDashboard() {
 
   // ── Filtered Requests ────────────────────────────────
   const tabRequests = requests.filter(r => r.status === activeTab)
-
-  const filtered = tabRequests.filter(r => {
+  const filtered    = tabRequests.filter(r => {
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return (
-      r.mcl_number?.toLowerCase().includes(q)       ||
-      r.rcrc_name?.toLowerCase().includes(q)         ||
-      r.rcrc_number?.toLowerCase().includes(q)       ||
-      r.customer_name?.toLowerCase().includes(q)     ||
-      r.email?.toLowerCase().includes(q)             ||
+      r.mcl_number?.toLowerCase().includes(q)   ||
+      r.rcrc_name?.toLowerCase().includes(q)     ||
+      r.rcrc_number?.toLowerCase().includes(q)   ||
+      r.customer_name?.toLowerCase().includes(q) ||
+      r.email?.toLowerCase().includes(q)         ||
       r.rcrc_email?.toLowerCase().includes(q)
     )
   })
@@ -2597,12 +2586,12 @@ export default function AdminDashboard() {
         <div className="fixed top-4 right-4 z-[100]
                         bg-gray-900 text-white text-sm
                         font-semibold px-5 py-3 rounded-2xl
-                        shadow-xl animate-fade-in">
+                        shadow-xl">
           {toast}
         </div>
       )}
 
-      {/* ── View/Edit Modal ─────────────────────────────── */}
+      {/* ── Modals ─────────────────────────────────────── */}
       {viewReq && (
         <ViewModal
           req={viewReq}
@@ -2611,8 +2600,6 @@ export default function AdminDashboard() {
           onStatusChange={handleStatusChange}
         />
       )}
-
-      {/* ── Delete Modal ────────────────────────────────── */}
       {deleteReq && (
         <DeleteModal
           req={deleteReq}
@@ -2626,6 +2613,8 @@ export default function AdminDashboard() {
                       sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6
                         py-3 flex items-center justify-between">
+
+          {/* Left: Logo + User */}
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-blue-600 rounded-xl
                             flex items-center justify-center shadow-sm">
@@ -2635,51 +2624,62 @@ export default function AdminDashboard() {
               <h1 className="text-sm font-bold text-gray-800">
                 Ford MCL Admin
               </h1>
-              <p className="text-xs text-gray-400">
-                {userEmail}
-              </p>
+              <p className="text-xs text-gray-400">{userEmail}</p>
             </div>
           </div>
+
+          {/* Right: Buttons */}
           <div className="flex items-center gap-2">
-  <button
-    onClick={() => setShowAnalytics(v => !v)}
-    className={`px-4 py-2 text-sm font-semibold
-               rounded-xl transition-colors ${
-      showAnalytics
-        ? 'bg-blue-600 text-white'
-        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-    }`}
-  >
-    📊 {showAnalytics ? 'Hide Analytics' : 'Analytics'}
-  </button>
 
-  {/* ✅ Sync Button Back! */}
-  <button
-    onClick={fetchRequests}
-    disabled={loading}
-    className={`flex items-center gap-2 px-4 py-2
-               text-sm font-semibold rounded-xl
-               transition-all ${
-      loading
-        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
-    }`}
-  >
-    <span className={loading ? 'animate-spin inline-block' : ''}>
-      🔄
-    </span>
-    {loading ? 'Syncing...' : 'Sync'}
-  </button>
+            {/* Analytics Toggle */}
+            <button
+              onClick={() => setShowAnalytics(v => !v)}
+              className={`px-4 py-2 text-sm font-semibold
+                         rounded-xl transition-colors ${
+                showAnalytics
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+              }`}
+            >
+              📊 {showAnalytics ? 'Hide Analytics' : 'Analytics'}
+            </button>
 
-  <button
-    onClick={() => signOut({ callbackUrl: '/admin/login' })}
-    className="px-4 py-2 text-sm font-semibold
-               rounded-xl bg-gray-100 hover:bg-gray-200
-               text-gray-600 transition-colors"
-  >
-    Sign Out
-  </button>
-</div>
+            {/* ✅ SYNC BUTTON */}
+            <button
+              onClick={fetchRequests}
+              disabled={loading}
+              className={`flex items-center gap-2 px-4 py-2
+                         text-sm font-semibold rounded-xl
+                         border transition-all ${
+                loading
+                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+              }`}
+            >
+              <span className={loading ? 'animate-spin inline-block' : ''}>
+                🔄
+              </span>
+              {loading ? 'Syncing...' : 'Sync'}
+            </button>
+
+            {/* Last Synced */}
+            {lastSynced && (
+              <span className="text-xs text-gray-400 hidden md:block">
+                Synced {lastSynced.toLocaleTimeString()}
+              </span>
+            )}
+
+            {/* Sign Out */}
+            <button
+              onClick={() => signOut({ callbackUrl: '/admin/login' })}
+              className="px-4 py-2 text-sm font-semibold
+                         rounded-xl bg-gray-100 hover:bg-gray-200
+                         text-gray-600 transition-colors"
+            >
+              Sign Out
+            </button>
+
+          </div>
         </div>
       </div>
 
@@ -2695,7 +2695,7 @@ export default function AdminDashboard() {
         {/* ── Status Tabs ─────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           {TABS.map(tab => {
-            const count = requests.filter(r => r.status === tab.key).length
+            const count    = requests.filter(r => r.status === tab.key).length
             const isActive = activeTab === tab.key
             return (
               <button
@@ -2748,16 +2748,9 @@ export default function AdminDashboard() {
             {filtered.length} record{filtered.length !== 1 ? 's' : ''}
             {search && ` matching "${search}"`}
           </p>
-          <button
-            onClick={fetchRequests}
-            className="text-xs text-blue-600 hover:text-blue-700
-                       font-semibold transition-colors"
-          >
-            🔄 Refresh
-          </button>
         </div>
 
-        {/* ── Loading ─────────────────────────────────── */}
+        {/* ── Cards Grid ──────────────────────────────── */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -2765,16 +2758,14 @@ export default function AdminDashboard() {
                               border-t-transparent rounded-full
                               animate-spin mx-auto mb-3" />
               <p className="text-sm text-gray-500 font-medium">
-                Loading requests...
+                Syncing requests...
               </p>
             </div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-3">📭</p>
-            <p className="text-gray-500 font-semibold">
-              No records found
-            </p>
+            <p className="text-gray-500 font-semibold">No records found</p>
             <p className="text-gray-400 text-sm mt-1">
               {search
                 ? 'Try a different search term'
@@ -2789,7 +2780,7 @@ export default function AdminDashboard() {
                 key={req.id}
                 req={req}
                 onStatusChange={handleStatusChange}
-                onView={r => setViewReq(r)}
+                onView={r  => setViewReq(r)}
                 onDelete={r => setDeleteReq(r)}
               />
             ))}
