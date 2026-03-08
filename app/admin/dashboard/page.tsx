@@ -1821,7 +1821,119 @@ function RequestCard({
   )
 }
 // ─────────────────────────────────────────────────────────
-// ViewModal — Simple flat layout with inline date pickers
+// ViewModal Field Helpers — MUST be outside ViewModal!
+// ─────────────────────────────────────────────────────────
+function ReadRow({
+  label,
+  value,
+}: {
+  label: string
+  value?: string | number | null
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="text-xs text-gray-400 font-medium">{label}</p>
+      <p className="text-sm font-semibold text-gray-800">
+        {value ?? '—'}
+      </p>
+    </div>
+  )
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+}: {
+  label:        string
+  value:        string | number | undefined
+  onChange:     (val: string | number) => void
+  placeholder?: string
+  type?:        string
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-gray-500">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value ?? ''}
+        onChange={e =>
+          onChange(
+            type === 'number' ? Number(e.target.value) : e.target.value
+          )
+        }
+        placeholder={placeholder}
+        className="text-sm border border-gray-200 rounded-xl
+                   px-3 py-2 focus:outline-none focus:ring-2
+                   focus:ring-blue-300 bg-white"
+      />
+    </div>
+  )
+}
+
+function DateField({
+  label,
+  value,
+  onChange,
+}: {
+  label:    string
+  value:    string | undefined
+  onChange: (val: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-gray-500">
+        {label}
+      </label>
+      <input
+        type="date"
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        className="text-sm border border-gray-200 rounded-xl
+                   px-3 py-2 focus:outline-none focus:ring-2
+                   focus:ring-blue-300 bg-white"
+      />
+    </div>
+  )
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 2,
+}: {
+  label:        string
+  value:        string | undefined
+  onChange:     (val: string) => void
+  placeholder?: string
+  rows?:        number
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-gray-500">
+        {label}
+      </label>
+      <textarea
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="text-sm border border-gray-200 rounded-xl
+                   px-3 py-2 resize-none focus:outline-none
+                   focus:ring-2 focus:ring-blue-300 bg-white"
+      />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// ViewModal
 // ─────────────────────────────────────────────────────────
 function ViewModal({
   req,
@@ -1842,13 +1954,11 @@ function ViewModal({
     fcsd_offer_amount:      req.fcsd_offer_amount       ?? undefined,
     admin_notes:            req.admin_notes             ?? '',
     notes:                  req.notes                  ?? '',
-    // ── Key Dates ──────────────────────────────────────
     requested_pickup_date:  req.requested_pickup_date   ?? '',
     date_sent_to_techemet:  req.date_sent_to_techemet   ?? '',
     scheduled_pickup_date:  req.scheduled_pickup_date   ?? '',
     actual_pickup_date:     req.actual_pickup_date      ?? '',
     invoice_submitted_date: req.invoice_submitted_date  ?? '',
-    // ── RCRC ───────────────────────────────────────────
     rcrc_number:            req.rcrc_number             ?? '',
     rcrc_name:              req.rcrc_name               ?? '',
     rcrc_contact_person:    req.rcrc_contact_person     ?? '',
@@ -1856,14 +1966,14 @@ function ViewModal({
     rcrc_phone_number:      req.rcrc_phone_number       ?? '',
     rcrc_address:           req.rcrc_address            ?? '',
     rcrc_zip_code:          req.rcrc_zip_code           ?? '',
-    // ── Pickup Info ────────────────────────────────────
     pallet_quantity:        req.pallet_quantity         ?? undefined,
     total_pieces_quantity:  req.total_pieces_quantity   ?? undefined,
     special_instructions:   req.special_instructions    ?? '',
   })
 
-  function set(key: keyof PickupRequest, val: string | number) {
-    setForm(f => ({ ...f, [key]: val }))
+  // ── Single updater — no more per-field set() ──────────
+  function update(key: keyof PickupRequest, val: string | number) {
+    setForm(prev => ({ ...prev, [key]: val }))
   }
 
   async function handleSave() {
@@ -1901,82 +2011,6 @@ function ViewModal({
   }
 
   const next = nextMap[req.status] ?? null
-
-  // ── Reusable field helpers ──────────────────────────────
-  function ReadRow({
-    label,
-    value,
-  }: {
-    label: string
-    value?: string | number | null
-  }) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <p className="text-xs text-gray-400 font-medium">{label}</p>
-        <p className="text-sm font-semibold text-gray-800">
-          {value ?? '—'}
-        </p>
-      </div>
-    )
-  }
-
-  function TextField({
-    label,
-    fieldKey,
-    placeholder,
-    type = 'text',
-  }: {
-    label:       string
-    fieldKey:    keyof PickupRequest
-    placeholder?: string
-    type?:       string
-  }) {
-    return (
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-bold text-gray-500">
-          {label}
-        </label>
-        <input
-          type={type}
-          value={(form[fieldKey] as string | number | undefined) ?? ''}
-          onChange={e =>
-            set(
-              fieldKey,
-              type === 'number' ? Number(e.target.value) : e.target.value
-            )
-          }
-          placeholder={placeholder}
-          className="text-sm border border-gray-200 rounded-xl
-                     px-3 py-2 focus:outline-none focus:ring-2
-                     focus:ring-blue-300 bg-white"
-        />
-      </div>
-    )
-  }
-
-  function DateField({
-    label,
-    fieldKey,
-  }: {
-    label:    string
-    fieldKey: keyof PickupRequest
-  }) {
-    return (
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-bold text-gray-500">
-          {label}
-        </label>
-        <input
-          type="date"
-          value={(form[fieldKey] as string | undefined) ?? ''}
-          onChange={e => set(fieldKey, e.target.value)}
-          className="text-sm border border-gray-200 rounded-xl
-                     px-3 py-2 focus:outline-none focus:ring-2
-                     focus:ring-blue-300 bg-white"
-        />
-      </div>
-    )
-  }
 
   return (
     <div
@@ -2099,7 +2133,7 @@ function ViewModal({
                 ).map(s => (
                   <button
                     key={s}
-                    onClick={() => set('status', s)}
+                    onClick={() => update('status', s)}
                     className={`py-2 px-3 rounded-xl text-xs font-bold
                                border transition-all ${
                       form.status === s
@@ -2125,35 +2159,29 @@ function ViewModal({
                 <>
                   <TextField
                     label="MCL Number"
-                    fieldKey="mcl_number"
+                    value={form.mcl_number as string}
+                    onChange={v => update('mcl_number', v)}
                     placeholder="e.g. MCL-1234"
                   />
                   <TextField
                     label="Est. Value (USD)"
-                    fieldKey="fcsd_offer_amount"
+                    value={form.fcsd_offer_amount as number}
+                    onChange={v => update('fcsd_offer_amount', v)}
                     type="number"
                     placeholder="e.g. 5000"
                   />
-                  <div className="flex flex-col gap-1 sm:col-span-1">
-                    <label className="text-xs font-bold text-gray-500">
-                      Admin Notes
-                    </label>
-                    <textarea
-                      value={(form.admin_notes as string) ?? ''}
-                      onChange={e => set('admin_notes', e.target.value)}
-                      rows={2}
-                      placeholder="Internal notes..."
-                      className="text-sm border border-gray-200 rounded-xl
-                                 px-3 py-2 resize-none focus:outline-none
-                                 focus:ring-2 focus:ring-blue-300 bg-white"
-                    />
-                  </div>
+                  <TextAreaField
+                    label="Admin Notes"
+                    value={form.admin_notes as string}
+                    onChange={v => update('admin_notes', v)}
+                    placeholder="Internal notes..."
+                  />
                 </>
               ) : (
                 <>
-                  <ReadRow label="MCL Number"    value={req.mcl_number} />
-                  <ReadRow label="Est. Value"    value={fmtMoney(req.fcsd_offer_amount)} />
-                  <ReadRow label="Admin Notes"   value={req.admin_notes} />
+                  <ReadRow label="MCL Number"  value={req.mcl_number}         />
+                  <ReadRow label="Est. Value"  value={fmtMoney(req.fcsd_offer_amount)} />
+                  <ReadRow label="Admin Notes" value={req.admin_notes}        />
                 </>
               )}
             </div>
@@ -2170,32 +2198,37 @@ function ViewModal({
                 <>
                   <DateField
                     label="Requested Pickup Date"
-                    fieldKey="requested_pickup_date"
+                    value={form.requested_pickup_date as string}
+                    onChange={v => update('requested_pickup_date', v)}
                   />
                   <DateField
                     label="Date Sent to Techemet"
-                    fieldKey="date_sent_to_techemet"
+                    value={form.date_sent_to_techemet as string}
+                    onChange={v => update('date_sent_to_techemet', v)}
                   />
                   <DateField
                     label="Scheduled Pickup Date"
-                    fieldKey="scheduled_pickup_date"
+                    value={form.scheduled_pickup_date as string}
+                    onChange={v => update('scheduled_pickup_date', v)}
                   />
                   <DateField
                     label="Actual Pickup Date"
-                    fieldKey="actual_pickup_date"
+                    value={form.actual_pickup_date as string}
+                    onChange={v => update('actual_pickup_date', v)}
                   />
                   <DateField
                     label="Invoice Submitted Date"
-                    fieldKey="invoice_submitted_date"
+                    value={form.invoice_submitted_date as string}
+                    onChange={v => update('invoice_submitted_date', v)}
                   />
                 </>
               ) : (
                 <>
-                  <ReadRow label="Requested Pickup"     value={fmtDate(req.requested_pickup_date)}  />
-                  <ReadRow label="Sent to Techemet"     value={fmtDate(req.date_sent_to_techemet)}  />
-                  <ReadRow label="Scheduled Pickup"     value={fmtDate(req.scheduled_pickup_date)}  />
-                  <ReadRow label="Actual Pickup"        value={fmtDate(req.actual_pickup_date)}     />
-                  <ReadRow label="Invoice Submitted"    value={fmtDate(req.invoice_submitted_date)} />
+                  <ReadRow label="Requested Pickup"  value={fmtDate(req.requested_pickup_date)}  />
+                  <ReadRow label="Sent to Techemet"  value={fmtDate(req.date_sent_to_techemet)}  />
+                  <ReadRow label="Scheduled Pickup"  value={fmtDate(req.scheduled_pickup_date)}  />
+                  <ReadRow label="Actual Pickup"     value={fmtDate(req.actual_pickup_date)}     />
+                  <ReadRow label="Invoice Submitted" value={fmtDate(req.invoice_submitted_date)} />
                 </>
               )}
             </div>
@@ -2210,23 +2243,51 @@ function ViewModal({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {editing ? (
                 <>
-                  <TextField label="RCRC Number"         fieldKey="rcrc_number"         />
-                  <TextField label="RCRC Name"           fieldKey="rcrc_name"           />
-                  <TextField label="Contact Person"      fieldKey="rcrc_contact_person" />
-                  <TextField label="RCRC Email"          fieldKey="rcrc_email"          />
-                  <TextField label="RCRC Phone"          fieldKey="rcrc_phone_number"   />
-                  <TextField label="RCRC Address"        fieldKey="rcrc_address"        />
-                  <TextField label="RCRC Zip Code"       fieldKey="rcrc_zip_code"       />
+                  <TextField
+                    label="RCRC Number"
+                    value={form.rcrc_number as string}
+                    onChange={v => update('rcrc_number', v)}
+                  />
+                  <TextField
+                    label="RCRC Name"
+                    value={form.rcrc_name as string}
+                    onChange={v => update('rcrc_name', v)}
+                  />
+                  <TextField
+                    label="Contact Person"
+                    value={form.rcrc_contact_person as string}
+                    onChange={v => update('rcrc_contact_person', v)}
+                  />
+                  <TextField
+                    label="RCRC Email"
+                    value={form.rcrc_email as string}
+                    onChange={v => update('rcrc_email', v)}
+                  />
+                  <TextField
+                    label="RCRC Phone"
+                    value={form.rcrc_phone_number as string}
+                    onChange={v => update('rcrc_phone_number', v)}
+                  />
+                  <TextField
+                    label="RCRC Address"
+                    value={form.rcrc_address as string}
+                    onChange={v => update('rcrc_address', v)}
+                  />
+                  <TextField
+                    label="RCRC Zip Code"
+                    value={form.rcrc_zip_code as string}
+                    onChange={v => update('rcrc_zip_code', v)}
+                  />
                 </>
               ) : (
                 <>
-                  <ReadRow label="RCRC Number"      value={req.rcrc_number}          />
-                  <ReadRow label="RCRC Name"        value={req.rcrc_name}            />
-                  <ReadRow label="Contact Person"   value={req.rcrc_contact_person}  />
-                  <ReadRow label="RCRC Email"       value={req.rcrc_email}           />
-                  <ReadRow label="RCRC Phone"       value={req.rcrc_phone_number}    />
-                  <ReadRow label="RCRC Address"     value={req.rcrc_address}         />
-                  <ReadRow label="RCRC Zip Code"    value={req.rcrc_zip_code}        />
+                  <ReadRow label="RCRC Number"    value={req.rcrc_number}         />
+                  <ReadRow label="RCRC Name"      value={req.rcrc_name}           />
+                  <ReadRow label="Contact Person" value={req.rcrc_contact_person} />
+                  <ReadRow label="RCRC Email"     value={req.rcrc_email}          />
+                  <ReadRow label="RCRC Phone"     value={req.rcrc_phone_number}   />
+                  <ReadRow label="RCRC Address"   value={req.rcrc_address}        />
+                  <ReadRow label="RCRC Zip Code"  value={req.rcrc_zip_code}       />
                 </>
               )}
             </div>
@@ -2243,49 +2304,35 @@ function ViewModal({
                 <>
                   <TextField
                     label="Pallet Quantity"
-                    fieldKey="pallet_quantity"
+                    value={form.pallet_quantity as number}
+                    onChange={v => update('pallet_quantity', v)}
                     type="number"
                   />
                   <TextField
                     label="Total Pieces"
-                    fieldKey="total_pieces_quantity"
+                    value={form.total_pieces_quantity as number}
+                    onChange={v => update('total_pieces_quantity', v)}
                     type="number"
                   />
-                  <div className="flex flex-col gap-1 sm:col-span-1">
-                    <label className="text-xs font-bold text-gray-500">
-                      Special Instructions
-                    </label>
-                    <textarea
-                      value={(form.special_instructions as string) ?? ''}
-                      onChange={e => set('special_instructions', e.target.value)}
-                      rows={2}
-                      placeholder="Any special instructions..."
-                      className="text-sm border border-gray-200 rounded-xl
-                                 px-3 py-2 resize-none focus:outline-none
-                                 focus:ring-2 focus:ring-blue-300 bg-white"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 sm:col-span-1">
-                    <label className="text-xs font-bold text-gray-500">
-                      Notes
-                    </label>
-                    <textarea
-                      value={(form.notes as string) ?? ''}
-                      onChange={e => set('notes', e.target.value)}
-                      rows={2}
-                      placeholder="General notes..."
-                      className="text-sm border border-gray-200 rounded-xl
-                                 px-3 py-2 resize-none focus:outline-none
-                                 focus:ring-2 focus:ring-blue-300 bg-white"
-                    />
-                  </div>
+                  <TextAreaField
+                    label="Special Instructions"
+                    value={form.special_instructions as string}
+                    onChange={v => update('special_instructions', v)}
+                    placeholder="Any special instructions..."
+                  />
+                  <TextAreaField
+                    label="Notes"
+                    value={form.notes as string}
+                    onChange={v => update('notes', v)}
+                    placeholder="General notes..."
+                  />
                 </>
               ) : (
                 <>
-                  <ReadRow label="Pallet Quantity"      value={req.pallet_quantity}        />
-                  <ReadRow label="Total Pieces"         value={req.total_pieces_quantity}  />
-                  <ReadRow label="Special Instructions" value={req.special_instructions}   />
-                  <ReadRow label="Notes"                value={req.notes}                  />
+                  <ReadRow label="Pallet Quantity"      value={req.pallet_quantity}       />
+                  <ReadRow label="Total Pieces"         value={req.total_pieces_quantity} />
+                  <ReadRow label="Special Instructions" value={req.special_instructions}  />
+                  <ReadRow label="Notes"                value={req.notes}                 />
                 </>
               )}
             </div>
@@ -2355,6 +2402,7 @@ function ViewModal({
     </div>
   )
 }
+
 // ─────────────────────────────────────────────────────────
 // AdminDashboard — Main Component
 // ─────────────────────────────────────────────────────────
