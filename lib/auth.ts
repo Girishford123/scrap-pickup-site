@@ -1,64 +1,68 @@
 // lib/auth.ts
-import { NextAuthOptions } from 'next-auth'
-import AzureADProvider    from 'next-auth/providers/azure-ad'
+import GoogleProvider  from 'next-auth/providers/google'
+import type { NextAuthOptions } from 'next-auth'
 
-// ─────────────────────────────────────────────────────────
-// NextAuth Options
-// ─────────────────────────────────────────────────────────
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
-    AzureADProvider({
-      clientId:     process.env.AZURE_AD_CLIENT_ID!,
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId:     process.env.AZURE_AD_TENANT_ID!,
+    GoogleProvider({
+      clientId:     process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt:        'consent',
+          access_type:   'offline',
+          response_type: 'code',
+        },
+      },
     }),
   ],
+  session: {
+    strategy:  'jwt',
+    maxAge:    30 * 24 * 60 * 60,  // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path:     '/',
+        secure:   true,             // ✅ Must be true for https
+      },
+    },
+  },
   callbacks: {
     async signIn({ user }) {
-      const allowed = [
-        'gkulkara@ford.com',
-        'mrideno2@ford.com',
-      ]
-      return allowed.includes(user.email ?? '')
+      const allowedEmails =
+        process.env.ALLOWED_EMAILS
+          ?.split(',')
+          .map(e => e.trim()) ?? []
+      console.log('SignIn attempt:', user.email)
+      console.log('Allowed emails:', allowedEmails)
+      const isAllowed = allowedEmails.includes(user.email ?? '')
+      console.log('Is allowed:', isAllowed)
+      return isAllowed
     },
-    async session({ session }) {
+    async jwt({ token, user, account }) {
+      if (user)    token.email = user.email
+      if (account) token.accessToken = account.access_token
+      return token
+    },
+    async session({ session, token }) {
+      if (token) session.user.email = token.email as string
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      console.log('Redirect called:', { url, baseUrl })
+      if (url.startsWith(baseUrl)) return url
+      if (url.startsWith('/'))     return `${baseUrl}${url}`
+      return `${baseUrl}/admin/dashboard`
     },
   },
   pages: {
     signIn: '/admin/login',
     error:  '/admin/login',
   },
-}
-
-// ─────────────────────────────────────────────────────────
-// Legacy Session Helpers (used by Navbar + Requestor flow)
-// ─────────────────────────────────────────────────────────
-export type User = {
-  email:      string
-  full_name?: string
-  role:       'admin' | 'requestor'
-}
-
-const SESSION_KEY = 'user_session'
-
-export function getUserSession(): User | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as User
-  } catch {
-    return null
-  }
-}
-
-export function clearUserSession(): void {
-  if (typeof window === 'undefined') return
-  sessionStorage.removeItem(SESSION_KEY)
-}
-
-export function setUserSession(user: User): void {
-  if (typeof window === 'undefined') return
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(user))
+  debug: true,              // ✅ Enable logs to see errors
 }
