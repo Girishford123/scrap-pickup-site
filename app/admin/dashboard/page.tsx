@@ -2379,22 +2379,27 @@ export default function AdminDashboard() {
   }
 
   // ── Fetch Requests ───────────────────────────────────
-  const fetchRequests = useCallback(async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('pickup_request')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setRequests(data ?? [])
-    } catch (err) {
-      console.error('Fetch error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+ const fetchRequests = useCallback(async () => {
+  try {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('pickup_request')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
 
+    // ✅ Map 'pending' → 'total_requests' so new requests always show
+    const normalized = (data ?? []).map(r => ({
+      ...r,
+      status: r.status === 'pending' ? 'total_requests' : r.status,
+    }))
+    setRequests(normalized)
+  } catch (err) {
+    console.error('Fetch error:', err)
+  } finally {
+    setLoading(false)
+  }
+}, [])
   // ── Auth: Fetch on login ─────────────────────────────
   useEffect(() => {
     if (status === 'authenticated') {
