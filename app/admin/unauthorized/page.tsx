@@ -3,12 +3,7 @@
 
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-
-const AUTHORIZED_EMAILS = [
-  'gkulkara@ford.com',
-  'mrideno2@ford.com',
-  'girishtrainer@gmail.com',
-]
+import { ADMIN_EMAILS } from '../../../lib/admin'
 
 export default function Unauthorized() {
   const router = useRouter()
@@ -32,7 +27,7 @@ export default function Unauthorized() {
           </p>
 
           <div className="space-y-1">
-            {AUTHORIZED_EMAILS.map((email) => (
+            {ADMIN_EMAILS.map((email) => (
               <div key={email} className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-red-300" />
                 <p className="text-xs text-red-500">{email}</p>
