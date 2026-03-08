@@ -2486,7 +2486,7 @@ export default function AdminDashboard() {
   const [sortDir,       setSortDir]       = useState<'asc' | 'desc'>('desc')
   const [savingId,      setSavingId]      = useState<number | null>(null)
 
-  const userEmail = session?.user?.email ?? ''
+  const userEmail = (session?.user?.email ?? '').toLowerCase().trim()
 
   // ── Fetch Requests ───────────────────────────────────
   const fetchRequests = useCallback(async () => {
