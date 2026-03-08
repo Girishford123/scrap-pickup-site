@@ -2490,20 +2490,26 @@ export default function AdminDashboard() {
 
   // ── Fetch Requests ───────────────────────────────────
   const fetchRequests = useCallback(async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('pickup_requests')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (!error && data) setRequests(data as PickupRequest[])
-    setLoading(false)
-  }, [])
+  setLoading(true)
 
-  useEffect(() => {
-    if (status === 'authenticated' && ADMIN_EMAILS.includes(userEmail)) {
-      fetchRequests()
-    }
-  }, [fetchRequests, status, userEmail])
+  // ✅ DEBUG — open browser Console (F12) to see this
+  console.log('🔍 fetchRequests called')
+  console.log('🔍 userEmail:', userEmail)
+  console.log('🔍 ADMIN_EMAILS:', ADMIN_EMAILS)
+  console.log('🔍 includes?', ADMIN_EMAILS.includes(userEmail))
+
+  const { data, error } = await supabase
+    .from('pickup_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  console.log('🔍 Supabase result — rows:', data?.length, 'error:', error)
+
+  if (!error && data) setRequests(data as PickupRequest[])
+  else console.error('❌ Supabase error:', error)
+
+  setLoading(false)
+}, [userEmail])
 
   // ── Real-time subscription ───────────────────────────
   useEffect(() => {
