@@ -1,11 +1,11 @@
 'use client'
 
-import Link                                    from 'next/link'
-import { useState, useEffect }                 from 'react'
-import { useRouter, usePathname }              from 'next/navigation'
-import { motion }                              from 'framer-motion'
-import DarkModeToggle                          from './DarkModeToggle'
-import { getUserSession, clearUserSession, User } from '@/lib/auth'
+import Link                       from 'next/link'
+import { useState, useEffect }    from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { motion }                 from 'framer-motion'
+import { useSession, signOut }    from 'next-auth/react'
+import DarkModeToggle             from './DarkModeToggle'
 
 // ─── Ford Logo ────────────────────────────────────────
 function FordLogo({ height = 36 }: { height?: number }) {
@@ -63,41 +63,53 @@ function FCSLogo({ height = 36 }: { height?: number }) {
 
 // ─── Main Navbar Component ────────────────────────────
 export default function Navbar() {
-  const router   = useRouter()
-  const pathname = usePathname()
+  const router              = useRouter()
+  const pathname            = usePathname()
+  const { data: session,
+          status }          = useSession()
 
-  const [user,     setUser]     = useState<User | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const [mounted,  setMounted]  = useState(false)
 
-  // Hide Navbar on these pages
+  // ── Admin emails list ─────────────────────────────
+  const ADMIN_EMAILS = (
+    process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? ''
+  ).split(',').map(e => e.trim())
+
+  const userEmail  = session?.user?.email ?? ''
+  const isAdmin    = ADMIN_EMAILS.includes(userEmail)
+  const isLoggedIn = status === 'authenticated'
+
+  // ── Hide Navbar on these pages ────────────────────
   const hideOnPaths = [
     '/',
     '/login/requestor',
     '/login/admin',
+    '/admin/login',
   ]
 
   useEffect(() => {
     setMounted(true)
-
-    // Re-read session every time pathname changes
-    const session = getUserSession()
-    setUser(session)
-
     const handleScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [pathname])
+  }, [])
 
-  const handleLogout = () => {
-    clearUserSession()
-    setUser(null)
-    router.push('/')
+  // ── Logout Handler ────────────────────────────────
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/' })
   }
 
-  // Do not render on hidden paths or before mount
+  // Do not render before mount
   if (!mounted)                       return null
+  if (status === 'loading')           return null
   if (hideOnPaths.includes(pathname)) return null
+
+  // ── Admin Links ───────────────────────────────────
+  const adminLinks = [
+    { label: '📊 Dashboard',       href: '/admin/dashboard' },
+    { label: '📦 Manage Requests', href: '/admin/dashboard' },
+  ]
 
   // ── Requestor Links ───────────────────────────────
   const requestorLinks = [
@@ -106,27 +118,15 @@ export default function Navbar() {
     { label: '🔍 Track Pickup',   href: '/track-pickup'   },
   ]
 
-  // ── Admin Links ───────────────────────────────────
-  const adminLinks = [
-    {
-      label: '📊 Dashboard',
-      href:  '/admin/dashboard',   // ✅ FIXED — was /dashboard
-    },
-    {
-      label: '📦 Manage Requests',
-      href:  '/admin/dashboard',   // ✅ FIXED — was /admin/requests (404!)
-    },
-  ]
-
   // ── Guest Links ───────────────────────────────────
   const guestLinks = [
     { label: '🏠 Home', href: '/' },
   ]
 
   const navLinks =
-    !user
+    !isLoggedIn
       ? guestLinks
-      : user.role === 'admin'
+      : isAdmin
         ? adminLinks
         : requestorLinks
 
@@ -177,7 +177,7 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <DarkModeToggle />
 
-            {user ? (
+            {isLoggedIn ? (
               // ── LOGGED IN ──────────────────────────
               <div className="flex items-center gap-3">
 
@@ -188,20 +188,20 @@ export default function Navbar() {
                   rounded-full px-3 py-1
                 ">
                   <span className="text-xs">
-                    {user.role === 'admin' ? '🛡️' : '👤'}
+                    {isAdmin ? '🛡️' : '👤'}
                   </span>
-                  <span className="text-green-100 text-xs
-                                   font-medium">
-                    {user.full_name?.split(' ')[0] || user.email}
+                  <span className="text-green-100 text-xs font-medium">
+                    {session?.user?.name?.split(' ')[0]
+                      ?? userEmail.split('@')[0]}
                   </span>
                   <span className={`
                     text-xs font-bold px-2 py-0.5 rounded-full
-                    ${user.role === 'admin'
+                    ${isAdmin
                       ? 'bg-yellow-400/20 text-yellow-300'
-                      : 'bg-green-400/20 text-green-300'
+                      : 'bg-green-400/20  text-green-300'
                     }
                   `}>
-                    {user.role}
+                    {isAdmin ? 'admin' : 'user'}
                   </span>
                 </div>
 
@@ -236,7 +236,7 @@ export default function Navbar() {
                   Requestor Login
                 </Link>
                 <Link
-                  href="/login/admin"
+                  href="/admin/login"
                   className="
                     bg-white text-[#1B4332]
                     hover:bg-green-50
