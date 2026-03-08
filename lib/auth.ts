@@ -1,15 +1,20 @@
 // lib/auth.ts
-import GoogleProvider       from 'next-auth/providers/google'
+import GoogleProvider        from 'next-auth/providers/google'
 import type { NextAuthOptions } from 'next-auth'
 
-// ─── Types ───────────────────────────────────────────────
 export interface User {
-  email:      string
-  name?:      string
-  image?:     string
+  email:  string
+  name?:  string
+  image?: string
 }
 
-// ─── Auth Options ─────────────────────────────────────────
+// ✅ Hardcoded allowed emails
+const ALLOWED_EMAILS = [
+  'girishtrainer@gmail.com',
+  'gkulkara@ford.com',
+  'mrideno2@ford.com',
+]
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 
@@ -29,7 +34,7 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: 'jwt',
-    maxAge:   30 * 24 * 60 * 60,   // 30 days
+    maxAge:   30 * 24 * 60 * 60,
   },
 
   cookies: {
@@ -44,21 +49,16 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  callbacks: {                        // ✅ callbacks wrapper!
+  callbacks: {
     async signIn({ user }) {
-      const rawEmails     = process.env.ALLOWED_EMAILS ?? ''
-      const allowedEmails = rawEmails
-        .split(',')
-        .map(e => e.trim().toLowerCase())
-
-      const userEmail = (user.email ?? '').toLowerCase()
+      const userEmail = (user.email ?? '').toLowerCase().trim()
 
       console.log('=== SIGN IN ATTEMPT ===')
       console.log('User email:     ', userEmail)
-      console.log('Allowed emails: ', allowedEmails)
-      console.log('Is allowed:     ', allowedEmails.includes(userEmail))
+      console.log('Allowed emails: ', ALLOWED_EMAILS)
+      console.log('Is allowed:     ', ALLOWED_EMAILS.includes(userEmail))
 
-      return allowedEmails.includes(userEmail)
+      return ALLOWED_EMAILS.includes(userEmail)
     },
 
     async jwt({ token, user, account }) {
@@ -73,12 +73,11 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      console.log('Redirect called:', { url, baseUrl })
       if (url.startsWith(baseUrl)) return url
       if (url.startsWith('/'))     return `${baseUrl}${url}`
       return `${baseUrl}/admin/dashboard`
     },
-  },                                  // ✅ closes callbacks
+  },
 
   pages: {
     signIn: '/admin/login',
@@ -88,7 +87,7 @@ export const authOptions: NextAuthOptions = {
   debug: true,
 }
 
-// ─── Legacy Helper Functions ──────────────────────────────
+// ── Legacy helpers ────────────────────────────────────────
 const SESSION_KEY = 'admin_user'
 
 export function getUserSession(): User | null {
@@ -97,25 +96,17 @@ export function getUserSession(): User | null {
     const stored = sessionStorage.getItem(SESSION_KEY)
     if (!stored) return null
     return JSON.parse(stored) as User
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
 export function clearUserSession(): void {
   if (typeof window === 'undefined') return
-  try {
-    sessionStorage.removeItem(SESSION_KEY)
-  } catch {
-    // ignore
-  }
+  try { sessionStorage.removeItem(SESSION_KEY) } catch {}
 }
 
 export function setUserSession(user: User): void {
   if (typeof window === 'undefined') return
   try {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(user))
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
