@@ -1,9 +1,8 @@
 // app/api/auth/[...nextauth]/route.ts
-import NextAuth             from 'next-auth'
-import GoogleProvider       from 'next-auth/providers/google'
-import type { NextAuthOptions } from 'next-auth'
+import NextAuth        from 'next-auth'
+import GoogleProvider  from 'next-auth/providers/google'
 
-export const authOptions: NextAuthOptions = {
+const handler = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
@@ -26,13 +25,10 @@ export const authOptions: NextAuthOptions = {
       if (user) token.email = user.email
       return token
     },
-    async session({ session, token }) {
+    async session({ session }) {
       return session
     },
     async redirect({ url, baseUrl }) {
-      if (url.includes('/admin/dashboard')) {
-        return `${baseUrl}/admin/dashboard`
-      }
       if (url.startsWith(baseUrl)) return url
       return `${baseUrl}/admin/dashboard`
     },
@@ -41,7 +37,6 @@ export const authOptions: NextAuthOptions = {
     signIn: '/admin/login',
     error:  '/admin/login',
   },
-}
+})
 
-const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST }
