@@ -2516,17 +2516,28 @@ export default function AdminDashboard() {
 
   // ── Real-time subscription ───────────────────────────
   
-      useEffect(() => {
+    // ── Fetch on auth ─────────────────────────────────────
+useEffect(() => {
   console.log('🔐 Auth status:', status)
   console.log('📧 Email:', session?.user?.email)
-
   if (status === 'authenticated') {
-    fetchRequests()  // ← removed email check temporarily
+    fetchRequests()
   }
 }, [fetchRequests, status])
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [fetchRequests, status, userEmail])
+
+// ── Real-time subscription ────────────────────────────
+useEffect(() => {
+  if (status !== 'authenticated') return
+  const channel = supabase
+    .channel('pickup_request_changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'pickup_request' },
+      () => fetchRequests()
+    )
+    .subscribe()
+  return () => { supabase.removeChannel(channel) }
+}, [fetchRequests, status])
 
   // ── Guard: Loading ───────────────────────────────────
   if (status === 'loading') return <AuthLoadingScreen />
