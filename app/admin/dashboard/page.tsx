@@ -2499,7 +2499,7 @@ export default function AdminDashboard() {
   console.log('🔍 includes?', ADMIN_EMAILS.includes(userEmail))
 
   const { data, error } = await supabase
-    .from('pickup_requests')
+    .from('pickup_request')
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -2515,10 +2515,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (status !== 'authenticated' || !ADMIN_EMAILS.includes(userEmail)) return
     const channel = supabase
-      .channel('pickup_requests_changes')
+      .channel('pickup_request_changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'pickup_requests' },
+        { event: '*', schema: 'public', table: 'pickup_request' },
         () => fetchRequests()
       )
       .subscribe()
@@ -2549,7 +2549,7 @@ export default function AdminDashboard() {
       updated_at:        now,
     }
     await supabase
-      .from('pickup_requests')
+      .from('pickup_request')
       .update(updates)
       .eq('id', id)
     await fetchRequests()
@@ -2560,7 +2560,7 @@ export default function AdminDashboard() {
   async function handleSave(updated: PickupRequest) {
     const { id, created_at, ...rest } = updated
     await supabase
-      .from('pickup_requests')
+      .from('pickup_request')
       .update({ ...rest, updated_at: new Date().toISOString() })
       .eq('id', id)
     await fetchRequests()
@@ -2598,7 +2598,7 @@ export default function AdminDashboard() {
 
     // Delete from main table
     await supabase
-      .from('pickup_requests')
+      .from('pickup_request')
       .delete()
       .eq('id', id)
 
