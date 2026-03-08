@@ -2629,57 +2629,62 @@ export default function AdminDashboard() {
           </div>
 
           {/* Right: Buttons */}
-          <div className="flex items-center gap-2">
+<div className="flex items-center gap-2 flex-wrap justify-end">
 
-            {/* Analytics Toggle */}
-            <button
-              onClick={() => setShowAnalytics(v => !v)}
-              className={`px-4 py-2 text-sm font-semibold
-                         rounded-xl transition-colors ${
-                showAnalytics
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-              }`}
-            >
-              📊 {showAnalytics ? 'Hide Analytics' : 'Analytics'}
-            </button>
+  {/* Last Synced */}
+  {lastSynced && (
+    <span className="text-xs text-gray-400 hidden lg:block whitespace-nowrap">
+      Synced {lastSynced.toLocaleTimeString()}
+    </span>
+  )}
 
-            {/* ✅ SYNC BUTTON */}
-            <button
-              onClick={fetchRequests}
-              disabled={loading}
-              className={`flex items-center gap-2 px-4 py-2
-                         text-sm font-semibold rounded-xl
-                         border transition-all ${
-                loading
-                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-              }`}
-            >
-              <span className={loading ? 'animate-spin inline-block' : ''}>
-                🔄
-              </span>
-              {loading ? 'Syncing...' : 'Sync'}
-            </button>
+  {/* ✅ SYNC BUTTON */}
+  <button
+    onClick={fetchRequests}
+    disabled={loading}
+    className={`flex items-center gap-1.5 px-3 py-2
+               text-sm font-semibold rounded-xl
+               border transition-all whitespace-nowrap ${
+      loading
+        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+    }`}
+  >
+    <span className={loading ? 'animate-spin inline-block' : ''}>
+      🔄
+    </span>
+    <span className="hidden sm:inline">
+      {loading ? 'Syncing...' : 'Sync'}
+    </span>
+  </button>
 
-            {/* Last Synced */}
-            {lastSynced && (
-              <span className="text-xs text-gray-400 hidden md:block">
-                Synced {lastSynced.toLocaleTimeString()}
-              </span>
-            )}
+  {/* Analytics Toggle */}
+  <button
+    onClick={() => setShowAnalytics(v => !v)}
+    className={`px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors ${
+      showAnalytics
+        ? 'bg-blue-600 text-white'
+        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+    }`}
+  >
+    📊 <span className="hidden sm:inline">
+      {showAnalytics ? 'Hide Analytics' : 'Analytics'}
+    </span>
+  </button>
 
-            {/* Sign Out */}
-            <button
-              onClick={() => signOut({ callbackUrl: '/admin/login' })}
-              className="px-4 py-2 text-sm font-semibold
-                         rounded-xl bg-gray-100 hover:bg-gray-200
-                         text-gray-600 transition-colors"
-            >
-              Sign Out
-            </button>
+  {/* Sign Out */}
+  <button
+    onClick={() => signOut({ callbackUrl: '/admin/login' })}
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl bg-gray-100 hover:bg-gray-200
+               text-gray-600 transition-colors"
+  >
+    <span className="hidden sm:inline">Sign Out</span>
+    <span className="sm:hidden">👋</span>
+  </button>
 
-          </div>
+</div>
         </div>
       </div>
 
