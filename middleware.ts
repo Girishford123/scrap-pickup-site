@@ -1,28 +1,36 @@
-// middleware.ts
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
-import { isAdmin } from './lib/admin'
 
 export default withAuth(
   function middleware(req) {
-    const email = req.nextauth.token?.email ?? null
-
-    // ✅ Block non-admin users
-    if (!isAdmin(email)) {
-      return NextResponse.redirect(new URL('/admin/unauthorized', req.url))
-    }
-
     return NextResponse.next()
   },
   {
     callbacks: {
-      // ✅ Must be logged in (have a token) to proceed
-      authorized: ({ token }) => !!token,
+      authorized: ({ token, req }) => {
+
+        const { pathname } = req.nextUrl
+
+        // ✅ Allow Power Automate sync route — no auth needed
+        if (pathname.startsWith('/api/admin/sync-from-powerautomate')) {
+          return true
+        }
+
+        // ✅ Allow public routes
+        if (pathname.startsWith('/api/auth'))      return true
+        if (pathname.startsWith('/admin/login'))   return true
+        if (pathname === '/')                       return true
+
+        // 🔒 Everything else requires auth token
+        return !!token
+      },
     },
   }
 )
 
-// ✅ Protect admin dashboard and admin APIs
 export const config = {
-  matcher: ['/admin/dashboard/:path*', '/api/admin/:path*'],
+  matcher: [
+    '/admin/:path*',
+    '/api/admin/:path*',
+  ],
 }
