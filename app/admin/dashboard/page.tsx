@@ -1,6 +1,7 @@
 // app/admin/dashboard/page.tsx
 'use client'
 export const dynamic = 'force-dynamic'
+
 // ── Auth Imports ─────────────────────────────────────────
 import { useSession, signOut } from 'next-auth/react'
 
@@ -118,7 +119,6 @@ const TABS = [
   },
 ]
 
-// ✅ REPLACE WITH ENV VARIABLE
 const ADMIN_EMAILS = [
   'girishtrainer@gmail.com',
   'gkulkara@ford.com',
@@ -214,7 +214,6 @@ function normalizeRCRC(name?: string | null): string {
   if (lower === 'holman')    return 'Holman'
   return name.trim()
 }
-
 // ─────────────────────────────────────────────────────────
 // SlowMCLsModal
 // ─────────────────────────────────────────────────────────
@@ -534,6 +533,7 @@ function SlowMCLsModal({
     </div>
   )
 }
+
 // ─────────────────────────────────────────────────────────
 // AnalyticsDashboard
 // ─────────────────────────────────────────────────────────
@@ -551,7 +551,6 @@ function AnalyticsDashboard({
     'value' | 'mcls' | 'days' | 'pieces' | 'completion'
   >('value')
 
-  // ── Filter test records ──────────────────────────────
   const realRequests = requests.filter(r =>
     r.rcrc_number !== '9999'        &&
     r.rcrc_name   !== 'Test RCRC'   &&
@@ -563,7 +562,6 @@ function AnalyticsDashboard({
     r.rcrc_name   !== 'FMC'
   )
 
-  // ── Core Stats ───────────────────────────────────────
   const total         = realRequests.length
   const closed        = realRequests.filter(r => r.status === 'closed')
   const active        = realRequests.filter(r => r.status !== 'closed')
@@ -578,7 +576,6 @@ function AnalyticsDashboard({
   const totalPieces    = realRequests.reduce((s, r) => s + (r.total_pieces_quantity ?? 0), 0)
   const avgValuePerMCL = closed.length > 0 ? closedValue / closed.length : 0
 
-  // ── Cycle Days ───────────────────────────────────────
   const fullCycleDays   = realRequests.map(r =>
     daysBetween(r.requested_pickup_date, r.invoice_submitted_date))
   const daysToTechemet  = realRequests.map(r =>
@@ -600,7 +597,6 @@ function AnalyticsDashboard({
   const minCycle       = validCycleDays.length > 0 ? Math.min(...validCycleDays) : 0
   const maxCycle       = validCycleDays.length > 0 ? Math.max(...validCycleDays) : 0
 
-  // ── RCRC Map ─────────────────────────────────────────
   const rcrcMap = new Map<string, {
     name:          string
     number:        string
@@ -695,7 +691,6 @@ function AnalyticsDashboard({
     1
   )
 
-  // ── Pipeline ─────────────────────────────────────────
   const pipeline = [
     { key: 'total_requests',   label: 'New',        icon: '📋', count: newRequests.length,   color: 'bg-blue-500',   light: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'   },
     { key: 'sent_for_pickup',  label: 'Sent',       icon: '🚚', count: sentForPickup.length, color: 'bg-yellow-500', light: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
@@ -704,7 +699,6 @@ function AnalyticsDashboard({
     { key: 'closed',           label: 'Closed',     icon: '🧾', count: closed.length,        color: 'bg-teal-500',   light: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200'   },
   ]
 
-  // ── PDF Export ───────────────────────────────────────
   async function exportToPDF() {
     if (!dashboardRef.current) return
     setExporting(true)
@@ -736,7 +730,6 @@ function AnalyticsDashboard({
     }
   }
 
-  // ── Email Report ─────────────────────────────────────
   async function sendDailyEmail() {
     try {
       const res  = await fetch('/api/send-report', { method: 'POST' })
@@ -751,10 +744,8 @@ function AnalyticsDashboard({
     }
   }
 
-  // ── Render ───────────────────────────────────────────
   return (
     <div>
-      {/* Export Buttons */}
       <div className="flex justify-end mb-4 gap-2">
         <button
           onClick={exportToPDF}
@@ -790,14 +781,14 @@ function AnalyticsDashboard({
         {/* ── Row 1: KPI Cards ─────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
           {[
-            { label: 'Total MCLs',        value: total.toLocaleString(),                                           icon: '📋', color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200',    sub: `${active.length} active`                                                              },
-            { label: 'Total Est. Value',  value: fmtMoney(totalValue),                                             icon: '💰', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', sub: fmtMoney(closedValue) + ' closed'                                                     },
-            { label: 'Avg Value / MCL',   value: fmtMoney(avgValuePerMCL),                                         icon: '📈', color: 'text-indigo-700',  bg: 'bg-indigo-50',  border: 'border-indigo-200',  sub: `from ${closed.length} closed`                                                        },
-            { label: 'Closed & Invoiced', value: closed.length.toLocaleString(),                                   icon: '🧾', color: 'text-teal-700',    bg: 'bg-teal-50',    border: 'border-teal-200',    sub: `${total > 0 ? Math.round((closed.length / total) * 100) : 0}% completion`          },
-            { label: 'Total Pallets',     value: totalPallets.toLocaleString(),                                    icon: '📦', color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200',  sub: 'all MCLs'                                                                            },
-            { label: 'Total Pieces',      value: totalPieces.toLocaleString(),                                     icon: '🔩', color: 'text-purple-700',  bg: 'bg-purple-50',  border: 'border-purple-200',  sub: 'all MCLs'                                                                            },
-            { label: 'Avg Cycle Days',    value: avgFullCycle !== null ? `${avgFullCycle}d` : '—',                 icon: '⏱', color: cycleColor(avgFullCycle), bg: cycleBg(avgFullCycle), border: cycleBorder(avgFullCycle), sub: 'request → invoice'                                               },
-            { label: 'Fastest / Slowest', value: validCycleDays.length > 0 ? `${minCycle}d / ${maxCycle}d` : '—', icon: '⚡', color: 'text-gray-700',    bg: 'bg-gray-50',    border: 'border-gray-200',    sub: 'min / max cycle'                                                                     },
+            { label: 'Total MCLs',        value: total.toLocaleString(),                                            icon: '📋', color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200',    sub: `${active.length} active`                                                     },
+            { label: 'Total Est. Value',  value: fmtMoney(totalValue),                                              icon: '💰', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', sub: fmtMoney(closedValue) + ' closed'                                            },
+            { label: 'Avg Value / MCL',   value: fmtMoney(avgValuePerMCL),                                          icon: '📈', color: 'text-indigo-700',  bg: 'bg-indigo-50',  border: 'border-indigo-200',  sub: `from ${closed.length} closed`                                               },
+            { label: 'Closed & Invoiced', value: closed.length.toLocaleString(),                                    icon: '🧾', color: 'text-teal-700',    bg: 'bg-teal-50',    border: 'border-teal-200',    sub: `${total > 0 ? Math.round((closed.length / total) * 100) : 0}% completion` },
+            { label: 'Total Pallets',     value: totalPallets.toLocaleString(),                                     icon: '📦', color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200',  sub: 'all MCLs'                                                                   },
+            { label: 'Total Pieces',      value: totalPieces.toLocaleString(),                                      icon: '🔩', color: 'text-purple-700',  bg: 'bg-purple-50',  border: 'border-purple-200',  sub: 'all MCLs'                                                                   },
+            { label: 'Avg Cycle Days',    value: avgFullCycle !== null ? `${avgFullCycle}d` : '—',                  icon: '⏱', color: cycleColor(avgFullCycle), bg: cycleBg(avgFullCycle), border: cycleBorder(avgFullCycle), sub: 'request → invoice'                                    },
+            { label: 'Fastest / Slowest', value: validCycleDays.length > 0 ? `${minCycle}d / ${maxCycle}d` : '—',  icon: '⚡', color: 'text-gray-700',    bg: 'bg-gray-50',    border: 'border-gray-200',    sub: 'min / max cycle'                                                            },
           ].map(stat => (
             <div
               key={stat.label}
@@ -904,7 +895,6 @@ function AnalyticsDashboard({
               </span>
             </div>
           </div>
-
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {([
               { label: 'Request → Techemet',    value: avgToTechemet,  icon: '📤', from: 'Requested Date',   to: 'Date Sent to Techemet' },
@@ -944,7 +934,6 @@ function AnalyticsDashboard({
               ))}
           </div>
 
-          {/* Cycle Distribution */}
           {validCycleDays.length > 0 && (
             <div className="mt-5 pt-4 border-t border-gray-100">
               <p className="text-xs font-bold text-gray-500
@@ -1034,7 +1023,6 @@ function AnalyticsDashboard({
               ))}
             </div>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -1084,17 +1072,14 @@ function AnalyticsDashboard({
                         i < 3 ? rowColors[i] : ''
                       }`}
                     >
-                      <td className="py-2.5 px-2 font-bold
-                                     text-gray-400 text-center">
+                      <td className="py-2.5 px-2 font-bold text-gray-400 text-center">
                         {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                       </td>
                       <td className="py-2.5 px-2">
                         <p className="font-bold text-gray-800 whitespace-nowrap">
                           {rcrc.name}
                         </p>
-                        <p className="text-gray-400 text-xs">
-                          #{rcrc.number}
-                        </p>
+                        <p className="text-gray-400 text-xs">#{rcrc.number}</p>
                       </td>
                       <td className="py-2.5 px-2 text-right font-bold text-gray-700">
                         {rcrc.totalMCLs}
@@ -1104,47 +1089,36 @@ function AnalyticsDashboard({
                       </td>
                       <td className="py-2.5 px-2 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <div className="w-12 h-1.5 bg-gray-100
-                                          rounded-full overflow-hidden">
+                          <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full ${
-                                rcrc.completionRate >= 80
-                                  ? 'bg-teal-500'
-                                  : rcrc.completionRate >= 50
-                                    ? 'bg-yellow-500'
-                                    : 'bg-red-400'
+                                rcrc.completionRate >= 80 ? 'bg-teal-500'
+                                : rcrc.completionRate >= 50 ? 'bg-yellow-500'
+                                : 'bg-red-400'
                               }`}
                               style={{ width: `${rcrc.completionRate}%` }}
                             />
                           </div>
                           <span className={`font-semibold ${
-                            rcrc.completionRate >= 80
-                              ? 'text-teal-600'
-                              : rcrc.completionRate >= 50
-                                ? 'text-yellow-600'
-                                : 'text-red-500'
+                            rcrc.completionRate >= 80 ? 'text-teal-600'
+                            : rcrc.completionRate >= 50 ? 'text-yellow-600'
+                            : 'text-red-500'
                           }`}>
                             {rcrc.completionRate}%
                           </span>
                         </div>
                       </td>
-                      <td className="py-2.5 px-2 text-right font-bold
-                                     text-emerald-700 whitespace-nowrap">
+                      <td className="py-2.5 px-2 text-right font-bold text-emerald-700 whitespace-nowrap">
                         {fmtMoney(rcrc.totalValue)}
                       </td>
-                      <td className="py-2.5 px-2 text-right
-                                     text-gray-500 whitespace-nowrap">
-                        {rcrc.closedMCLs > 0
-                          ? fmtMoney(rcrc.totalValue / rcrc.closedMCLs)
-                          : '—'}
+                      <td className="py-2.5 px-2 text-right text-gray-500 whitespace-nowrap">
+                        {rcrc.closedMCLs > 0 ? fmtMoney(rcrc.totalValue / rcrc.closedMCLs) : '—'}
                       </td>
                       <td className="py-2.5 px-2 text-right text-gray-600">
                         {rcrc.totalPieces.toLocaleString()}
                       </td>
                       <td className="py-2.5 px-2 text-right text-gray-600">
-                        {rcrc.totalPallets > 0
-                          ? rcrc.totalPallets.toLocaleString()
-                          : '—'}
+                        {rcrc.totalPallets > 0 ? rcrc.totalPallets.toLocaleString() : '—'}
                       </td>
                       <td className="py-2.5 px-2 text-right">
                         {rcrc.avgTechhemetDays !== null
@@ -1168,9 +1142,7 @@ function AnalyticsDashboard({
                       </td>
                       <td className="py-2.5 px-2 text-right">
                         {rcrc.avgCycleDays !== null
-                          ? <span className={`inline-flex items-center gap-1
-                              px-2 py-0.5 rounded-full font-bold text-xs
-                              ${cycleLabelBg(rcrc.avgCycleDays)}`}>
+                          ? <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-xs ${cycleLabelBg(rcrc.avgCycleDays)}`}>
                               {rcrc.avgCycleDays}d
                             </span>
                           : <span className="text-gray-300">—</span>}
@@ -1190,56 +1162,30 @@ function AnalyticsDashboard({
               <tfoot>
                 <tr className="border-t-2 border-gray-200 bg-gray-50">
                   <td className="py-2.5 px-2 font-bold text-gray-400 text-center">Σ</td>
-                  <td className="py-2.5 px-2 font-bold text-gray-700">
-                    {rcrcList.length} RCRCs
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">
-                    {total}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-bold text-teal-600">
-                    {closed.length}
-                  </td>
+                  <td className="py-2.5 px-2 font-bold text-gray-700">{rcrcList.length} RCRCs</td>
+                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">{total}</td>
+                  <td className="py-2.5 px-2 text-right font-bold text-teal-600">{closed.length}</td>
                   <td className="py-2.5 px-2 text-right font-bold text-teal-600">
                     {total > 0 ? Math.round((closed.length / total) * 100) : 0}%
                   </td>
-                  <td className="py-2.5 px-2 text-right font-bold
-                                 text-emerald-700 whitespace-nowrap">
-                    {fmtMoney(totalValue)}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-bold
-                                 text-gray-600 whitespace-nowrap">
-                    {fmtMoney(avgValuePerMCL)}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">
-                    {totalPieces.toLocaleString()}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">
-                    {totalPallets.toLocaleString()}
+                  <td className="py-2.5 px-2 text-right font-bold text-emerald-700 whitespace-nowrap">{fmtMoney(totalValue)}</td>
+                  <td className="py-2.5 px-2 text-right font-bold text-gray-600 whitespace-nowrap">{fmtMoney(avgValuePerMCL)}</td>
+                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">{totalPieces.toLocaleString()}</td>
+                  <td className="py-2.5 px-2 text-right font-bold text-gray-700">{totalPallets.toLocaleString()}</td>
+                  <td className="py-2.5 px-2 text-right font-bold">
+                    <span className={cycleColor(avgToTechemet)}>{avgToTechemet !== null ? `${avgToTechemet}d` : '—'}</span>
                   </td>
                   <td className="py-2.5 px-2 text-right font-bold">
-                    <span className={cycleColor(avgToTechemet)}>
-                      {avgToTechemet !== null ? `${avgToTechemet}d` : '—'}
-                    </span>
+                    <span className={cycleColor(avgToScheduled)}>{avgToScheduled !== null ? `${avgToScheduled}d` : '—'}</span>
                   </td>
                   <td className="py-2.5 px-2 text-right font-bold">
-                    <span className={cycleColor(avgToScheduled)}>
-                      {avgToScheduled !== null ? `${avgToScheduled}d` : '—'}
-                    </span>
+                    <span className={cycleColor(avgToPickup)}>{avgToPickup !== null ? `${avgToPickup}d` : '—'}</span>
                   </td>
                   <td className="py-2.5 px-2 text-right font-bold">
-                    <span className={cycleColor(avgToPickup)}>
-                      {avgToPickup !== null ? `${avgToPickup}d` : '—'}
-                    </span>
+                    <span className={cycleColor(avgToInvoice)}>{avgToInvoice !== null ? `${avgToInvoice}d` : '—'}</span>
                   </td>
                   <td className="py-2.5 px-2 text-right font-bold">
-                    <span className={cycleColor(avgToInvoice)}>
-                      {avgToInvoice !== null ? `${avgToInvoice}d` : '—'}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-bold">
-                    <span className={cycleColor(avgFullCycle)}>
-                      {avgFullCycle !== null ? `${avgFullCycle}d avg` : '—'}
-                    </span>
+                    <span className={cycleColor(avgFullCycle)}>{avgFullCycle !== null ? `${avgFullCycle}d avg` : '—'}</span>
                   </td>
                   <td />
                 </tr>
@@ -1250,8 +1196,6 @@ function AnalyticsDashboard({
 
         {/* ── Row 5: Top Bar Charts ─────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Top 10 By Value */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-sm font-bold text-gray-700 mb-4">
               💰 Top 10 RCRCs by Value
@@ -1261,9 +1205,7 @@ function AnalyticsDashboard({
                 .sort((a, b) => b.totalValue - a.totalValue)
                 .slice(0, 10)
                 .map((rcrc, i) => {
-                  const pct = maxValue > 0
-                    ? (rcrc.totalValue / maxValue) * 100
-                    : 0
+                  const pct = maxValue > 0 ? (rcrc.totalValue / maxValue) * 100 : 0
                   const barColors = [
                     'bg-emerald-500', 'bg-emerald-400',
                     'bg-teal-500',    'bg-teal-400',
@@ -1275,31 +1217,18 @@ function AnalyticsDashboard({
                     <div key={`val-${rcrc.number}-${i}`}>
                       <div className="flex justify-between items-center mb-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gray-400 w-4">
-                            {i + 1}.
-                          </span>
-                          <span className="text-xs font-semibold text-gray-700
-                                           truncate max-w-[150px]">
-                            {rcrc.name}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            #{rcrc.number}
-                          </span>
+                          <span className="text-xs font-bold text-gray-400 w-4">{i + 1}.</span>
+                          <span className="text-xs font-semibold text-gray-700 truncate max-w-[150px]">{rcrc.name}</span>
+                          <span className="text-xs text-gray-400">#{rcrc.number}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400">
-                            {rcrc.totalMCLs} MCLs
-                          </span>
-                          <span className="text-xs font-bold text-emerald-700">
-                            {fmtMoney(rcrc.totalValue)}
-                          </span>
+                          <span className="text-xs text-gray-400">{rcrc.totalMCLs} MCLs</span>
+                          <span className="text-xs font-bold text-emerald-700">{fmtMoney(rcrc.totalValue)}</span>
                         </div>
                       </div>
                       <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full ${
-                            barColors[i] ?? 'bg-gray-400'
-                          } rounded-full transition-all duration-500`}
+                          className={`h-full ${barColors[i] ?? 'bg-gray-400'} rounded-full transition-all duration-500`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -1309,7 +1238,6 @@ function AnalyticsDashboard({
             </div>
           </div>
 
-          {/* Fastest RCRCs */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-sm font-bold text-gray-700 mb-4">
               ⚡ Fastest RCRCs — Avg Cycle Time
@@ -1317,44 +1245,27 @@ function AnalyticsDashboard({
             <div className="space-y-3">
               {[...rcrcList]
                 .filter(r => r.avgCycleDays !== null && r.closedMCLs >= 2)
-                .sort((a, b) =>
-                  (a.avgCycleDays ?? 999) - (b.avgCycleDays ?? 999)
-                )
+                .sort((a, b) => (a.avgCycleDays ?? 999) - (b.avgCycleDays ?? 999))
                 .slice(0, 10)
                 .map((rcrc, i) => {
                   const days = rcrc.avgCycleDays ?? 0
-                  const pct  = maxCycleForBar > 0
-                    ? (days / maxCycleForBar) * 100
-                    : 0
+                  const pct  = maxCycleForBar > 0 ? (days / maxCycleForBar) * 100 : 0
                   return (
                     <div key={`spd-${rcrc.number}-${i}`}>
                       <div className="flex justify-between items-center mb-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gray-400 w-4">
-                            {i + 1}.
-                          </span>
-                          <span className="text-xs font-semibold text-gray-700
-                                           truncate max-w-[150px]">
-                            {rcrc.name}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            ({rcrc.closedMCLs} closed)
-                          </span>
+                          <span className="text-xs font-bold text-gray-400 w-4">{i + 1}.</span>
+                          <span className="text-xs font-semibold text-gray-700 truncate max-w-[150px]">{rcrc.name}</span>
+                          <span className="text-xs text-gray-400">({rcrc.closedMCLs} closed)</span>
                         </div>
-                        <span className={`text-xs font-bold px-2 py-0.5
-                                          rounded-full ${cycleLabelBg(days)}`}>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cycleLabelBg(days)}`}>
                           {days}d avg
                         </span>
                       </div>
                       <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all
-                                      duration-500 ${
-                            days <= 14
-                              ? 'bg-green-500'
-                              : days <= 21
-                                ? 'bg-yellow-500'
-                                : 'bg-red-500'
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            days <= 14 ? 'bg-green-500' : days <= 21 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${pct}%` }}
                         />
@@ -1364,7 +1275,6 @@ function AnalyticsDashboard({
                 })}
             </div>
           </div>
-
         </div>
 
       </div>
@@ -1478,12 +1388,8 @@ function UnauthorizedScreen({ email }: { email: string }) {
           <p className="text-xs font-bold text-gray-500 mb-1">
             Signed in as:
           </p>
-          <p className="text-sm text-gray-700 font-semibold">
-            {email}
-          </p>
-          <p className="text-xs text-red-500 mt-1">
-            ❌ Not authorized
-          </p>
+          <p className="text-sm text-gray-700 font-semibold">{email}</p>
+          <p className="text-xs text-red-500 mt-1">❌ Not authorized</p>
         </div>
         <div className="bg-red-50 border border-red-100
                         rounded-2xl p-4 mb-6 text-left">
@@ -1580,11 +1486,10 @@ function DeleteModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl shadow-2xl
-                   w-full max-w-md"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md"
         onClick={e => e.stopPropagation()}
       >
-        {/* ── Header ─────────────────────────────── */}
+        {/* Header */}
         <div className="bg-red-50 border-b border-red-100
                         rounded-t-3xl px-6 py-4">
           <div className="flex items-center gap-3">
@@ -1600,7 +1505,7 @@ function DeleteModal({
           </div>
         </div>
 
-        {/* ── Body ───────────────────────────────── */}
+        {/* Body */}
         <div className="px-6 py-5 space-y-4">
 
           {/* Request Summary */}
@@ -1720,17 +1625,14 @@ function DeleteModal({
             />
             <span className="text-xs text-gray-600">
               I understand this will delete MCL{' '}
-              <strong>
-                {req.mcl_number ?? `#${req.id}`}
-              </strong>{' '}
+              <strong>{req.mcl_number ?? `#${req.id}`}</strong>{' '}
               and notify the requestor by email. This record
               will be archived for audit purposes.
             </span>
           </label>
-
         </div>
 
-        {/* ── Footer ─────────────────────────────── */}
+        {/* Footer */}
         <div className="px-6 pb-6 flex gap-3">
           <button
             onClick={onClose}
@@ -1753,7 +1655,6 @@ function DeleteModal({
             {deleting ? '⏳ Deleting...' : '🗑️ Delete & Notify'}
           </button>
         </div>
-
       </div>
     </div>
   )
@@ -1777,8 +1678,8 @@ function RequestCard({
     TabKey,
     { key: TabKey; label: string; icon: string } | null
   > = {
-    total_requests:   null,
-    sent_for_pickup:  { key: 'in_transit',       label: 'Mark In Transit', icon: '🔄' },
+    total_requests:   { key: 'sent_for_pickup',  label: 'Send for Pickup', icon: '🚚' },
+    sent_for_pickup:  { key: 'in_transit',        label: 'Mark In Transit', icon: '🔄' },
     in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',    icon: '✅' },
     shipment_arrived: { key: 'closed',            label: 'Close MCL',       icon: '🧾' },
     closed:           null,
@@ -1807,12 +1708,10 @@ function RequestCard({
                     shadow-sm p-4 flex flex-col gap-3
                     hover:shadow-md transition-shadow">
 
-      {/* ── Header ─────────────────────────────────── */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs text-gray-400 font-medium">
-            MCL Number
-          </p>
+          <p className="text-xs text-gray-400 font-medium">MCL Number</p>
           <p className="text-base font-bold text-gray-800">
             {req.mcl_number ?? '—'}
           </p>
@@ -1825,7 +1724,7 @@ function RequestCard({
         </span>
       </div>
 
-      {/* ── RCRC Info ──────────────────────────────── */}
+      {/* RCRC Info */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
           <p className="text-gray-400">RCRC Name</p>
@@ -1842,9 +1741,7 @@ function RequestCard({
         <div>
           <p className="text-gray-400">Est. Value</p>
           <p className="font-semibold text-emerald-600">
-            {req.fcsd_offer_amount
-              ? fmtMoney(req.fcsd_offer_amount)
-              : '—'}
+            {req.fcsd_offer_amount ? fmtMoney(req.fcsd_offer_amount) : '—'}
           </p>
         </div>
         <div>
@@ -1853,143 +1750,78 @@ function RequestCard({
             {req.total_pieces_quantity?.toLocaleString() ?? '—'}
           </p>
         </div>
-        <div>
-          <p className="text-gray-400">Pallets</p>
-          <p className="font-semibold text-gray-700">
-            {req.pallet_quantity ?? '—'}
-          </p>
+      </div>
+
+      {/* Key Dates */}
+      <div className="text-xs space-y-1 pt-2 border-t border-gray-50">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Requested</span>
+          <span className="text-gray-600 font-medium">
+            {req.requested_pickup_date
+              ? fmtDate(req.requested_pickup_date)
+              : '—'}
+          </span>
         </div>
-        <div>
-          <p className="text-gray-400">Requested Date</p>
-          <p className="font-semibold text-gray-700">
-            {req.requested_pickup_date ?? '—'}
-          </p>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Scheduled</span>
+          <span className="text-gray-600 font-medium">
+            {req.scheduled_pickup_date
+              ? fmtDate(req.scheduled_pickup_date)
+              : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Actual Pickup</span>
+          <span className="text-gray-600 font-medium">
+            {req.actual_pickup_date
+              ? fmtDate(req.actual_pickup_date)
+              : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Invoice Submitted</span>
+          <span className="text-gray-600 font-medium">
+            {req.invoice_submitted_date
+              ? fmtDate(req.invoice_submitted_date)
+              : '—'}
+          </span>
         </div>
       </div>
 
-      {/* ── Dates Row ──────────────────────────────── */}
-      {(req.date_sent_to_techemet ||
-        req.scheduled_pickup_date ||
-        req.actual_pickup_date    ||
-        req.invoice_submitted_date) && (
-        <div className="border-t border-gray-50 pt-2
-                        grid grid-cols-2 gap-1.5 text-xs">
-          {req.date_sent_to_techemet && (
-            <div>
-              <p className="text-gray-400">Sent to Techemet</p>
-              <p className="font-medium text-gray-600">
-                {req.date_sent_to_techemet}
-              </p>
-            </div>
-          )}
-          {req.scheduled_pickup_date && (
-            <div>
-              <p className="text-gray-400">Scheduled Pickup</p>
-              <p className="font-medium text-gray-600">
-                {req.scheduled_pickup_date}
-              </p>
-            </div>
-          )}
-          {req.actual_pickup_date && (
-            <div>
-              <p className="text-gray-400">Actual Pickup</p>
-              <p className="font-medium text-gray-600">
-                {req.actual_pickup_date}
-              </p>
-            </div>
-          )}
-          {req.invoice_submitted_date && (
-            <div>
-              <p className="text-gray-400">Invoice Submitted</p>
-              <p className="font-medium text-gray-600">
-                {req.invoice_submitted_date}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Cycle Days Badge ───────────────────────── */}
-      {(() => {
-        const cd = daysBetween(
-          req.requested_pickup_date,
-          req.invoice_submitted_date ??
-            new Date().toISOString().slice(0, 10)
-        )
-        if (cd === null) return null
-        return (
-          <div className={`flex items-center gap-2 px-3 py-1.5
-                          rounded-xl border text-xs font-semibold
-                          ${cycleBg(cd)} ${cycleBorder(cd)}`}>
-            <span className={cycleColor(cd)}>
-              ⏱ {cd} days
-            </span>
-            <span className={`ml-auto px-2 py-0.5 rounded-full
-                             text-xs ${cycleLabelBg(cd)}`}>
-              {cycleLabel(cd)}
-            </span>
-          </div>
-        )
-      })()}
-
-      {/* ── Admin Notes Preview ────────────────────── */}
-      {req.admin_notes && (
-        <div className="bg-amber-50 border border-amber-100
-                        rounded-xl px-3 py-2 text-xs">
-          <p className="text-amber-600 font-semibold mb-0.5">
-            📝 Admin Notes
-          </p>
-          <p className="text-amber-700 line-clamp-2">
-            {req.admin_notes}
-          </p>
-        </div>
-      )}
-
-      {/* ── Action Buttons ─────────────────────────── */}
+      {/* Action Buttons */}
       <div className="flex gap-2 pt-1">
-
-        {/* View / Edit */}
         <button
           onClick={() => onView(req)}
           className="flex-1 py-2 rounded-xl bg-blue-50
                      hover:bg-blue-100 text-blue-700
-                     text-xs font-semibold transition-colors
-                     border border-blue-100"
+                     text-xs font-semibold transition-colors"
         >
-          👁 View / Edit
+          ✏️ View / Edit
         </button>
-
-        {/* Next Status */}
         {next && (
           <button
             onClick={() => onStatusChange(req.id, next.key)}
-            className="flex-1 py-2 rounded-xl bg-gray-50
-                       hover:bg-gray-100 text-gray-700
-                       text-xs font-semibold transition-colors
-                       border border-gray-200"
+            className="flex-1 py-2 rounded-xl bg-green-50
+                       hover:bg-green-100 text-green-700
+                       text-xs font-semibold transition-colors"
           >
             {next.icon} {next.label}
           </button>
         )}
-
-        {/* Delete */}
         <button
           onClick={() => onDelete(req)}
           className="py-2 px-3 rounded-xl bg-red-50
-                     hover:bg-red-100 text-red-400
-                     hover:text-red-600 text-xs
-                     font-semibold transition-colors
-                     border border-red-100"
+                     hover:bg-red-100 text-red-500
+                     text-xs font-semibold transition-colors"
         >
-          🗑
+          🗑️
         </button>
-
       </div>
     </div>
   )
 }
 // ─────────────────────────────────────────────────────────
-// ViewModal
+// ViewModal — Simple flat layout with inline date pickers
 // ─────────────────────────────────────────────────────────
 function ViewModal({
   req,
@@ -1999,21 +1831,39 @@ function ViewModal({
 }: {
   req:            PickupRequest
   onClose:        () => void
-  onSave:         (updated: PickupRequest) => Promise<void>
+  onSave:         (updated: Partial<PickupRequest>) => Promise<void>
   onStatusChange: (id: number, newStatus: TabKey) => void
 }) {
-  const [editing, setEditing]   = useState(false)
-  const [saving,  setSaving]    = useState(false)
-  const [form,    setForm]      = useState<PickupRequest>({ ...req })
-  const [activeTab, setActiveTab] = useState<
-    'details' | 'logistics' | 'admin'
-  >('details')
+  const [editing, setEditing] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [form,    setForm]    = useState<Partial<PickupRequest>>({
+    mcl_number:             req.mcl_number             ?? '',
+    status:                 req.status,
+    fcsd_offer_amount:      req.fcsd_offer_amount       ?? undefined,
+    admin_notes:            req.admin_notes             ?? '',
+    notes:                  req.notes                  ?? '',
+    // ── Key Dates ──────────────────────────────────────
+    requested_pickup_date:  req.requested_pickup_date   ?? '',
+    date_sent_to_techemet:  req.date_sent_to_techemet   ?? '',
+    scheduled_pickup_date:  req.scheduled_pickup_date   ?? '',
+    actual_pickup_date:     req.actual_pickup_date      ?? '',
+    invoice_submitted_date: req.invoice_submitted_date  ?? '',
+    // ── RCRC ───────────────────────────────────────────
+    rcrc_number:            req.rcrc_number             ?? '',
+    rcrc_name:              req.rcrc_name               ?? '',
+    rcrc_contact_person:    req.rcrc_contact_person     ?? '',
+    rcrc_email:             req.rcrc_email              ?? '',
+    rcrc_phone_number:      req.rcrc_phone_number       ?? '',
+    rcrc_address:           req.rcrc_address            ?? '',
+    rcrc_zip_code:          req.rcrc_zip_code           ?? '',
+    // ── Pickup Info ────────────────────────────────────
+    pallet_quantity:        req.pallet_quantity         ?? undefined,
+    total_pieces_quantity:  req.total_pieces_quantity   ?? undefined,
+    special_instructions:   req.special_instructions    ?? '',
+  })
 
-  function handleChange(
-    field: keyof PickupRequest,
-    value: string | number | null
-  ) {
-    setForm(prev => ({ ...prev, [field]: value }))
+  function set(key: keyof PickupRequest, val: string | number) {
+    setForm(f => ({ ...f, [key]: val }))
   }
 
   async function handleSave() {
@@ -2023,19 +1873,6 @@ function ViewModal({
     setEditing(false)
   }
 
-  const nextMap: Record<
-    TabKey,
-    { key: TabKey; label: string; icon: string } | null
-  > = {
-    total_requests:   null,
-    sent_for_pickup:  { key: 'in_transit',      label: 'Mark In Transit', icon: '🔄' },
-    in_transit:       { key: 'shipment_arrived', label: 'Mark Arrived',    icon: '✅' },
-    shipment_arrived: { key: 'closed',           label: 'Close MCL',       icon: '🧾' },
-    closed:           null,
-  }
-
-  const next = nextMap[req.status] ?? null
-
   const statusStyle: Record<string, string> = {
     total_requests:   'bg-blue-100   text-blue-700',
     sent_for_pickup:  'bg-yellow-100 text-yellow-700',
@@ -2044,66 +1881,98 @@ function ViewModal({
     closed:           'bg-teal-100   text-teal-700',
   }
 
-  // ── Field Row Helper ─────────────────────────────────
-  function FieldRow({
+  const statusLabel: Record<string, string> = {
+    total_requests:   '📋 New Request',
+    sent_for_pickup:  '🚚 Sent for Pickup',
+    in_transit:       '🔄 In Transit',
+    shipment_arrived: '✅ Shipment Arrived',
+    closed:           '🧾 Closed',
+  }
+
+  const nextMap: Record<
+    TabKey,
+    { key: TabKey; label: string; icon: string } | null
+  > = {
+    total_requests:   { key: 'sent_for_pickup',  label: 'Send for Pickup', icon: '🚚' },
+    sent_for_pickup:  { key: 'in_transit',        label: 'Mark In Transit', icon: '🔄' },
+    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',    icon: '✅' },
+    shipment_arrived: { key: 'closed',            label: 'Close MCL',       icon: '🧾' },
+    closed:           null,
+  }
+
+  const next = nextMap[req.status] ?? null
+
+  // ── Reusable field helpers ──────────────────────────────
+  function ReadRow({
     label,
-    field,
-    type = 'text',
-    prefix,
+    value,
   }: {
-    label:   string
-    field:   keyof PickupRequest
-    type?:   'text' | 'number' | 'date' | 'textarea'
-    prefix?: string
+    label: string
+    value?: string | number | null
   }) {
-    const val = form[field]
-
-    if (!editing) {
-      return (
-        <div className="flex flex-col gap-0.5">
-          <p className="text-xs text-gray-400">{label}</p>
-          <p className="text-sm font-semibold text-gray-700">
-            {val !== undefined && val !== null && val !== ''
-              ? (prefix ? `${prefix}${val}` : String(val))
-              : '—'}
-          </p>
-        </div>
-      )
-    }
-
-    if (type === 'textarea') {
-      return (
-        <div className="flex flex-col gap-0.5 col-span-2">
-          <label className="text-xs text-gray-400">{label}</label>
-          <textarea
-            value={String(val ?? '')}
-            onChange={e => handleChange(field, e.target.value)}
-            rows={3}
-            className="text-sm border border-gray-200 rounded-xl
-                       px-3 py-2 resize-none focus:outline-none
-                       focus:ring-2 focus:ring-blue-300 bg-gray-50"
-          />
-        </div>
-      )
-    }
-
     return (
       <div className="flex flex-col gap-0.5">
-        <label className="text-xs text-gray-400">{label}</label>
+        <p className="text-xs text-gray-400 font-medium">{label}</p>
+        <p className="text-sm font-semibold text-gray-800">
+          {value ?? '—'}
+        </p>
+      </div>
+    )
+  }
+
+  function TextField({
+    label,
+    fieldKey,
+    placeholder,
+    type = 'text',
+  }: {
+    label:       string
+    fieldKey:    keyof PickupRequest
+    placeholder?: string
+    type?:       string
+  }) {
+    return (
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-gray-500">
+          {label}
+        </label>
         <input
           type={type}
-          value={String(val ?? '')}
+          value={(form[fieldKey] as string | number | undefined) ?? ''}
           onChange={e =>
-            handleChange(
-              field,
-              type === 'number'
-                ? (e.target.value === '' ? null : Number(e.target.value))
-                : e.target.value
+            set(
+              fieldKey,
+              type === 'number' ? Number(e.target.value) : e.target.value
             )
           }
+          placeholder={placeholder}
           className="text-sm border border-gray-200 rounded-xl
-                     px-3 py-2 focus:outline-none
-                     focus:ring-2 focus:ring-blue-300 bg-gray-50"
+                     px-3 py-2 focus:outline-none focus:ring-2
+                     focus:ring-blue-300 bg-white"
+        />
+      </div>
+    )
+  }
+
+  function DateField({
+    label,
+    fieldKey,
+  }: {
+    label:    string
+    fieldKey: keyof PickupRequest
+  }) {
+    return (
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-gray-500">
+          {label}
+        </label>
+        <input
+          type="date"
+          value={(form[fieldKey] as string | undefined) ?? ''}
+          onChange={e => set(fieldKey, e.target.value)}
+          className="text-sm border border-gray-200 rounded-xl
+                     px-3 py-2 focus:outline-none focus:ring-2
+                     focus:ring-blue-300 bg-white"
         />
       </div>
     )
@@ -2111,325 +1980,348 @@ function ViewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center
-                 justify-center bg-black/50
-                 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center
+                 bg-black/50 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl shadow-2xl
-                   w-full max-w-3xl max-h-[92vh]
-                   flex flex-col"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl
+                   max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* ── Header ───────────────────────────────── */}
-        <div className="bg-gradient-to-r from-blue-600
-                        to-blue-700 rounded-t-3xl
-                        px-6 py-4 flex items-start
-                        justify-between">
+
+        {/* ── Header ───────────────────────────────────── */}
+        <div className="bg-blue-600 rounded-t-3xl px-6 py-4
+                        flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-white text-2xl">🏭</span>
-              <h2 className="text-white text-xl font-bold">
+            <div className="flex items-center gap-2">
+              <span className="text-white text-xl font-bold">
                 MCL {req.mcl_number ?? `#${req.id}`}
-              </h2>
-              <span className={`text-xs font-semibold
-                               px-2.5 py-1 rounded-full ${
-                statusStyle[req.status] ??
-                'bg-gray-100 text-gray-600'
+              </span>
+              <span className={`text-xs font-semibold px-2.5 py-1
+                               rounded-full ${
+                statusStyle[req.status] ?? 'bg-gray-100 text-gray-600'
               }`}>
-                {req.status.replace(/_/g, ' ')}
+                {statusLabel[req.status] ?? req.status}
               </span>
             </div>
-            <p className="text-blue-200 text-xs">
-              {req.rcrc_name ?? '—'} •{' '}
+            <p className="text-blue-200 text-xs mt-1">
               Created {fmtDate(req.created_at)}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white/70 hover:text-white
-                       text-3xl leading-none font-light"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* ── Tab Bar ──────────────────────────────── */}
-        <div className="flex border-b border-gray-100
-                        bg-gray-50/50 px-6">
-          {([
-            { key: 'details'   as const, label: '📋 Details'   },
-            { key: 'logistics' as const, label: '🚛 Logistics'  },
-            { key: 'admin'     as const, label: '⚙️ Admin'      },
-          ]).map(t => (
+          <div className="flex items-center gap-2">
+            {!editing ? (
+              <button
+                onClick={() => setEditing(true)}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30
+                           text-white text-sm font-semibold
+                           rounded-xl transition-colors"
+              >
+                ✏️ Edit
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30
+                             text-white text-sm font-semibold
+                             rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-4 py-2 bg-white hover:bg-blue-50
+                             text-blue-700 text-sm font-bold
+                             rounded-xl transition-colors
+                             disabled:opacity-50"
+                >
+                  {saving ? '⏳ Saving...' : '💾 Save Changes'}
+                </button>
+              </>
+            )}
             <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`px-4 py-3 text-xs font-semibold
-                         border-b-2 transition-colors ${
-                activeTab === t.key
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+              onClick={onClose}
+              className="text-white/70 hover:text-white
+                         text-2xl leading-none font-light"
             >
-              {t.label}
+              ×
             </button>
-          ))}
+          </div>
         </div>
 
-        {/* ── Body ─────────────────────────────────── */}
-        <div className="overflow-y-auto flex-1 px-6 py-5">
+        {/* ── Scrollable Body ───────────────────────────── */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
 
-          {/* Details Tab */}
-          {activeTab === 'details' && (
-            <div className="space-y-5">
-
-              {/* RCRC Info */}
+          {/* ── Status Change Bar ────────────────────────── */}
+          {!editing && next && (
+            <div className="flex items-center justify-between
+                            bg-blue-50 border border-blue-200
+                            rounded-2xl px-4 py-3">
               <div>
-                <p className="text-xs font-bold text-gray-400
-                              uppercase tracking-wide mb-3">
-                  RCRC Information
+                <p className="text-xs font-bold text-blue-700">
+                  Next Step
                 </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <FieldRow label="RCRC Name"           field="rcrc_name"           />
-                  <FieldRow label="RCRC Number"         field="rcrc_number"         />
-                  <FieldRow label="Contact Person"      field="rcrc_contact_person" />
-                  <FieldRow label="RCRC Email"          field="rcrc_email"          />
-                  <FieldRow label="RCRC Phone"          field="rcrc_phone_number"   />
-                  <FieldRow label="RCRC Address"        field="rcrc_address"        />
-                  <FieldRow label="RCRC Address 2"      field="rcrc_address2"       />
-                  <FieldRow label="RCRC ZIP"            field="rcrc_zip_code"       />
-                </div>
-              </div>
-
-              {/* Scrap Info */}
-              <div>
-                <p className="text-xs font-bold text-gray-400
-                              uppercase tracking-wide mb-3">
-                  Scrap Details
+                <p className="text-xs text-blue-500 mt-0.5">
+                  Move this MCL to the next stage
                 </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <FieldRow label="Scrap Category"    field="scrap_category"         />
-                  <FieldRow label="Est. Value (USD)"  field="fcsd_offer_amount"
-                            type="number"                                            />
-                  <FieldRow label="Pallet Quantity"   field="pallet_quantity"
-                            type="number"                                            />
-                  <FieldRow label="Total Pieces"      field="total_pieces_quantity"
-                            type="number"                                            />
-                  <FieldRow label="Description"       field="description"
-                            type="textarea"                                          />
-                  <FieldRow label="Special Instructions" field="special_instructions"
-                            type="textarea"                                          />
-                </div>
               </div>
-
+              <button
+                onClick={() => {
+                  onStatusChange(req.id, next.key)
+                  onClose()
+                }}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700
+                           text-white text-sm font-bold rounded-xl
+                           transition-colors"
+              >
+                {next.icon} {next.label}
+              </button>
             </div>
           )}
 
-          {/* Logistics Tab */}
-          {activeTab === 'logistics' && (
-            <div className="space-y-5">
-
-              <div>
-                <p className="text-xs font-bold text-gray-400
-                              uppercase tracking-wide mb-3">
-                  Pickup Dates
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <FieldRow label="Requested Pickup Date"  field="requested_pickup_date"
-                            type="date"                                                 />
-                  <FieldRow label="Date Sent to Techemet"  field="date_sent_to_techemet"
-                            type="date"                                                 />
-                  <FieldRow label="Scheduled Pickup Date"  field="scheduled_pickup_date"
-                            type="date"                                                 />
-                  <FieldRow label="Actual Pickup Date"     field="actual_pickup_date"
-                            type="date"                                                 />
-                  <FieldRow label="Invoice Submitted Date" field="invoice_submitted_date"
-                            type="date"                                                 />
-                </div>
-              </div>
-
-              {/* Cycle Summary */}
-              <div>
-                <p className="text-xs font-bold text-gray-400
-                              uppercase tracking-wide mb-3">
-                  Cycle Summary
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {([
-                    {
-                      label: 'Request → Techemet',
-                      days:  daysBetween(
-                        req.requested_pickup_date,
-                        req.date_sent_to_techemet
-                      ),
-                    },
-                    {
-                      label: 'Techemet → Scheduled',
-                      days:  daysBetween(
-                        req.date_sent_to_techemet,
-                        req.scheduled_pickup_date
-                      ),
-                    },
-                    {
-                      label: 'Scheduled → Pickup',
-                      days:  daysBetween(
-                        req.scheduled_pickup_date,
-                        req.actual_pickup_date
-                      ),
-                    },
-                    {
-                      label: 'Pickup → Invoice',
-                      days:  daysBetween(
-                        req.actual_pickup_date,
-                        req.invoice_submitted_date
-                      ),
-                    },
-                  ]).map(s => (
-                    <div
-                      key={s.label}
-                      className={`rounded-xl p-3 border text-center
-                                 ${cycleBg(s.days)}
-                                 ${cycleBorder(s.days)}`}
-                    >
-                      <p className={`text-2xl font-bold
-                                    ${cycleColor(s.days)}`}>
-                        {s.days !== null ? `${s.days}d` : '—'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {s.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Full Cycle */}
-                {(() => {
-                  const full = daysBetween(
-                    req.requested_pickup_date,
-                    req.invoice_submitted_date ??
-                      new Date().toISOString().slice(0, 10)
-                  )
-                  if (full === null) return null
-                  return (
-                    <div className={`mt-3 rounded-xl p-3 border
-                                    flex items-center justify-between
-                                    ${cycleBg(full)}
-                                    ${cycleBorder(full)}`}>
-                      <span className="text-xs font-bold text-gray-600">
-                        ⏱ Full Cycle Time
-                        {!req.invoice_submitted_date
-                          ? ' (ongoing)'
-                          : ''}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-lg font-bold
-                                         ${cycleColor(full)}`}>
-                          {full}d
-                        </span>
-                        <span className={`text-xs px-2 py-0.5
-                                         rounded-full font-bold
-                                         ${cycleLabelBg(full)}`}>
-                          {cycleLabel(full)}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-
-            </div>
-          )}
-
-          {/* Admin Tab */}
-          {activeTab === 'admin' && (
-            <div className="space-y-5">
-
-              <div>
-                <p className="text-xs font-bold text-gray-400
-                              uppercase tracking-wide mb-3">
-                  Admin Fields
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <FieldRow label="MCL Number"   field="mcl_number"         />
-                  <FieldRow label="Status"       field="status"             />
-                  <FieldRow label="Admin Notes"  field="admin_notes"
-                            type="textarea"                                 />
-                  <FieldRow label="Notes"        field="notes"
-                            type="textarea"                                 />
-                </div>
-              </div>
-
-              {/* Timestamps */}
-              <div>
-                <p className="text-xs font-bold text-gray-400
-                              uppercase tracking-wide mb-3">
-                  Timestamps
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  {([
-                    { label: 'Created At',        value: req.created_at          },
-                    { label: 'Updated At',        value: req.updated_at          },
-                    { label: 'Status Updated At', value: req.status_updated_at   },
-                    { label: 'Cancelled At',      value: req.cancelled_at        },
-                  ]).map(ts => (
-                    <div key={ts.label}>
-                      <p className="text-xs text-gray-400">{ts.label}</p>
-                      <p className="text-sm font-semibold text-gray-700">
-                        {ts.value ? fmtDate(ts.value) : '—'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status Progression */}
-              {next && (
-                <div className="bg-gray-50 rounded-xl p-4 border
-                                border-gray-100">
-                  <p className="text-xs font-bold text-gray-500 mb-3">
-                    Move to Next Stage
-                  </p>
+          {/* ── Status Selector (Edit Mode) ───────────────── */}
+          {editing && (
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-2">
+                STATUS
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {(
+                  [
+                    'total_requests',
+                    'sent_for_pickup',
+                    'in_transit',
+                    'shipment_arrived',
+                    'closed',
+                  ] as TabKey[]
+                ).map(s => (
                   <button
-                    onClick={() => {
-                      onStatusChange(req.id, next.key)
-                      onClose()
-                    }}
-                    className="w-full py-3 rounded-xl bg-blue-600
-                               hover:bg-blue-700 text-white
-                               font-semibold text-sm transition-colors"
+                    key={s}
+                    onClick={() => set('status', s)}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold
+                               border transition-all ${
+                      form.status === s
+                        ? statusStyle[s] + ' border-current'
+                        : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                    }`}
                   >
-                    {next.icon} {next.label}
+                    {statusLabel[s]}
                   </button>
-                </div>
-              )}
-
+                ))}
+              </div>
             </div>
           )}
 
+          {/* ── Section: Admin Fields ─────────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              🔧 Admin Fields
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <TextField
+                    label="MCL Number"
+                    fieldKey="mcl_number"
+                    placeholder="e.g. MCL-1234"
+                  />
+                  <TextField
+                    label="Est. Value (USD)"
+                    fieldKey="fcsd_offer_amount"
+                    type="number"
+                    placeholder="e.g. 5000"
+                  />
+                  <div className="flex flex-col gap-1 sm:col-span-1">
+                    <label className="text-xs font-bold text-gray-500">
+                      Admin Notes
+                    </label>
+                    <textarea
+                      value={(form.admin_notes as string) ?? ''}
+                      onChange={e => set('admin_notes', e.target.value)}
+                      rows={2}
+                      placeholder="Internal notes..."
+                      className="text-sm border border-gray-200 rounded-xl
+                                 px-3 py-2 resize-none focus:outline-none
+                                 focus:ring-2 focus:ring-blue-300 bg-white"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ReadRow label="MCL Number"    value={req.mcl_number} />
+                  <ReadRow label="Est. Value"    value={fmtMoney(req.fcsd_offer_amount)} />
+                  <ReadRow label="Admin Notes"   value={req.admin_notes} />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: Key Dates ───────────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              📅 Key Dates
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <DateField
+                    label="Requested Pickup Date"
+                    fieldKey="requested_pickup_date"
+                  />
+                  <DateField
+                    label="Date Sent to Techemet"
+                    fieldKey="date_sent_to_techemet"
+                  />
+                  <DateField
+                    label="Scheduled Pickup Date"
+                    fieldKey="scheduled_pickup_date"
+                  />
+                  <DateField
+                    label="Actual Pickup Date"
+                    fieldKey="actual_pickup_date"
+                  />
+                  <DateField
+                    label="Invoice Submitted Date"
+                    fieldKey="invoice_submitted_date"
+                  />
+                </>
+              ) : (
+                <>
+                  <ReadRow label="Requested Pickup"     value={fmtDate(req.requested_pickup_date)}  />
+                  <ReadRow label="Sent to Techemet"     value={fmtDate(req.date_sent_to_techemet)}  />
+                  <ReadRow label="Scheduled Pickup"     value={fmtDate(req.scheduled_pickup_date)}  />
+                  <ReadRow label="Actual Pickup"        value={fmtDate(req.actual_pickup_date)}     />
+                  <ReadRow label="Invoice Submitted"    value={fmtDate(req.invoice_submitted_date)} />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: RCRC Info ───────────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              🏢 RCRC Information
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <TextField label="RCRC Number"         fieldKey="rcrc_number"         />
+                  <TextField label="RCRC Name"           fieldKey="rcrc_name"           />
+                  <TextField label="Contact Person"      fieldKey="rcrc_contact_person" />
+                  <TextField label="RCRC Email"          fieldKey="rcrc_email"          />
+                  <TextField label="RCRC Phone"          fieldKey="rcrc_phone_number"   />
+                  <TextField label="RCRC Address"        fieldKey="rcrc_address"        />
+                  <TextField label="RCRC Zip Code"       fieldKey="rcrc_zip_code"       />
+                </>
+              ) : (
+                <>
+                  <ReadRow label="RCRC Number"      value={req.rcrc_number}          />
+                  <ReadRow label="RCRC Name"        value={req.rcrc_name}            />
+                  <ReadRow label="Contact Person"   value={req.rcrc_contact_person}  />
+                  <ReadRow label="RCRC Email"       value={req.rcrc_email}           />
+                  <ReadRow label="RCRC Phone"       value={req.rcrc_phone_number}    />
+                  <ReadRow label="RCRC Address"     value={req.rcrc_address}         />
+                  <ReadRow label="RCRC Zip Code"    value={req.rcrc_zip_code}        />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: Pickup Details ──────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              📦 Pickup Details
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <TextField
+                    label="Pallet Quantity"
+                    fieldKey="pallet_quantity"
+                    type="number"
+                  />
+                  <TextField
+                    label="Total Pieces"
+                    fieldKey="total_pieces_quantity"
+                    type="number"
+                  />
+                  <div className="flex flex-col gap-1 sm:col-span-1">
+                    <label className="text-xs font-bold text-gray-500">
+                      Special Instructions
+                    </label>
+                    <textarea
+                      value={(form.special_instructions as string) ?? ''}
+                      onChange={e => set('special_instructions', e.target.value)}
+                      rows={2}
+                      placeholder="Any special instructions..."
+                      className="text-sm border border-gray-200 rounded-xl
+                                 px-3 py-2 resize-none focus:outline-none
+                                 focus:ring-2 focus:ring-blue-300 bg-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 sm:col-span-1">
+                    <label className="text-xs font-bold text-gray-500">
+                      Notes
+                    </label>
+                    <textarea
+                      value={(form.notes as string) ?? ''}
+                      onChange={e => set('notes', e.target.value)}
+                      rows={2}
+                      placeholder="General notes..."
+                      className="text-sm border border-gray-200 rounded-xl
+                                 px-3 py-2 resize-none focus:outline-none
+                                 focus:ring-2 focus:ring-blue-300 bg-white"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ReadRow label="Pallet Quantity"      value={req.pallet_quantity}        />
+                  <ReadRow label="Total Pieces"         value={req.total_pieces_quantity}  />
+                  <ReadRow label="Special Instructions" value={req.special_instructions}   />
+                  <ReadRow label="Notes"                value={req.notes}                  />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: Customer Info (Read Only) ───────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              👤 Customer Info
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <ReadRow label="Name"    value={req.customer_name} />
+              <ReadRow label="Email"   value={req.email}         />
+              <ReadRow label="Phone"   value={req.phone}         />
+              <ReadRow label="Address" value={req.address1}      />
+              <ReadRow label="City"    value={req.city}          />
+              <ReadRow label="State"   value={req.state}         />
+              <ReadRow label="Zip"     value={req.zip}           />
+            </div>
+          </div>
+
         </div>
 
-        {/* ── Footer ───────────────────────────────── */}
+        {/* ── Footer ───────────────────────────────────── */}
         <div className="px-6 py-4 border-t border-gray-100
                         rounded-b-3xl bg-gray-50/50
-                        flex items-center justify-between gap-3">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-gray-200
-                       hover:bg-gray-300 text-gray-700
-                       font-semibold text-sm transition-colors"
-          >
-            Close
-          </button>
+                        flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            Last updated: {fmtDate(req.updated_at ?? req.created_at)}
+          </p>
           <div className="flex gap-2">
             {editing ? (
               <>
                 <button
-                  onClick={() => {
-                    setForm({ ...req })
-                    setEditing(false)
-                  }}
+                  onClick={() => setEditing(false)}
                   className="px-5 py-2.5 rounded-xl bg-gray-100
                              hover:bg-gray-200 text-gray-600
                              font-semibold text-sm transition-colors"
@@ -2440,21 +2332,20 @@ function ViewModal({
                   onClick={handleSave}
                   disabled={saving}
                   className="px-5 py-2.5 rounded-xl bg-blue-600
-                             hover:bg-blue-700 text-white
-                             font-semibold text-sm transition-colors
-                             disabled:opacity-50"
+                             hover:bg-blue-700 text-white font-bold
+                             text-sm transition-colors disabled:opacity-50"
                 >
                   {saving ? '⏳ Saving...' : '💾 Save Changes'}
                 </button>
               </>
             ) : (
               <button
-                onClick={() => setEditing(true)}
-                className="px-5 py-2.5 rounded-xl bg-blue-600
-                           hover:bg-blue-700 text-white
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl bg-gray-100
+                           hover:bg-gray-200 text-gray-600
                            font-semibold text-sm transition-colors"
               >
-                ✏️ Edit
+                Close
               </button>
             )}
           </div>
@@ -2464,86 +2355,72 @@ function ViewModal({
     </div>
   )
 }
-
 // ─────────────────────────────────────────────────────────
-// AdminDashboard  (default export)
-// ─────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────
-// AdminDashboard  (default export)
+// AdminDashboard — Main Component
 // ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { data: session, status } = useSession()
+  const userEmail = session?.user?.email ?? ''
 
-  // ── ALL hooks must come before any early returns ──────
-  const [requests,      setRequests]      = useState<PickupRequest[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [activeTab,     setActiveTab]     = useState<TabKey>('total_requests')
-  const [viewReq,       setViewReq]       = useState<PickupRequest | null>(null)
-  const [deleteReq,     setDeleteReq]     = useState<PickupRequest | null>(null)
-  const [showAnalytics, setShowAnalytics] = useState(false)
-  const [search,        setSearch]        = useState('')
-  const [sortField,     setSortField]     = useState<keyof PickupRequest>('created_at')
-  const [sortDir,       setSortDir]       = useState<'asc' | 'desc'>('desc')
-  const [savingId,      setSavingId]      = useState<number | null>(null)
+  const [requests,     setRequests]     = useState<PickupRequest[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [activeTab,    setActiveTab]    = useState<TabKey>('total_requests')
+  const [viewReq,      setViewReq]      = useState<PickupRequest | null>(null)
+  const [deleteReq,    setDeleteReq]    = useState<PickupRequest | null>(null)
+  const [showAnalytics,setShowAnalytics]= useState(false)
+  const [search,       setSearch]       = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [toast,        setToast]        = useState<string | null>(null)
 
-  const userEmail = (session?.user?.email ?? '').toLowerCase().trim()
+  // ── Toast Helper ─────────────────────────────────────
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
 
   // ── Fetch Requests ───────────────────────────────────
   const fetchRequests = useCallback(async () => {
-  setLoading(true)
-  console.log('⏳ fetchRequests started')
-  console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-  console.log('KEY exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('pickup_request')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setRequests(data ?? [])
+    } catch (err) {
+      console.error('Fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  try {
-    const { data, error } = await supabase
-      .from('pickup_request')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    console.log('✅ rows:', data?.length)
-    console.log('❌ error:', JSON.stringify(error))
-
-    if (data) setRequests(data as PickupRequest[])
-
-  } catch (err) {
-    console.error('💥 crash:', err)
-  } finally {
-    console.log('🏁 setLoading false')
-    setLoading(false)   // ← ALWAYS stops spinner
-  }
-}, [])
+  // ── Auth: Fetch on login ─────────────────────────────
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchRequests()
+    }
+  }, [fetchRequests, status])
 
   // ── Real-time subscription ───────────────────────────
-  
-    // ── Fetch on auth ─────────────────────────────────────
-useEffect(() => {
-  console.log('🔐 Auth status:', status)
-  console.log('📧 Email:', session?.user?.email)
-  if (status === 'authenticated') {
-    fetchRequests()
-  }
-}, [fetchRequests, status])
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const channel = supabase
+      .channel('pickup_request_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pickup_request' },
+        () => fetchRequests()
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchRequests, status])
 
-// ── Real-time subscription ────────────────────────────
-useEffect(() => {
-  if (status !== 'authenticated') return
-  const channel = supabase
-    .channel('pickup_request_changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'pickup_request' },
-      () => fetchRequests()
-    )
-    .subscribe()
-  return () => { supabase.removeChannel(channel) }
-}, [fetchRequests, status])
-
-  // ── Guard: Loading ───────────────────────────────────
+  // ── Guard: Loading ────────────────────────────────────
   if (status === 'loading') return <AuthLoadingScreen />
 
   // ── Guard: Not signed in ─────────────────────────────
-  if (!session) return <NotSignedInScreen />
+  if (status === 'unauthenticated') return <NotSignedInScreen />
 
   // ── Guard: Unauthorized ──────────────────────────────
   if (!ADMIN_EMAILS.includes(userEmail)) {
@@ -2551,34 +2428,45 @@ useEffect(() => {
   }
 
   // ── Status Change ────────────────────────────────────
-  async function handleStatusChange(
-    id:        number,
-    newStatus: TabKey
-  ) {
-    setSavingId(id)
-    const now = new Date().toISOString()
-    const updates: Partial<PickupRequest> = {
-      status:            newStatus,
-      status_updated_at: now,
-      updated_at:        now,
-    }
-    await supabase
+  async function handleStatusChange(id: number, newStatus: TabKey) {
+    const { error } = await supabase
       .from('pickup_request')
-      .update(updates)
+      .update({
+        status:           newStatus,
+        status_updated_at: new Date().toISOString(),
+        updated_at:        new Date().toISOString(),
+      })
       .eq('id', id)
-    await fetchRequests()
-    setSavingId(null)
+    if (error) {
+      showToast('❌ Failed to update status')
+    } else {
+      showToast('✅ Status updated!')
+      fetchRequests()
+    }
   }
 
-  // ── Save Edits ───────────────────────────────────────
-  async function handleSave(updated: PickupRequest) {
-    const { id, created_at, ...rest } = updated
-    await supabase
+  // ── Save (Edit Modal) ────────────────────────────────
+  async function handleSave(updated: Partial<PickupRequest>) {
+    if (!viewReq) return
+    setSaving(true)
+    const { error } = await supabase
       .from('pickup_request')
-      .update({ ...rest, updated_at: new Date().toISOString() })
-      .eq('id', id)
-    await fetchRequests()
-    setViewReq(null)
+      .update({
+        ...updated,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', viewReq.id)
+    if (error) {
+      showToast('❌ Failed to save changes')
+    } else {
+      showToast('✅ Changes saved!')
+      fetchRequests()
+      // Update viewReq with latest data
+      setViewReq(prev =>
+        prev ? { ...prev, ...updated } : null
+      )
+    }
+    setSaving(false)
   }
 
   // ── Delete ───────────────────────────────────────────
@@ -2590,329 +2478,78 @@ useEffect(() => {
     const req = requests.find(r => r.id === id)
     if (!req) return
 
-    // Archive first
-    await supabase.from('deleted_requests').insert([{
+    // 1. Archive to deleted_requests
+    await supabase.from('deleted_requests').insert({
       ...req,
       deleted_at:    new Date().toISOString(),
-      delete_reason: reason,
-      delete_detail: reasonDetail,
       deleted_by:    userEmail,
-    }])
+      delete_reason: reason,
+      delete_notes:  reasonDetail,
+    })
 
-    // Send notification email
+    // 2. Send notification email
     try {
       await fetch('/api/delete-notify', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          req, reason, reasonDetail, deletedBy: userEmail,
+        body: JSON.stringify({
+          email:        req.rcrc_email ?? req.email,
+          mcl_number:   req.mcl_number,
+          rcrc_name:    req.rcrc_name,
+          reason,
+          reasonDetail,
         }),
       })
-    } catch { /* silent */ }
+    } catch (e) {
+      console.error('Email notify failed:', e)
+    }
 
-    // Delete from main table
-    await supabase
+    // 3. Delete from main table
+    const { error } = await supabase
       .from('pickup_request')
       .delete()
       .eq('id', id)
 
-    await fetchRequests()
-    setDeleteReq(null)
-  }
-
-  // ── Filtering & Sorting ──────────────────────────────
-  const tabRequests = requests.filter(r =>
-    activeTab === 'total_requests'
-      ? true
-      : r.status === activeTab
-  )
-
-  const searched = tabRequests.filter(r => {
-    if (!search.trim()) return true
-    const q = search.toLowerCase()
-    return (
-      r.mcl_number?.toLowerCase().includes(q)         ||
-      r.rcrc_name?.toLowerCase().includes(q)           ||
-      r.rcrc_number?.toLowerCase().includes(q)         ||
-      r.rcrc_email?.toLowerCase().includes(q)          ||
-      r.rcrc_contact_person?.toLowerCase().includes(q) ||
-      r.description?.toLowerCase().includes(q)
-    )
-  })
-
-  const sorted = [...searched].sort((a, b) => {
-    const av = a[sortField] ?? ''
-    const bv = b[sortField] ?? ''
-    if (av < bv) return sortDir === 'asc' ? -1 :  1
-    if (av > bv) return sortDir === 'asc' ?  1 : -1
-    return 0
-  })
-
-  function toggleSort(field: keyof PickupRequest) {
-    if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    if (error) {
+      showToast('❌ Failed to delete')
     } else {
-      setSortField(field)
-      setSortDir('desc')
+      showToast('✅ Request deleted & notified!')
+      setDeleteReq(null)
+      fetchRequests()
     }
   }
 
-  // ── Tab Counts ───────────────────────────────────────
-  const tabCounts = TABS.reduce((acc, t) => {
-    acc[t.key] = t.key === 'total_requests'
-      ? requests.length
-      : requests.filter(r => r.status === t.key).length
-    return acc
-  }, {} as Record<TabKey, number>)
+  // ── Filtered Requests ────────────────────────────────
+  const tabRequests = requests.filter(r => r.status === activeTab)
+
+  const filtered = tabRequests.filter(r => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      r.mcl_number?.toLowerCase().includes(q)       ||
+      r.rcrc_name?.toLowerCase().includes(q)         ||
+      r.rcrc_number?.toLowerCase().includes(q)       ||
+      r.customer_name?.toLowerCase().includes(q)     ||
+      r.email?.toLowerCase().includes(q)             ||
+      r.rcrc_email?.toLowerCase().includes(q)
+    )
+  })
 
   // ── Render ───────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br
-                    from-slate-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50">
 
-      {/* ── Top Nav ────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100
-                      shadow-sm sticky top-0 z-30">
-        <div className="max-w-screen-2xl mx-auto
-                        px-4 sm:px-6 py-3
-                        flex items-center justify-between gap-4">
-
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl
-                            flex items-center justify-center
-                            shadow-sm">
-              <span className="text-lg">🏭</span>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-800
-                            leading-tight">
-                Ford MCL Admin
-              </p>
-              <p className="text-xs text-gray-400 leading-tight">
-                Scrap Pickup Dashboard
-              </p>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 ml-auto">
-
-            {/* Analytics Toggle */}
-            <button
-              onClick={() => setShowAnalytics(v => !v)}
-              className={`flex items-center gap-1.5 px-3 py-2
-                         text-xs font-semibold rounded-xl
-                         border transition-colors ${
-                showAnalytics
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              📊 Analytics
-            </button>
-
-            {/* Refresh */}
-            <button
-              onClick={fetchRequests}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-2
-                         text-xs font-semibold rounded-xl
-                         border border-gray-200 bg-white
-                         text-gray-600 hover:bg-gray-50
-                         transition-colors disabled:opacity-50"
-            >
-              {loading ? '⏳' : '🔄'} Refresh
-            </button>
-
-            {/* User + Sign Out */}
-            <div className="flex items-center gap-2 pl-2
-                            border-l border-gray-100">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-semibold text-gray-700">
-                  {session.user?.name ?? userEmail}
-                </p>
-                <p className="text-xs text-gray-400">{userEmail}</p>
-              </div>
-              <button
-                onClick={() =>
-                  signOut({ callbackUrl: '/admin/login' })
-                }
-                className="px-3 py-2 rounded-xl bg-red-50
-                           hover:bg-red-100 text-red-600
-                           text-xs font-semibold transition-colors
-                           border border-red-100"
-              >
-                Sign Out
-              </button>
-            </div>
-
-          </div>
+      {/* ── Toast ──────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-[100]
+                        bg-gray-900 text-white text-sm
+                        font-semibold px-5 py-3 rounded-2xl
+                        shadow-xl animate-fade-in">
+          {toast}
         </div>
-      </div>
+      )}
 
-      {/* ── Main Content ───────────────────────────── */}
-      <div className="max-w-screen-2xl mx-auto
-                      px-4 sm:px-6 py-6 space-y-6">
-
-        {/* Analytics Panel */}
-        {showAnalytics && (
-          <AnalyticsDashboard requests={requests} />
-        )}
-
-        {/* ── Tab Bar ──────────────────────────────── */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2.5
-                         rounded-xl border text-xs font-semibold
-                         whitespace-nowrap transition-all ${
-                activeTab === tab.key
-                  ? `${tab.bg} ${tab.border} ${tab.color} shadow-sm`
-                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-              <span className={`px-1.5 py-0.5 rounded-full
-                               text-xs font-bold ${
-                activeTab === tab.key
-                  ? `${tab.bg} ${tab.color}`
-                  : 'bg-gray-100 text-gray-500'
-              }`}>
-                {tabCounts[tab.key]}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* ── Search + Sort Bar ────────────────────── */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-[200px]">
-            <span className="absolute left-3 top-1/2
-                             -translate-y-1/2 text-gray-400 text-sm">
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Search MCL, RCRC name, number, email..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-4 py-2.5 text-sm
-                         border border-gray-200 rounded-xl
-                         bg-white focus:outline-none
-                         focus:ring-2 focus:ring-blue-300"
-            />
-          </div>
-          <div className="flex gap-1.5">
-            {([
-              { field: 'created_at'            as const, label: '📅 Date'   },
-              { field: 'rcrc_name'             as const, label: '🏢 RCRC'   },
-              { field: 'fcsd_offer_amount'     as const, label: '💰 Value'  },
-              { field: 'requested_pickup_date' as const, label: '📦 Pickup' },
-            ]).map(s => (
-              <button
-                key={s.field}
-                onClick={() => toggleSort(s.field)}
-                className={`text-xs px-3 py-2 rounded-xl border
-                           font-semibold transition-colors ${
-                  sortField === s.field
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                {s.label}{' '}
-                {sortField === s.field
-                  ? (sortDir === 'asc' ? '↑' : '↓')
-                  : ''}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Results Count ────────────────────────── */}
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-400">
-            Showing{' '}
-            <span className="font-bold text-gray-600">
-              {sorted.length}
-            </span>{' '}
-            of{' '}
-            <span className="font-bold text-gray-600">
-              {tabRequests.length}
-            </span>{' '}
-            requests
-            {search && (
-              <span className="ml-1">
-                for{' '}
-                <span className="font-bold text-blue-600">
-                  &quot;{search}&quot;
-                </span>
-              </span>
-            )}
-          </p>
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="text-xs text-gray-400 hover:text-gray-600
-                         underline"
-            >
-              Clear search
-            </button>
-          )}
-        </div>
-
-        {/* ── Cards Grid ───────────────────────────── */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="w-10 h-10 border-4 border-blue-600
-                              border-t-transparent rounded-full
-                              animate-spin mx-auto mb-3" />
-              <p className="text-sm text-gray-400">
-                Loading requests...
-              </p>
-            </div>
-          </div>
-        ) : sorted.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-4xl mb-3">📭</p>
-            <p className="text-sm font-semibold text-gray-400">
-              {search
-                ? 'No results found for your search'
-                : 'No requests in this category'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2
-                          lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {sorted.map(req => (
-              <div key={req.id} className="relative">
-                {savingId === req.id && (
-                  <div className="absolute inset-0 z-10
-                                  bg-white/70 rounded-2xl
-                                  flex items-center justify-center">
-                    <div className="w-6 h-6 border-3 border-blue-600
-                                    border-t-transparent rounded-full
-                                    animate-spin" />
-                  </div>
-                )}
-                <RequestCard
-                  req={req}
-                  onStatusChange={handleStatusChange}
-                  onView={setViewReq}
-                  onDelete={setDeleteReq}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-      </div>
-
-      {/* ── Modals ───────────────────────────────────── */}
+      {/* ── View/Edit Modal ─────────────────────────────── */}
       {viewReq && (
         <ViewModal
           req={viewReq}
@@ -2922,6 +2559,7 @@ useEffect(() => {
         />
       )}
 
+      {/* ── Delete Modal ────────────────────────────────── */}
       {deleteReq && (
         <DeleteModal
           req={deleteReq}
@@ -2930,6 +2568,163 @@ useEffect(() => {
         />
       )}
 
+      {/* ── Top Nav ─────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-200
+                      sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6
+                        py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-600 rounded-xl
+                            flex items-center justify-center shadow-sm">
+              <span className="text-lg">🏭</span>
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-gray-800">
+                Ford MCL Admin
+              </h1>
+              <p className="text-xs text-gray-400">
+                {userEmail}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAnalytics(v => !v)}
+              className={`px-4 py-2 text-sm font-semibold
+                         rounded-xl transition-colors ${
+                showAnalytics
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+              }`}
+            >
+              📊 {showAnalytics ? 'Hide Analytics' : 'Analytics'}
+            </button>
+            <button
+              onClick={() => signOut({ callbackUrl: '/admin/login' })}
+              className="px-4 py-2 text-sm font-semibold
+                         rounded-xl bg-gray-100 hover:bg-gray-200
+                         text-gray-600 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* ── Analytics Panel ─────────────────────────── */}
+        {showAnalytics && (
+          <div className="mb-6">
+            <AnalyticsDashboard requests={requests} />
+          </div>
+        )}
+
+        {/* ── Status Tabs ─────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+          {TABS.map(tab => {
+            const count = requests.filter(r => r.status === tab.key).length
+            const isActive = activeTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`rounded-2xl border p-3 text-left
+                           transition-all ${
+                  isActive
+                    ? `${tab.bg} ${tab.border} shadow-sm`
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-lg">{tab.icon}</span>
+                  <span className={`text-lg font-bold ${
+                    isActive ? tab.color : 'text-gray-600'
+                  }`}>
+                    {count}
+                  </span>
+                </div>
+                <p className={`text-xs font-bold ${
+                  isActive ? tab.color : 'text-gray-600'
+                }`}>
+                  {tab.label}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">
+                  {tab.desc}
+                </p>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Search Bar ──────────────────────────────── */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="🔍 Search by MCL #, RCRC name, email..."
+            className="w-full text-sm border border-gray-200
+                       rounded-2xl px-4 py-3 focus:outline-none
+                       focus:ring-2 focus:ring-blue-300 bg-white shadow-sm"
+          />
+        </div>
+
+        {/* ── Results Header ──────────────────────────── */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-600">
+            {filtered.length} record{filtered.length !== 1 ? 's' : ''}
+            {search && ` matching "${search}"`}
+          </p>
+          <button
+            onClick={fetchRequests}
+            className="text-xs text-blue-600 hover:text-blue-700
+                       font-semibold transition-colors"
+          >
+            🔄 Refresh
+          </button>
+        </div>
+
+        {/* ── Loading ─────────────────────────────────── */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-10 h-10 border-4 border-blue-600
+                              border-t-transparent rounded-full
+                              animate-spin mx-auto mb-3" />
+              <p className="text-sm text-gray-500 font-medium">
+                Loading requests...
+              </p>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-4xl mb-3">📭</p>
+            <p className="text-gray-500 font-semibold">
+              No records found
+            </p>
+            <p className="text-gray-400 text-sm mt-1">
+              {search
+                ? 'Try a different search term'
+                : 'No requests in this category yet'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2
+                          lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map(req => (
+              <RequestCard
+                key={req.id}
+                req={req}
+                onStatusChange={handleStatusChange}
+                onView={r => setViewReq(r)}
+                onDelete={r => setDeleteReq(r)}
+              />
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }
