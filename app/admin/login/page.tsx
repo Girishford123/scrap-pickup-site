@@ -1,35 +1,10 @@
 // app/admin/login/page.tsx
-'use client'
+import { Suspense } from 'react'
+import AdminLoginClient from './AdminLoginClient'
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useRef } from 'react'
-import { signIn, useSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
-
-export default function AdminLoginPage() {
-  const { status } = useSession()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  // If NextAuth (or your app) sends callbackUrl, respect it; otherwise go to dashboard
-  const callbackUrl = searchParams.get('callbackUrl') || '/admin/dashboard'
-
-  // Prevent double signIn() calls (React Strict Mode in dev can run effects twice)
-  const signInStartedRef = useRef(false)
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      router.replace(callbackUrl)
-      return
-    }
-
-    if (status === 'unauthenticated' && !signInStartedRef.current) {
-      signInStartedRef.current = true
-      signIn('google', { callbackUrl })
-    }
-  }, [status, router, callbackUrl])
-
+function LoadingUI() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1B4332]">
       <div className="bg-white rounded-2xl shadow-2xl p-10 flex flex-col items-center gap-6 w-full max-w-md">
@@ -43,15 +18,15 @@ export default function AdminLoginPage() {
         </p>
 
         <div className="w-8 h-8 border-4 border-[#1B4332] border-t-transparent rounded-full animate-spin" />
-
-        <button
-          type="button"
-          onClick={() => signIn('google', { callbackUrl })}
-          className="w-full py-3 rounded-xl bg-[#1B4332] hover:bg-[#163a2b] text-white font-semibold transition-colors"
-        >
-          Continue with Google
-        </button>
       </div>
     </div>
+  )
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<LoadingUI />}>
+      <AdminLoginClient />
+    </Suspense>
   )
 }
