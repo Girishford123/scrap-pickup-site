@@ -1,6 +1,12 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+
+  // ── Fix: Power Automate POST redirect issue ──────────────
+  skipTrailingSlashRedirect: true,
+  trailingSlash: false,
+
+  // ── Images ───────────────────────────────────────────────
   images: {
     remotePatterns: [
       {
@@ -13,6 +19,7 @@ const nextConfig: NextConfig = {
       }
     ]
   }
+
 }
 
 export default nextConfig
