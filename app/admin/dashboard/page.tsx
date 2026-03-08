@@ -2491,25 +2491,28 @@ export default function AdminDashboard() {
   // ── Fetch Requests ───────────────────────────────────
   const fetchRequests = useCallback(async () => {
   setLoading(true)
+  console.log('⏳ fetchRequests started')
+  console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log('KEY exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
-  // ✅ DEBUG — open browser Console (F12) to see this
-  console.log('🔍 fetchRequests called')
-  console.log('🔍 userEmail:', userEmail)
-  console.log('🔍 ADMIN_EMAILS:', ADMIN_EMAILS)
-  console.log('🔍 includes?', ADMIN_EMAILS.includes(userEmail))
+  try {
+    const { data, error } = await supabase
+      .from('pickup_request')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  const { data, error } = await supabase
-    .from('pickup_request')
-    .select('*')
-    .order('created_at', { ascending: false })
+    console.log('✅ rows:', data?.length)
+    console.log('❌ error:', JSON.stringify(error))
 
-  console.log('🔍 Supabase result — rows:', data?.length, 'error:', error)
+    if (data) setRequests(data as PickupRequest[])
 
-  if (!error && data) setRequests(data as PickupRequest[])
-  else console.error('❌ Supabase error:', error)
-
-  setLoading(false)
-}, [userEmail])
+  } catch (err) {
+    console.error('💥 crash:', err)
+  } finally {
+    console.log('🏁 setLoading false')
+    setLoading(false)   // ← ALWAYS stops spinner
+  }
+}, [])
 
   // ── Real-time subscription ───────────────────────────
   useEffect(() => {
