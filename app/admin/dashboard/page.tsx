@@ -2641,26 +2641,45 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAnalytics(v => !v)}
-              className={`px-4 py-2 text-sm font-semibold
-                         rounded-xl transition-colors ${
-                showAnalytics
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-              }`}
-            >
-              📊 {showAnalytics ? 'Hide Analytics' : 'Analytics'}
-            </button>
-            <button
-              onClick={() => signOut({ callbackUrl: '/admin/login' })}
-              className="px-4 py-2 text-sm font-semibold
-                         rounded-xl bg-gray-100 hover:bg-gray-200
-                         text-gray-600 transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
+  <button
+    onClick={() => setShowAnalytics(v => !v)}
+    className={`px-4 py-2 text-sm font-semibold
+               rounded-xl transition-colors ${
+      showAnalytics
+        ? 'bg-blue-600 text-white'
+        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+    }`}
+  >
+    📊 {showAnalytics ? 'Hide Analytics' : 'Analytics'}
+  </button>
+
+  {/* ✅ Sync Button Back! */}
+  <button
+    onClick={fetchRequests}
+    disabled={loading}
+    className={`flex items-center gap-2 px-4 py-2
+               text-sm font-semibold rounded-xl
+               transition-all ${
+      loading
+        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+    }`}
+  >
+    <span className={loading ? 'animate-spin inline-block' : ''}>
+      🔄
+    </span>
+    {loading ? 'Syncing...' : 'Sync'}
+  </button>
+
+  <button
+    onClick={() => signOut({ callbackUrl: '/admin/login' })}
+    className="px-4 py-2 text-sm font-semibold
+               rounded-xl bg-gray-100 hover:bg-gray-200
+               text-gray-600 transition-colors"
+  >
+    Sign Out
+  </button>
+</div>
         </div>
       </div>
 
