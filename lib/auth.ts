@@ -32,18 +32,22 @@ export const authOptions: NextAuthOptions = {
       },
     },
   },
-  callbacks: {
-    async signIn({ user }) {
-      const allowedEmails =
-        process.env.ALLOWED_EMAILS
-          ?.split(',')
-          .map(e => e.trim()) ?? []
-      console.log('SignIn attempt:', user.email)
-      console.log('Allowed emails:', allowedEmails)
-      const isAllowed = allowedEmails.includes(user.email ?? '')
-      console.log('Is allowed:', isAllowed)
-      return isAllowed
-    },
+   // lib/auth.ts — signIn callback
+async signIn({ user }) {
+  const rawEmails     = process.env.ALLOWED_EMAILS ?? ''
+  const allowedEmails = rawEmails
+    .split(',')
+    .map(e => e.trim().toLowerCase())  // ✅ Add toLowerCase()!
+
+  const userEmail = (user.email ?? '').toLowerCase()  // ✅ Lowercase!
+
+  console.log('=== SIGN IN ATTEMPT ===')
+  console.log('User email:     ', userEmail)
+  console.log('Allowed emails: ', allowedEmails)
+  console.log('Is allowed:     ', allowedEmails.includes(userEmail))
+
+  return allowedEmails.includes(userEmail)
+},
     async jwt({ token, user, account }) {
       if (user)    token.email = user.email
       if (account) token.accessToken = account.access_token

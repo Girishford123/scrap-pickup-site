@@ -76,8 +76,8 @@ export default function Navbar() {
     process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? ''
   ).split(',').map(e => e.trim())
 
-  const userEmail  = session?.user?.email ?? ''
-  const isAdmin    = ADMIN_EMAILS.includes(userEmail)
+  const userEmail  = (session?.user?.email ?? '').toLowerCase()
+const isAdmin    = ADMIN_EMAILS.includes(userEmail)
   const isLoggedIn = status === 'authenticated'
 
   // ── Hide Navbar on these pages ────────────────────
