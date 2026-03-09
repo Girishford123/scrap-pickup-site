@@ -1,370 +1,258 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+import { useSearchParams, useRouter }    from 'next/navigation'
 
 function ResetPasswordForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get('token')
+  const searchParams          = useSearchParams()
+  const router                = useRouter()
+  const token                 = searchParams.get('token')
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [password,    setPassword]    = useState('')
+  const [confirm,     setConfirm]     = useState('')
+  const [loading,     setLoading]     = useState(false)
+  const [verifying,   setVerifying]   = useState(true)
+  const [tokenValid,  setTokenValid]  = useState(false)
+  const [error,       setError]       = useState('')
+  const [success,     setSuccess]     = useState(false)
+  const [showPass,    setShowPass]    = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [verifying, setVerifying] = useState(true)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const [tokenValid, setTokenValid] = useState(false)
-  const [userEmail, setUserEmail] = useState('')
 
+  // ── Verify token on load ────────────────────────
   useEffect(() => {
-    const verifyToken = async () => {
-      if (!token) {
-        setVerifying(false)
-        return
-      }
-
-      try {
-        const response = await fetch('/api/verify-reset-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
-        })
-
-        const data = await response.json()
-
-        if (response.ok && data.valid) {
-          setTokenValid(true)
-          setUserEmail(data.email)
-        }
-      } catch (err) {
-        console.error('Token verify error:', err)
-      }
-
+    if (!token) {
       setVerifying(false)
+      setError('Invalid or missing reset link.')
+      return
     }
-
     verifyToken()
   }, [token])
 
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const verifyToken = async () => {
+    try {
+      const res  = await fetch(`/api/reset-password/verify?token=${token}`)
+      const data = await res.json()
+      if (data.valid) {
+        setTokenValid(true)
+      } else {
+        setError(data.error || 'This reset link has expired or already been used.')
+      }
+    } catch {
+      setError('Failed to verify reset link.')
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  const handleSubmit = async () => {
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
+    // Validation
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters.')
       return
     }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters')
+    if (password !== confirm) {
+      setError('Passwords do not match.')
       return
     }
 
     setLoading(true)
-
     try {
-      const response = await fetch('/api/reset-password', {
-        method: 'POST',
+      const res  = await fetch('/api/reset-password/confirm', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password })
+        body:    JSON.stringify({ token, password }),
       })
+      const data = await res.json()
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to reset password')
-        setLoading(false)
-        return
+      if (data.success) {
+        setSuccess(true)
+        setTimeout(() => router.push('/login/requestor'), 3000)
+      } else {
+        setError(data.error || 'Failed to reset password.')
       }
-
-      setSuccess(true)
-      setLoading(false)
-
-      setTimeout(() => {
-        router.push('/login/requestor')
-      }, 3000)
-
-    } catch (err) {
-      setError('Network error. Please try again.')
+    } catch {
+      setError('Failed to reset password. Please try again.')
+    } finally {
       setLoading(false)
     }
   }
 
-  // ✅ Verifying State
+  // ── Loading ────────────────────────────────────
   if (verifying) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center 
-      justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#003478] 
-          border-t-transparent rounded-full animate-spin mx-auto"/>
-          <p className="mt-4 text-gray-600 font-medium">
-            Verifying reset link...
-          </p>
-        </div>
+      <div className="text-center py-12">
+        <div className="w-10 h-10 border-4 border-blue-900 
+                        border-t-transparent rounded-full 
+                        animate-spin mx-auto mb-4" />
+        <p className="text-gray-500">Verifying your reset link...</p>
       </div>
     )
   }
 
-  // ✅ Invalid Token State
-  if (!tokenValid) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col 
-      items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-[#003478] rounded-t-xl 
-          px-6 py-3 text-center">
-            <p className="text-white text-xs tracking-widest 
-            uppercase font-medium">
-              Ford Motor Company – Component Sales Division
-            </p>
-          </div>
-          <div className="bg-white rounded-b-xl shadow-lg 
-          p-8 text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full 
-            flex items-center justify-center mx-auto mb-4">
-              <span className="text-4xl">❌</span>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Invalid or Expired Link
-            </h2>
-            <p className="text-gray-500 mb-6 text-sm">
-              This password reset link is invalid or has expired.
-              Links are only valid for 1 hour.
-              Please request a new one.
-            </p>
-            <Link
-              href="/forgot-password"
-              className="block w-full py-3 bg-[#003478] 
-              text-white rounded-xl hover:bg-blue-900 
-              transition font-semibold text-center"
-            >
-              Request New Reset Link
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ✅ Success State
+  // ── Success ────────────────────────────────────
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col 
-      items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-[#003478] rounded-t-xl 
-          px-6 py-3 text-center">
-            <p className="text-white text-xs tracking-widest 
-            uppercase font-medium">
-              Ford Motor Company – Component Sales Division
-            </p>
-          </div>
-          <div className="bg-white rounded-b-xl shadow-lg 
-          p-8 text-center">
-            <div className="w-24 h-24 bg-green-100 rounded-full 
-            flex items-center justify-center mx-auto mb-4">
-              <span className="text-5xl">✅</span>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Password Updated!
-            </h2>
-            <p className="text-gray-500 mb-2">
-              Your password has been successfully reset.
-            </p>
-            <p className="text-sm text-[#003478] font-semibold 
-            animate-pulse">
-              Redirecting to login in 3 seconds...
-            </p>
-          </div>
+      <div className="text-center py-8 space-y-4">
+        <div className="w-16 h-16 bg-green-100 rounded-full 
+                        flex items-center justify-center mx-auto">
+          <span className="text-3xl">✅</span>
         </div>
+        <h2 className="text-xl font-bold text-gray-800">
+          Password Reset Successful!
+        </h2>
+        <p className="text-gray-500 text-sm">
+          Your password has been updated.<br />
+          Redirecting to login...
+        </p>
+        <div className="w-6 h-6 border-4 border-green-500 
+                        border-t-transparent rounded-full 
+                        animate-spin mx-auto" />
       </div>
     )
   }
 
-  // ✅ Reset Password Form
+  // ── Invalid Token ──────────────────────────────
+  if (!tokenValid) {
+    return (
+      <div className="text-center py-8 space-y-4">
+        <div className="w-16 h-16 bg-red-100 rounded-full 
+                        flex items-center justify-center mx-auto">
+          <span className="text-3xl">❌</span>
+        </div>
+        <h2 className="text-xl font-bold text-gray-800">Link Expired</h2>
+        <p className="text-red-500 text-sm">{error}</p>
+        <p className="text-gray-400 text-sm">
+          Please contact your admin to send a new reset link.
+        </p>
+        <a
+          href="/login/requestor"
+          className="inline-block mt-4 px-6 py-2.5 bg-[#003478] 
+                     text-white rounded-xl text-sm font-medium 
+                     hover:bg-blue-800 transition"
+        >
+          ← Back to Login
+        </a>
+      </div>
+    )
+  }
+
+  // ── Reset Form ────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col 
-    items-center justify-center p-4">
-      <div className="w-full max-w-md">
-
-        <div className="bg-[#003478] rounded-t-xl 
-        px-6 py-3 text-center">
-          <p className="text-white text-xs tracking-widest 
-          uppercase font-medium">
-            Ford Motor Company – Component Sales Division
-          </p>
+    <div className="space-y-5">
+      <div className="text-center">
+        <div className="w-14 h-14 bg-blue-100 rounded-2xl 
+                        flex items-center justify-center mx-auto mb-3">
+          <span className="text-2xl">🔐</span>
         </div>
-
-        <div className="bg-white rounded-b-xl shadow-lg p-8">
-
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-[#003478] rounded-full 
-            flex items-center justify-center mx-auto mb-4">
-              <span className="text-white text-3xl">🔐</span>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Reset Password
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Resetting password for:
-            </p>
-            <p className="text-[#003478] font-semibold text-sm 
-            bg-blue-50 py-1 px-3 rounded-lg inline-block mt-1">
-              {userEmail}
-            </p>
-          </div>
-
-          <form onSubmit={handleReset} className="space-y-4">
-
-            {/* New Password */}
-            <div>
-              <label className="block text-sm font-semibold 
-              text-gray-700 mb-1.5">
-                New Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Minimum 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full pl-4 pr-12 py-3 bg-gray-50 
-                  border border-gray-200 rounded-xl text-sm 
-                  focus:ring-2 focus:ring-[#003478] 
-                  focus:border-transparent outline-none 
-                  transition-all duration-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 
-                  flex items-center text-gray-400 
-                  hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? '🙈' : '👁️'}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-semibold 
-              text-gray-700 mb-1.5">
-                Confirm New Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirm ? 'text' : 'password'}
-                  placeholder="Re-enter new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="w-full pl-4 pr-12 py-3 bg-gray-50 
-                  border border-gray-200 rounded-xl text-sm 
-                  focus:ring-2 focus:ring-[#003478] 
-                  focus:border-transparent outline-none 
-                  transition-all duration-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute inset-y-0 right-0 pr-3 
-                  flex items-center text-gray-400 
-                  hover:text-gray-600 transition-colors"
-                >
-                  {showConfirm ? '🙈' : '👁️'}
-                </button>
-              </div>
-            </div>
-
-            {/* Password Match Indicator */}
-            {confirmPassword && (
-              <div className={`text-sm flex items-center gap-2 
-              font-medium ${
-                password === confirmPassword
-                  ? 'text-green-600'
-                  : 'text-red-500'
-              }`}>
-                {password === confirmPassword ? (
-                  <><span>✅</span> Passwords match</>
-                ) : (
-                  <><span>❌</span> Passwords do not match</>
-                )}
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 
-              rounded-xl p-4 flex items-start gap-3">
-                <span className="text-red-500">❌</span>
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3.5 rounded-xl font-semibold 
-              text-white text-sm transition-all duration-200 
-              shadow-md ${
-                loading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-[#003478] to-blue-600 \
-                     hover:from-blue-800 hover:to-blue-700 \
-                     hover:shadow-lg active:scale-95'
-              }`}
-            >
-              {loading ? (
-                <span className="flex items-center 
-                justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white 
-                  border-t-transparent rounded-full animate-spin"/>
-                  Updating Password...
-                </span>
-              ) : (
-                '🔐 Update Password'
-              )}
-            </button>
-
-            <Link
-              href="/forgot-password"
-              className="block text-center text-sm text-gray-500 
-              hover:text-[#003478] hover:underline 
-              transition-colors"
-            >
-              ← Request New Reset Link
-            </Link>
-
-          </form>
-        </div>
-
-        <p className="text-center text-xs text-gray-400 mt-4">
-          © {new Date().getFullYear()} Ford Motor Company – 
-          Component Sales Division
+        <h2 className="text-xl font-bold text-gray-800">
+          Set New Password
+        </h2>
+        <p className="text-gray-400 text-sm mt-1">
+          Enter and confirm your new password below
         </p>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
+          <p className="text-red-700 text-sm font-medium">❌ {error}</p>
+        </div>
+      )}
+
+      {/* New Password */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          New Password
+        </label>
+        <div className="relative">
+          <input
+            type={showPass ? 'text' : 'password'}
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Enter new password"
+            className="w-full px-4 py-2.5 border border-gray-200 
+                       rounded-xl text-sm focus:ring-2 
+                       focus:ring-blue-500 outline-none transition pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPass(!showPass)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 
+                       text-gray-400 hover:text-gray-600"
+          >
+            {showPass ? '🙈' : '👁️'}
+          </button>
+        </div>
+      </div>
+
+      {/* Confirm Password */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Confirm Password
+        </label>
+        <div className="relative">
+          <input
+            type={showConfirm ? 'text' : 'password'}
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            placeholder="Re-enter new password"
+            className="w-full px-4 py-2.5 border border-gray-200 
+                       rounded-xl text-sm focus:ring-2 
+                       focus:ring-blue-500 outline-none transition pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirm(!showConfirm)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 
+                       text-gray-400 hover:text-gray-600"
+          >
+            {showConfirm ? '🙈' : '👁️'}
+          </button>
+        </div>
+        {/* Match Indicator */}
+        {confirm && (
+          <p className={`text-xs mt-1 ${
+            password === confirm ? 'text-green-600' : 'text-red-500'
+          }`}>
+            {password === confirm ? '✅ Passwords match' : '❌ Passwords do not match'}
+          </p>
+        )}
+      </div>
+
+      {/* Submit */}
+      <button
+        onClick={handleSubmit}
+        disabled={loading}
+        className="w-full py-3 bg-[#003478] text-white rounded-xl 
+                   font-semibold hover:bg-blue-800 transition 
+                   disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {loading ? '⏳ Resetting...' : '🔐 Reset Password'}
+      </button>
     </div>
   )
 }
 
-export default function ResetPassword() {
+// ── Page Wrapper with Suspense ─────────────────────────
+export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center 
-      justify-center">
-        <div className="w-12 h-12 border-4 border-[#003478] 
-        border-t-transparent rounded-full animate-spin"/>
+    <div className="min-h-screen bg-gradient-to-br 
+                    from-blue-50 to-gray-100 
+                    flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-xl 
+                      w-full max-w-md p-8">
+        <Suspense fallback={
+          <div className="text-center py-12">
+            <div className="w-10 h-10 border-4 border-blue-900 
+                            border-t-transparent rounded-full 
+                            animate-spin mx-auto" />
+          </div>
+        }>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
-    }>
-      <ResetPasswordForm />
-    </Suspense>
+    </div>
   )
 }

@@ -230,33 +230,32 @@ export default function RequestorsPage() {
   }
 
   const handleResetPassword = async () => {
-    if (!selectedRequestor) return
-    setFormLoading(true)
-    setModalError('')
-    try {
-      const res    = await fetch('/api/admin/requestors/reset-password', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          userId:      selectedRequestor.id,
-          newPassword: newPassword,
-        }),
-      })
-      const result = await res.json()
+  if (!selectedRequestor) return
+  setFormLoading(true)
+  setModalError('')
+  try {
+    const res    = await fetch('/api/admin/requestors/reset-password', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ userId: selectedRequestor.id }),
+    })
+    const result = await res.json()
 
-      if (result.success) {
-        showPageSuccess(`✅ Password reset for "${selectedRequestor.full_name}". Share the new password manually.`)
-        setShowResetModal(false)
-        setSelectedRequestor(null)
-      } else {
-        setModalError(result.error || 'Failed to reset password')
-      }
-    } catch {
-      setModalError('Failed to reset password. Please try again.')
-    } finally {
-      setFormLoading(false)
+    if (result.success) {
+      showPageSuccess(
+        `✅ Password reset email sent to "${selectedRequestor.email}"!`
+      )
+      setShowResetModal(false)
+      setSelectedRequestor(null)
+    } else {
+      setModalError(result.error || 'Failed to send reset email.')
     }
+  } catch {
+    setModalError('Failed to send reset email. Please try again.')
+  } finally {
+    setFormLoading(false)
   }
+}
 
   const copyPassword = () => {
     navigator.clipboard.writeText(newPassword)
@@ -535,87 +534,66 @@ export default function RequestorsPage() {
         </Modal>
       )}
 
-      {/* ── RESET PASSWORD MODAL ──────────────────────── */}
-      {showResetModal && selectedRequestor && (
-        <Modal
-          title="Reset Password"
-          onClose={() => { setShowResetModal(false); setModalError('') }}
-        >
-          <div className="space-y-4">
-            {modalError && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
-                <p className="text-red-700 text-sm font-medium">❌ {modalError}</p>
-              </div>
-            )}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <p className="text-amber-700 font-medium text-sm">
-                ⚠️ A new password will be set. Please share it with the requestor manually.
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-4">
-              <p className="font-medium text-gray-900">{selectedRequestor.full_name}</p>
-              <p className="text-gray-500 text-sm">{selectedRequestor.email}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                <button
-                  onClick={() => { setNewPassword(generatePassword()); setCopiedPassword(false) }}
-                  className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition"
-                  title="Regenerate"
-                >
-                  🔄
-                </button>
-                <button
-                  onClick={copyPassword}
-                  className={`px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    copiedPassword
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                  }`}
-                >
-                  {copiedPassword ? '✅ Copied!' : '📋 Copy'}
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">You can edit or regenerate the password above.</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => { setShowResetModal(false); setModalError('') }}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleResetPassword}
-                disabled={formLoading}
-                className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition font-medium disabled:opacity-50"
-              >
-                {formLoading ? 'Resetting...' : 'Reset Password'}
-              </button>
-            </div>
-          </div>
-        </Modal>
+      {/* ── RESET PASSWORD MODAL ─────────────────────── */}
+{showResetModal && selectedRequestor && (
+  <Modal
+    title="Reset Password"
+    onClose={() => { setShowResetModal(false); setModalError('') }}
+  >
+    <div className="space-y-4">
+      {modalError && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
+          <p className="text-red-700 text-sm font-medium">❌ {modalError}</p>
+        </div>
       )}
 
+      {/* Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <p className="text-blue-700 font-medium text-sm">
+          📧 A password reset link will be emailed to:
+        </p>
+        <p className="text-blue-900 font-bold mt-1">
+          {selectedRequestor.email}
+        </p>
+      </div>
+
+      {/* User info */}
+      <div className="bg-gray-50 rounded-xl p-4">
+        <p className="font-medium text-gray-900">
+          {selectedRequestor.full_name}
+        </p>
+        <p className="text-gray-500 text-sm">{selectedRequestor.email}</p>
+      </div>
+
+      {/* Expiry notice */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+        <p className="text-amber-700 text-sm">
+          ⏰ The reset link will expire in <strong>1 hour</strong>.
+        </p>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={() => { setShowResetModal(false); setModalError('') }}
+          className="flex-1 py-2.5 border border-gray-200 rounded-xl 
+                     text-gray-600 hover:bg-gray-50 transition font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleResetPassword}
+          disabled={formLoading}
+          className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl 
+                     hover:bg-amber-600 transition font-medium disabled:opacity-50"
+        >
+          {formLoading ? '⏳ Sending...' : '📧 Send Reset Link'}
+        </button>
+      </div>
     </div>
-  )
-}
+  </Modal>
+)}
+
 
 // ── MODAL WRAPPER ─────────────────────────────────────
 function Modal({
