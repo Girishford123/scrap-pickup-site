@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { sendPickupEmail } from '@/lib/sendEmail' // ← ADD THIS
 
 export async function POST(req: NextRequest) {
   try {
