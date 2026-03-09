@@ -192,203 +192,192 @@ export default function RequestorPage() {
   }
 
   // ── Submit Pickup Request ────────────────────────────
-  const handlePickupSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSubmitLoading(true)
+const handlePickupSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setError('')
+  setSubmitLoading(true)
 
-    // ── Step 1: Upload attachments ──────────────────
-    let attachments: Attachment[] = []
+  // Step 1: Upload attachments
+  let attachments: Attachment[] = []
 
-    if (selectedFiles.length > 0) {
-      try {
-        setUploadProgress(true)
-        const uploaded = await startUpload(selectedFiles)
-        setUploadProgress(false)
-
-        if (uploaded && uploaded.length > 0) {
-          // ✅ Fix: use ufsUrl (not deprecated f.url)
-          attachments = uploaded.map((f: any) => ({
-            url: f.ufsUrl ?? f.url,
-            name: f.name,
-          }))
-        }
-      } catch (uploadErr) {
-        console.error('Upload error:', uploadErr)
-        setUploadProgress(false)
-        setError('File upload failed. Please try again.')
-        setSubmitLoading(false)
-        return
-      }
-    }
-
-    // ── Step 2: Build insert payload ────────────────
-    const insertPayload = {
-      // Standard fields
-      customer_name:
-        formData.rcrcContactPerson ||
-        currentUser?.full_name || '',
-      phone:   formData.rcrcPhoneNumber || '',
-      email:   formData.rcrcEmail || currentUser?.email || '',
-      address1: formData.rcrcAddress  || '',
-      address2: formData.rcrcAddress2 || '',
-      city:    formData.rcrcName  || '',
-      state:   formData.state     || '',
-      zip:     formData.rcrcZipCode || '',
-      preferred_date: formData.preferredDate || '',
-      time_window:    formData.pickupHours   || '',
-      scrap_category: 'Components',
-      description:    formData.notes || '',
-      status:  'pending',
-      user_id: String(currentUser?.id),
-
-      // RCRC-specific fields
-      rcrc_number:         formData.rcrcNumber         || '',
-      rcrc_name:           formData.rcrcName           || '',
-      rcrc_contact_person: formData.rcrcContactPerson  || '',
-      rcrc_email:          formData.rcrcEmail          || '',
-      rcrc_phone_number:   formData.rcrcPhoneNumber    || '',
-      rcrc_address:        formData.rcrcAddress        || '',
-      rcrc_address2:       formData.rcrcAddress2       || '',
-      rcrc_zip_code:       formData.rcrcZipCode        || '',
-
-      // Quantities
-      pallet_quantity: formData.palletQuantity
-        ? parseInt(formData.palletQuantity)
-        : 0,
-      total_pieces_quantity: formData.totalPiecesQuantity
-        ? parseInt(formData.totalPiecesQuantity)
-        : 0,
-
-      special_instructions: formData.notes || '',
-      attachments: attachments,
-    }
-
-    // ── Step 3: Send to server API (NOT direct Supabase) ──
+  if (selectedFiles.length > 0) {
     try {
-      // ── Submit via server API ───────────────────────────
-console.log('📦 Submitting via API:', insertPayload)
+      setUploadProgress(true)
+      const uploaded = await startUpload(selectedFiles)
+      setUploadProgress(false)
 
-const res = await fetch('/api/pickup-request', {  // ✅ singular
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(insertPayload),
-})
-
-// ✅ Safe JSON parse — won't crash on empty responses
-let result: any = {}
-try {
-  result = await res.json()
-} catch {
-  console.error('❌ Non-JSON response. HTTP Status:', res.status)
-  setError(
-    `Server error (${res.status}): API route not found or ` +
-    `returned no JSON. Check /api/pickup-request/route.ts exists.`
-  )
-  setSubmitLoading(false)
-  return
-}
-
-if (!res.ok || !result.success) {
-  console.error('❌ Insert failed:', result)
-  setError(
-    `Database Error (${res.status}): ${result.error || 'Unknown error'}`
-  )
-  setSubmitLoading(false)
-  return
-}
-
-console.log('✅ Insert success:', result.data)
-
-// ✅ Safely extract requestId
-const submittedRecord = result.data?.[0]
-const requestId: string = submittedRecord?.id
-  ? String(submittedRecord.id)
-  : 'N/A'
-      // ── Step 4: Send requestor confirmation email ──
-      try {
-        await fetch('/api/pickup-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: formData.rcrcEmail || currentUser?.email,
-            subject:
-              'Pickup Request Confirmation – Ford Component Sales',
-            requestorName:
-              formData.rcrcContactPerson || currentUser?.full_name,
-            rcrcNumber:          formData.rcrcNumber,
-            rcrcName:            formData.rcrcName,
-            rcrcContactPerson:   formData.rcrcContactPerson,
-            rcrcEmail:           formData.rcrcEmail,
-            rcrcPhoneNumber:     formData.rcrcPhoneNumber,
-            rcrcAddress:         formData.rcrcAddress,
-            rcrcAddress2:        formData.rcrcAddress2,
-            state:               formData.state,
-            rcrcZipCode:         formData.rcrcZipCode,
-            preferredDate:       formData.preferredDate,
-            pickupHours:         formData.pickupHours,
-            palletQuantity:      formData.palletQuantity,
-            totalPiecesQuantity: formData.totalPiecesQuantity,
-            notes:               formData.notes,
-            requestId:           requestId, // ✅ Now declared!
-            attachments:         attachments,
-          }),
-        })
-      } catch (emailErr) {
-        // Don't block form success for email failure
-        console.error('Requestor email failed:', emailErr)
+      if (uploaded && uploaded.length > 0) {
+        attachments = uploaded.map((f: any) => ({
+          url: f.ufsUrl ?? f.url,
+          name: f.name,
+        }))
       }
-
-      // ── Step 5: Send admin notification email ──────
-      try {
-        await fetch('/api/pickup-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: 'gkulkara@ford.com',
-            subject: 'New Pickup Request Submitted',
-            requestorName:
-              formData.rcrcContactPerson || currentUser?.full_name,
-            rcrcNumber:          formData.rcrcNumber,
-            rcrcName:            formData.rcrcName,
-            rcrcContactPerson:   formData.rcrcContactPerson,
-            rcrcEmail:           formData.rcrcEmail,
-            rcrcPhoneNumber:     formData.rcrcPhoneNumber,
-            rcrcAddress:         formData.rcrcAddress,
-            rcrcAddress2:        formData.rcrcAddress2,
-            state:               formData.state,
-            rcrcZipCode:         formData.rcrcZipCode,
-            preferredDate:       formData.preferredDate,
-            pickupHours:         formData.pickupHours,
-            palletQuantity:      formData.palletQuantity,
-            totalPiecesQuantity: formData.totalPiecesQuantity,
-            notes:               formData.notes,
-            requestId:           requestId, // ✅ Now declared!
-            attachments:         attachments,
-          }),
-        })
-      } catch (adminEmailErr) {
-        console.error('Admin email failed:', adminEmailErr)
-      }
-
-      // ── Step 6: Reset form on success ─────────────
-      setSubmitSuccess(true)
+    } catch (uploadErr) {
+      console.error('Upload error:', uploadErr)
+      setUploadProgress(false)
+      setError('File upload failed. Please try again.')
       setSubmitLoading(false)
-      setSelectedFiles([])
-      setFormData({
-        ...DEFAULT_FORM,
-        rcrcContactPerson: currentUser?.full_name || '',
-        rcrcEmail:         currentUser?.email     || '',
-      })
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      setTimeout(() => setSubmitSuccess(false), 5000)
-
-    } catch (err: any) {
-      console.error('❌ Submit error:', err)
-      setError(`Error: ${err.message}`)
-      setSubmitLoading(false)
+      return
     }
   }
+
+  // Step 2: Build insert payload
+  const insertPayload = {
+    customer_name:
+      formData.rcrcContactPerson ||
+      currentUser?.full_name || '',
+    phone:   formData.rcrcPhoneNumber || '',
+    email:   formData.rcrcEmail || currentUser?.email || '',
+    address1: formData.rcrcAddress  || '',
+    address2: formData.rcrcAddress2 || '',
+    city:    formData.rcrcName  || '',
+    state:   formData.state     || '',
+    zip:     formData.rcrcZipCode || '',
+    preferred_date: formData.preferredDate || '',
+    time_window:    formData.pickupHours   || '',
+    scrap_category: 'Components',
+    description:    formData.notes || '',
+    status:  'pending',
+    user_id: String(currentUser?.id),
+    rcrc_number:         formData.rcrcNumber         || '',
+    rcrc_name:           formData.rcrcName           || '',
+    rcrc_contact_person: formData.rcrcContactPerson  || '',
+    rcrc_email:          formData.rcrcEmail          || '',
+    rcrc_phone_number:   formData.rcrcPhoneNumber    || '',
+    rcrc_address:        formData.rcrcAddress        || '',
+    rcrc_address2:       formData.rcrcAddress2       || '',
+    rcrc_zip_code:       formData.rcrcZipCode        || '',
+    pallet_quantity: formData.palletQuantity
+      ? parseInt(formData.palletQuantity)
+      : 0,
+    total_pieces_quantity: formData.totalPiecesQuantity
+      ? parseInt(formData.totalPiecesQuantity)
+      : 0,
+    special_instructions: formData.notes || '',
+    attachments: attachments,
+  }
+
+  // Step 3: Submit to API
+  try {
+    console.log('📦 Submitting via API:', insertPayload)
+
+    const res = await fetch('/api/pickup-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(insertPayload),
+    })
+
+    let result: any = {}
+    try {
+      result = await res.json()
+    } catch {
+      console.error('❌ Non-JSON response. HTTP Status:', res.status)
+      setError(
+        `Server error (${res.status}): API route not found or ` +
+        `returned no JSON. Check /api/pickup-request/route.ts exists.`
+      )
+      setSubmitLoading(false)
+      return
+    }
+
+    if (!res.ok || !result.success) {
+      console.error('❌ Insert failed:', result)
+      setError(
+        `Database Error (${res.status}): ${result.error || 'Unknown error'}`
+      )
+      setSubmitLoading(false)
+      return
+    }
+
+    console.log('✅ Insert success:', result.data)
+
+    const submittedRecord = result.data?.[0]
+    const requestId: string = submittedRecord?.id
+      ? String(submittedRecord.id)
+      : 'N/A'
+
+    // Step 4: Send requestor confirmation email
+    try {
+      await fetch('/api/pickup-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: formData.rcrcEmail || currentUser?.email,
+          subject: 'Pickup Request Confirmation – Ford Component Sales',
+          requestorName:
+            formData.rcrcContactPerson || currentUser?.full_name,
+          rcrcNumber:          formData.rcrcNumber,
+          rcrcName:            formData.rcrcName,
+          rcrcContactPerson:   formData.rcrcContactPerson,
+          rcrcEmail:           formData.rcrcEmail,
+          rcrcPhoneNumber:     formData.rcrcPhoneNumber,
+          rcrcAddress:         formData.rcrcAddress,
+          rcrcAddress2:        formData.rcrcAddress2,
+          state:               formData.state,
+          rcrcZipCode:         formData.rcrcZipCode,
+          preferredDate:       formData.preferredDate,
+          pickupHours:         formData.pickupHours,
+          palletQuantity:      formData.palletQuantity,
+          totalPiecesQuantity: formData.totalPiecesQuantity,
+          notes:               formData.notes,
+          requestId:           requestId,
+          attachments:         attachments,
+        }),
+      })
+    } catch (emailErr) {
+      console.error('Requestor email failed:', emailErr)
+    }
+
+    // Step 5: Send admin notification email
+    try {
+      await fetch('/api/pickup-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: 'gkulkara@ford.com',
+          subject: 'New Pickup Request Submitted',
+          requestorName:
+            formData.rcrcContactPerson || currentUser?.full_name,
+          rcrcNumber:          formData.rcrcNumber,
+          rcrcName:            formData.rcrcName,
+          rcrcContactPerson:   formData.rcrcContactPerson,
+          rcrcEmail:           formData.rcrcEmail,
+          rcrcPhoneNumber:     formData.rcrcPhoneNumber,
+          rcrcAddress:         formData.rcrcAddress,
+          rcrcAddress2:        formData.rcrcAddress2,
+          state:               formData.state,
+          rcrcZipCode:         formData.rcrcZipCode,
+          preferredDate:       formData.preferredDate,
+          pickupHours:         formData.pickupHours,
+          palletQuantity:      formData.palletQuantity,
+          totalPiecesQuantity: formData.totalPiecesQuantity,
+          notes:               formData.notes,
+          requestId:           requestId,
+          attachments:         attachments,
+        }),
+      })
+    } catch (adminEmailErr) {
+      console.error('Admin email failed:', adminEmailErr)
+    }
+
+    // Step 6: Reset form on success
+    setSubmitSuccess(true)
+    setSubmitLoading(false)
+    setSelectedFiles([])
+    setFormData({
+      ...DEFAULT_FORM,
+      rcrcContactPerson: currentUser?.full_name || '',
+      rcrcEmail:         currentUser?.email     || '',
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => setSubmitSuccess(false), 5000)
+
+  } catch (err: any) {
+    console.error('❌ Submit error:', err)
+    setError(`Error: ${err.message}`)
+    setSubmitLoading(false)
+  }
+}
 
   // ════════════════════════════════════════════════════
   // RENDER: LOGIN PAGE
