@@ -46,28 +46,29 @@ export default function RequestorsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  const [requestors, setRequestors]   = useState<Requestor[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [error, setError]             = useState('')
-  const [success, setSuccess]         = useState('')
-  const [searchTerm, setSearchTerm]   = useState('')
+  const [requestors,   setRequestors]   = useState<Requestor[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [pageError,    setPageError]    = useState('')
+  const [pageSuccess,  setPageSuccess]  = useState('')
+  const [modalError,   setModalError]   = useState('')
+  const [searchTerm,   setSearchTerm]   = useState('')
 
   // Modal states
-  const [showAddModal, setShowAddModal]       = useState(false)
-  const [showEditModal, setShowEditModal]     = useState(false)
+  const [showAddModal,    setShowAddModal]    = useState(false)
+  const [showEditModal,   setShowEditModal]   = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showResetModal, setShowResetModal]   = useState(false)
+  const [showResetModal,  setShowResetModal]  = useState(false)
 
-  // Selected requestor for edit/delete/reset
+  // Selected requestor
   const [selectedRequestor, setSelectedRequestor] = useState<Requestor | null>(null)
 
   // Form state
-  const [form, setForm]           = useState<FormState>(EMPTY_FORM)
+  const [form,        setForm]        = useState<FormState>(EMPTY_FORM)
   const [formLoading, setFormLoading] = useState(false)
 
   // Reset password state
-  const [newPassword, setNewPassword]     = useState('')
-  const [showPassword, setShowPassword]   = useState(false)
+  const [newPassword,    setNewPassword]    = useState('')
+  const [showPassword,   setShowPassword]   = useState(false)
   const [copiedPassword, setCopiedPassword] = useState(false)
 
   // ── Auth Guard ───────────────────────────────────────
@@ -86,9 +87,9 @@ export default function RequestorsPage() {
       const res  = await fetch('/api/admin/requestors')
       const data = await res.json()
       if (data.success) setRequestors(data.data || [])
-      else setError(data.error || 'Failed to fetch requestors')
+      else setPageError(data.error || 'Failed to fetch requestors')
     } catch {
-      setError('Failed to fetch requestors')
+      setPageError('Failed to fetch requestors')
     } finally {
       setLoading(false)
     }
@@ -107,45 +108,51 @@ export default function RequestorsPage() {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
-  const showMessage = (msg: string, isError = false) => {
-    if (isError) { setError(msg); setTimeout(() => setError(''), 4000) }
-    else         { setSuccess(msg); setTimeout(() => setSuccess(''), 4000) }
+  const showPageSuccess = (msg: string) => {
+    setPageSuccess(msg)
+    setTimeout(() => setPageSuccess(''), 4000)
   }
 
- // ── ADD Requestor ────────────────────────────────────
-const handleAdd = async () => {
-  setFormLoading(true)
-  setError('')                               // ← clear previous error
-  try {
-    const res    = await fetch('/api/admin/requestors', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(form),
-    })
-    const result = await res.json()
+  const showPageError = (msg: string) => {
+    setPageError(msg)
+    setTimeout(() => setPageError(''), 4000)
+  }
 
-    if (result.success) {
-      showMessage(`✅ Requestor "${form.full_name}" added successfully!`)
-      setShowAddModal(false)
-      setForm(EMPTY_FORM)
-      fetchRequestors()
-    } else {
-      // ← Error stays in modal, does NOT close
-      setError(result.error || 'Failed to add requestor')
+  // ── ADD Requestor ────────────────────────────────────
+  const handleAdd = async () => {
+    setFormLoading(true)
+    setModalError('')
+    try {
+      const res    = await fetch('/api/admin/requestors', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(form),
+      })
+      const result = await res.json()
+
+      if (result.success) {
+        showPageSuccess(`✅ Requestor "${form.full_name}" added successfully!`)
+        setShowAddModal(false)
+        setModalError('')
+        setForm(EMPTY_FORM)
+        fetchRequestors()
+      } else {
+        setModalError(result.error || 'Failed to add requestor')
+      }
+    } catch {
+      setModalError('Failed to add requestor. Please try again.')
+    } finally {
+      setFormLoading(false)
     }
-  } catch {
-    setError('Failed to add requestor. Please try again.')
-  } finally {
-    setFormLoading(false)
   }
-}
 
   // ── EDIT Requestor ───────────────────────────────────
   const openEdit = (r: Requestor) => {
     setSelectedRequestor(r)
+    setModalError('')
     setForm({
-      full_name:   r.full_name,
-      email:       r.email,
+      full_name:   r.full_name   || '',
+      email:       r.email       || '',
       password:    '',
       phone:       r.phone       || '',
       rcrc_number: r.rcrc_number || '',
@@ -157,6 +164,7 @@ const handleAdd = async () => {
   const handleEdit = async () => {
     if (!selectedRequestor) return
     setFormLoading(true)
+    setModalError('')
     try {
       const res    = await fetch(`/api/admin/requestors/${selectedRequestor.id}`, {
         method:  'PUT',
@@ -166,15 +174,16 @@ const handleAdd = async () => {
       const result = await res.json()
 
       if (result.success) {
-        showMessage(`✅ Requestor "${form.full_name}" updated successfully!`)
+        showPageSuccess(`✅ Requestor "${form.full_name}" updated successfully!`)
         setShowEditModal(false)
+        setModalError('')
         setSelectedRequestor(null)
         fetchRequestors()
       } else {
-        showMessage(result.error || 'Failed to update requestor', true)
+        setModalError(result.error || 'Failed to update requestor')
       }
     } catch {
-      showMessage('Failed to update requestor', true)
+      setModalError('Failed to update requestor. Please try again.')
     } finally {
       setFormLoading(false)
     }
@@ -183,6 +192,7 @@ const handleAdd = async () => {
   // ── DELETE Requestor ─────────────────────────────────
   const openDelete = (r: Requestor) => {
     setSelectedRequestor(r)
+    setModalError('')
     setShowDeleteModal(true)
   }
 
@@ -196,15 +206,15 @@ const handleAdd = async () => {
       const result = await res.json()
 
       if (result.success) {
-        showMessage(`✅ Requestor "${selectedRequestor.full_name}" deleted.`)
+        showPageSuccess(`✅ Requestor "${selectedRequestor.full_name}" deleted.`)
         setShowDeleteModal(false)
         setSelectedRequestor(null)
         fetchRequestors()
       } else {
-        showMessage(result.error || 'Failed to delete requestor', true)
+        setModalError(result.error || 'Failed to delete requestor')
       }
     } catch {
-      showMessage('Failed to delete requestor', true)
+      setModalError('Failed to delete requestor. Please try again.')
     } finally {
       setFormLoading(false)
     }
@@ -213,8 +223,8 @@ const handleAdd = async () => {
   // ── RESET PASSWORD ───────────────────────────────────
   const openReset = (r: Requestor) => {
     setSelectedRequestor(r)
-    const generated = generatePassword()
-    setNewPassword(generated)
+    setModalError('')
+    setNewPassword(generatePassword())
     setCopiedPassword(false)
     setShowResetModal(true)
   }
@@ -222,6 +232,7 @@ const handleAdd = async () => {
   const handleResetPassword = async () => {
     if (!selectedRequestor) return
     setFormLoading(true)
+    setModalError('')
     try {
       const res    = await fetch('/api/admin/requestors/reset-password', {
         method:  'POST',
@@ -234,14 +245,14 @@ const handleAdd = async () => {
       const result = await res.json()
 
       if (result.success) {
-        showMessage(`✅ Password reset for "${selectedRequestor.full_name}". Share new password manually.`)
+        showPageSuccess(`✅ Password reset for "${selectedRequestor.full_name}". Share the new password manually.`)
         setShowResetModal(false)
         setSelectedRequestor(null)
       } else {
-        showMessage(result.error || 'Failed to reset password', true)
+        setModalError(result.error || 'Failed to reset password')
       }
     } catch {
-      showMessage('Failed to reset password', true)
+      setModalError('Failed to reset password. Please try again.')
     } finally {
       setFormLoading(false)
     }
@@ -265,9 +276,7 @@ const handleAdd = async () => {
     )
   }
 
-  // ════════════════════════════════════════════════════
-  // RENDER
-  // ════════════════════════════════════════════════════
+  // ── RENDER ───────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -277,7 +286,7 @@ const handleAdd = async () => {
           <div className="flex items-center gap-4">
             <Link
               href="/admin/dashboard"
-              className="text-blue-200 hover:text-white transition-colors text-sm flex items-center gap-1"
+              className="text-blue-200 hover:text-white transition-colors text-sm"
             >
               ← Dashboard
             </Link>
@@ -290,15 +299,17 @@ const handleAdd = async () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Success / Error Banners */}
-        {success && (
+        {/* Page Success Banner */}
+        {pageSuccess && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
-            <p className="text-green-700 font-medium">{success}</p>
+            <p className="text-green-700 font-medium">{pageSuccess}</p>
           </div>
         )}
-        {error && (
+
+        {/* Page Error Banner */}
+        {pageError && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-            <p className="text-red-700 font-medium">{error}</p>
+            <p className="text-red-700 font-medium">{pageError}</p>
           </div>
         )}
 
@@ -327,7 +338,11 @@ const handleAdd = async () => {
 
           {/* Add Button */}
           <button
-            onClick={() => { setForm({ ...EMPTY_FORM, password: generatePassword() }); setShowAddModal(true) }}
+            onClick={() => {
+              setModalError('')
+              setForm({ ...EMPTY_FORM, password: generatePassword() })
+              setShowAddModal(true)
+            }}
             className="flex items-center gap-2 bg-[#003478] text-white px-5 py-2.5 rounded-xl hover:bg-blue-800 transition-all shadow-md font-medium"
           >
             <span className="text-lg">+</span>
@@ -443,57 +458,59 @@ const handleAdd = async () => {
       </div>
 
       {/* ── ADD MODAL ─────────────────────────────────── */}
-{showAddModal && (
-  <Modal title="Add New Requestor" onClose={() => { 
-    setShowAddModal(false)
-    setError('')            // ← clear error on close
-  }}>
-    <RequestorForm
-      form={form}
-      onChange={handleFormChange}
-      showPassword
-      onGeneratePassword={() => setForm(prev => ({ 
-        ...prev, 
-        password: generatePassword() 
-      }))}
-      loading={formLoading}
-      onSubmit={handleAdd}
-      onCancel={() => {
-        setShowAddModal(false)
-        setError('')          // ← clear error on cancel
-      }}
-      submitLabel="Add Requestor"
-      error={error}           // ← PASS ERROR TO FORM
-    />
-  </Modal>
-)}
-
-      {/* ── EDIT MODAL ────────────────────────────────── */}
-      {showEditModal && (
-        <Modal title="Edit Requestor" onClose={() => setShowEditModal(false)}>
+      {showAddModal && (
+        <Modal
+          title="Add New Requestor"
+          onClose={() => { setShowAddModal(false); setModalError('') }}
+        >
           <RequestorForm
             form={form}
             onChange={handleFormChange}
-            showPassword={false}
+            showPasswordField
+            onGeneratePassword={() => setForm(prev => ({ ...prev, password: generatePassword() }))}
+            loading={formLoading}
+            onSubmit={handleAdd}
+            onCancel={() => { setShowAddModal(false); setModalError('') }}
+            submitLabel="Add Requestor"
+            error={modalError}
+          />
+        </Modal>
+      )}
+
+      {/* ── EDIT MODAL ────────────────────────────────── */}
+      {showEditModal && (
+        <Modal
+          title="Edit Requestor"
+          onClose={() => { setShowEditModal(false); setModalError('') }}
+        >
+          <RequestorForm
+            form={form}
+            onChange={handleFormChange}
+            showPasswordField={false}
             loading={formLoading}
             onSubmit={handleEdit}
-            onCancel={() => setShowEditModal(false)}
+            onCancel={() => { setShowEditModal(false); setModalError('') }}
             submitLabel="Save Changes"
+            error={modalError}
           />
         </Modal>
       )}
 
       {/* ── DELETE MODAL ──────────────────────────────── */}
       {showDeleteModal && selectedRequestor && (
-        <Modal title="Delete Requestor" onClose={() => setShowDeleteModal(false)}>
+        <Modal
+          title="Delete Requestor"
+          onClose={() => { setShowDeleteModal(false); setModalError('') }}
+        >
           <div className="space-y-4">
+            {modalError && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
+                <p className="text-red-700 text-sm font-medium">❌ {modalError}</p>
+              </div>
+            )}
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="text-red-700 font-medium">
-                Are you sure you want to delete this requestor?
-              </p>
-              <p className="text-red-600 text-sm mt-1">
-                This action cannot be undone.
-              </p>
+              <p className="text-red-700 font-medium">Are you sure you want to delete this requestor?</p>
+              <p className="text-red-600 text-sm mt-1">This action cannot be undone.</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
               <p className="font-medium text-gray-900">{selectedRequestor.full_name}</p>
@@ -501,7 +518,7 @@ const handleAdd = async () => {
             </div>
             <div className="flex gap-3 pt-2">
               <button
-                onClick={() => setShowDeleteModal(false)}
+                onClick={() => { setShowDeleteModal(false); setModalError('') }}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition font-medium"
               >
                 Cancel
@@ -520,24 +537,27 @@ const handleAdd = async () => {
 
       {/* ── RESET PASSWORD MODAL ──────────────────────── */}
       {showResetModal && selectedRequestor && (
-        <Modal title="Reset Password" onClose={() => setShowResetModal(false)}>
+        <Modal
+          title="Reset Password"
+          onClose={() => { setShowResetModal(false); setModalError('') }}
+        >
           <div className="space-y-4">
+            {modalError && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
+                <p className="text-red-700 text-sm font-medium">❌ {modalError}</p>
+              </div>
+            )}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <p className="text-amber-700 font-medium text-sm">
-                ⚠️ A new password will be set for this requestor.
-                Please share it with them manually.
+                ⚠️ A new password will be set. Please share it with the requestor manually.
               </p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
               <p className="font-medium text-gray-900">{selectedRequestor.full_name}</p>
               <p className="text-gray-500 text-sm">{selectedRequestor.email}</p>
             </div>
-
-            {/* New Password Display */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                New Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
                   <input
@@ -554,15 +574,13 @@ const handleAdd = async () => {
                     {showPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
-                {/* Regenerate */}
                 <button
                   onClick={() => { setNewPassword(generatePassword()); setCopiedPassword(false) }}
-                  className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition text-sm font-medium"
-                  title="Generate new password"
+                  className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition"
+                  title="Regenerate"
                 >
                   🔄
                 </button>
-                {/* Copy */}
                 <button
                   onClick={copyPassword}
                   className={`px-3 py-2.5 rounded-xl text-sm font-medium transition ${
@@ -574,14 +592,11 @@ const handleAdd = async () => {
                   {copiedPassword ? '✅ Copied!' : '📋 Copy'}
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-1">
-                You can edit or regenerate the password above.
-              </p>
+              <p className="text-xs text-gray-400 mt-1">You can edit or regenerate the password above.</p>
             </div>
-
             <div className="flex gap-3 pt-2">
               <button
-                onClick={() => setShowResetModal(false)}
+                onClick={() => { setShowResetModal(false); setModalError('') }}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition font-medium"
               >
                 Cancel
@@ -602,9 +617,7 @@ const handleAdd = async () => {
   )
 }
 
-// ══════════════════════════════════════════════════════
-// SHARED MODAL WRAPPER
-// ══════════════════════════════════════════════════════
+// ── MODAL WRAPPER ─────────────────────────────────────
 function Modal({
   title,
   children,
@@ -634,49 +647,46 @@ function Modal({
   )
 }
 
-// ══════════════════════════════════════════════════════
-// REQUESTOR FORM (shared for Add & Edit)
-// ══════════════════════════════════════════════════════
+// ── REQUESTOR FORM ────────────────────────────────────
 function RequestorForm({
   form,
   onChange,
-  showPassword,
+  showPasswordField,
   onGeneratePassword,
   loading,
   onSubmit,
   onCancel,
   submitLabel,
-  error,                    // ← ADD THIS PROP
+  error,
 }: {
   form:                FormState
   onChange:            (e: React.ChangeEvent<HTMLInputElement>) => void
-  showPassword:        boolean
+  showPasswordField:   boolean
   onGeneratePassword?: () => void
   loading:             boolean
   onSubmit:            () => void
   onCancel:            () => void
   submitLabel:         string
-  error?:              string   // ← ADD THIS TYPE
+  error?:              string
 }) {
-  return (
-    <div className="space-y-4">
-
-      {/* ← ADD THIS ERROR BANNER INSIDE MODAL */}
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
-          <p className="text-red-700 text-sm font-medium">❌ {error}</p>
-        </div>
-      )} {
   const fields = [
-    { label: 'Full Name *',   name: 'full_name',   type: 'text',  placeholder: 'John Doe'          },
-    { label: 'Email *',       name: 'email',        type: 'email', placeholder: 'john@example.com'  },
-    { label: 'Phone',         name: 'phone',        type: 'tel',   placeholder: '(555) 123-4567'    },
-    { label: 'RCRC Number',   name: 'rcrc_number',  type: 'text',  placeholder: 'RCRC-12345'        },
-    { label: 'RCRC Name',     name: 'rcrc_name',    type: 'text',  placeholder: 'Center Name'       },
+    { label: 'Full Name *', name: 'full_name',   type: 'text',  placeholder: 'John Doe'         },
+    { label: 'Email *',     name: 'email',        type: 'email', placeholder: 'john@example.com' },
+    { label: 'Phone',       name: 'phone',        type: 'tel',   placeholder: '(555) 123-4567'   },
+    { label: 'RCRC Number', name: 'rcrc_number',  type: 'text',  placeholder: 'RCRC-12345'       },
+    { label: 'RCRC Name',   name: 'rcrc_name',    type: 'text',  placeholder: 'Center Name'      },
   ]
 
   return (
     <div className="space-y-4">
+
+      {/* Error inside modal */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
+          <p className="text-red-700 text-sm font-medium">❌ {error}</p>
+        </div>
+      )}
+
       {fields.map(f => (
         <div key={f.name}>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -693,8 +703,8 @@ function RequestorForm({
         </div>
       ))}
 
-      {/* Password (Add only) */}
-      {showPassword && (
+      {/* Password field — Add only */}
+      {showPasswordField && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Password *
@@ -711,7 +721,7 @@ function RequestorForm({
             <button
               type="button"
               onClick={onGeneratePassword}
-              className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition text-sm"
+              className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition"
               title="Generate password"
             >
               🔄
