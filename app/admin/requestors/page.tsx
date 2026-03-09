@@ -35,7 +35,6 @@ const EMPTY_FORM: FormState = {
   rcrc_name:   '',
 }
 
-// ── Password Generator ────────────────────────────────
 function generatePassword(): string {
   const digits = Math.floor(1000 + Math.random() * 9000)
   return `Ford@${digits}`
@@ -53,34 +52,26 @@ export default function RequestorsPage() {
   const [modalError,   setModalError]   = useState('')
   const [searchTerm,   setSearchTerm]   = useState('')
 
-  // Modal states
   const [showAddModal,    setShowAddModal]    = useState(false)
   const [showEditModal,   setShowEditModal]   = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showResetModal,  setShowResetModal]  = useState(false)
 
-  // Selected requestor
   const [selectedRequestor, setSelectedRequestor] = useState<Requestor | null>(null)
-
-  // Form state
-  const [form,        setForm]        = useState<FormState>(EMPTY_FORM)
-  const [formLoading, setFormLoading] = useState(false)
-
-  // Reset password state
-  const [newPassword,    setNewPassword]    = useState('')
-  const [showPassword,   setShowPassword]   = useState(false)
-  const [copiedPassword, setCopiedPassword] = useState(false)
+  const [form,              setForm]              = useState<FormState>(EMPTY_FORM)
+  const [formLoading,       setFormLoading]       = useState(false)
+  const [copiedPassword,    setCopiedPassword]    = useState(false)
 
   // ── Auth Guard ───────────────────────────────────────
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/admin/login')
   }, [status, router])
 
-  // ── Fetch Requestors ─────────────────────────────────
   useEffect(() => {
     if (status === 'authenticated') fetchRequestors()
   }, [status])
 
+  // ── Fetch ────────────────────────────────────────────
   const fetchRequestors = async () => {
     setLoading(true)
     try {
@@ -95,7 +86,7 @@ export default function RequestorsPage() {
     }
   }
 
-  // ── Filtered Requestors ──────────────────────────────
+  // ── Filter ───────────────────────────────────────────
   const filtered = requestors.filter(r =>
     r.full_name?.toLowerCase().includes(searchTerm.toLowerCase())   ||
     r.email?.toLowerCase().includes(searchTerm.toLowerCase())       ||
@@ -103,7 +94,6 @@ export default function RequestorsPage() {
     r.rcrc_name?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // ── Form Handlers ────────────────────────────────────
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
@@ -113,12 +103,7 @@ export default function RequestorsPage() {
     setTimeout(() => setPageSuccess(''), 4000)
   }
 
-  const showPageError = (msg: string) => {
-    setPageError(msg)
-    setTimeout(() => setPageError(''), 4000)
-  }
-
-  // ── ADD Requestor ────────────────────────────────────
+  // ── ADD ──────────────────────────────────────────────
   const handleAdd = async () => {
     setFormLoading(true)
     setModalError('')
@@ -129,7 +114,6 @@ export default function RequestorsPage() {
         body:    JSON.stringify(form),
       })
       const result = await res.json()
-
       if (result.success) {
         showPageSuccess(`✅ Requestor "${form.full_name}" added successfully!`)
         setShowAddModal(false)
@@ -146,7 +130,7 @@ export default function RequestorsPage() {
     }
   }
 
-  // ── EDIT Requestor ───────────────────────────────────
+  // ── EDIT ─────────────────────────────────────────────
   const openEdit = (r: Requestor) => {
     setSelectedRequestor(r)
     setModalError('')
@@ -172,9 +156,8 @@ export default function RequestorsPage() {
         body:    JSON.stringify(form),
       })
       const result = await res.json()
-
       if (result.success) {
-        showPageSuccess(`✅ Requestor "${form.full_name}" updated successfully!`)
+        showPageSuccess(`✅ Requestor "${form.full_name}" updated!`)
         setShowEditModal(false)
         setModalError('')
         setSelectedRequestor(null)
@@ -183,13 +166,13 @@ export default function RequestorsPage() {
         setModalError(result.error || 'Failed to update requestor')
       }
     } catch {
-      setModalError('Failed to update requestor. Please try again.')
+      setModalError('Failed to update requestor.')
     } finally {
       setFormLoading(false)
     }
   }
 
-  // ── DELETE Requestor ─────────────────────────────────
+  // ── DELETE ───────────────────────────────────────────
   const openDelete = (r: Requestor) => {
     setSelectedRequestor(r)
     setModalError('')
@@ -204,17 +187,16 @@ export default function RequestorsPage() {
         method: 'DELETE',
       })
       const result = await res.json()
-
       if (result.success) {
         showPageSuccess(`✅ Requestor "${selectedRequestor.full_name}" deleted.`)
         setShowDeleteModal(false)
         setSelectedRequestor(null)
         fetchRequestors()
       } else {
-        setModalError(result.error || 'Failed to delete requestor')
+        setModalError(result.error || 'Failed to delete')
       }
     } catch {
-      setModalError('Failed to delete requestor. Please try again.')
+      setModalError('Failed to delete requestor.')
     } finally {
       setFormLoading(false)
     }
@@ -224,46 +206,37 @@ export default function RequestorsPage() {
   const openReset = (r: Requestor) => {
     setSelectedRequestor(r)
     setModalError('')
-    setNewPassword(generatePassword())
-    setCopiedPassword(false)
     setShowResetModal(true)
   }
 
   const handleResetPassword = async () => {
-  if (!selectedRequestor) return
-  setFormLoading(true)
-  setModalError('')
-  try {
-    const res    = await fetch('/api/admin/requestors/reset-password', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ userId: selectedRequestor.id }),
-    })
-    const result = await res.json()
-
-    if (result.success) {
-      showPageSuccess(
-        `✅ Password reset email sent to "${selectedRequestor.email}"!`
-      )
-      setShowResetModal(false)
-      setSelectedRequestor(null)
-    } else {
-      setModalError(result.error || 'Failed to send reset email.')
+    if (!selectedRequestor) return
+    setFormLoading(true)
+    setModalError('')
+    try {
+      const res    = await fetch('/api/admin/requestors/reset-password', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ userId: selectedRequestor.id }),
+      })
+      const result = await res.json()
+      if (result.success) {
+        showPageSuccess(
+          `✅ Password reset email sent to "${selectedRequestor.email}"!`
+        )
+        setShowResetModal(false)
+        setSelectedRequestor(null)
+      } else {
+        setModalError(result.error || 'Failed to send reset email.')
+      }
+    } catch {
+      setModalError('Failed to send reset email.')
+    } finally {
+      setFormLoading(false)
     }
-  } catch {
-    setModalError('Failed to send reset email. Please try again.')
-  } finally {
-    setFormLoading(false)
-  }
-}
-
-  const copyPassword = () => {
-    navigator.clipboard.writeText(newPassword)
-    setCopiedPassword(true)
-    setTimeout(() => setCopiedPassword(false), 2000)
   }
 
-  // ── Loading / Auth ───────────────────────────────────
+  // ── Loading ──────────────────────────────────────────
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -281,7 +254,8 @@ export default function RequestorsPage() {
 
       {/* Header */}
       <header className="bg-[#003478] shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4
+                        flex justify-between items-center">
           <div className="flex items-center gap-4">
             <Link
               href="/admin/dashboard"
@@ -290,7 +264,9 @@ export default function RequestorsPage() {
               ← Dashboard
             </Link>
             <div className="h-5 w-px bg-blue-400" />
-            <h1 className="text-xl font-bold text-white">Requestor Management</h1>
+            <h1 className="text-xl font-bold text-white">
+              Requestor Management
+            </h1>
           </div>
           <span className="text-blue-200 text-sm">{session?.user?.email}</span>
         </div>
@@ -298,24 +274,23 @@ export default function RequestorsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Page Success Banner */}
+        {/* Page Success */}
         {pageSuccess && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
             <p className="text-green-700 font-medium">{pageSuccess}</p>
           </div>
         )}
 
-        {/* Page Error Banner */}
+        {/* Page Error */}
         {pageError && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
             <p className="text-red-700 font-medium">{pageError}</p>
           </div>
         )}
 
-        {/* Stats + Actions Row */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-
-          {/* Stats */}
+        {/* Stats + Actions */}
+        <div className="flex flex-col sm:flex-row justify-between
+                        items-start sm:items-center gap-4 mb-6">
           <div className="flex gap-4">
             <div className="bg-white rounded-xl px-5 py-3 shadow-sm border border-gray-100">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Total</p>
@@ -335,32 +310,37 @@ export default function RequestorsPage() {
             </div>
           </div>
 
-          {/* Add Button */}
           <button
             onClick={() => {
               setModalError('')
               setForm({ ...EMPTY_FORM, password: generatePassword() })
               setShowAddModal(true)
             }}
-            className="flex items-center gap-2 bg-[#003478] text-white px-5 py-2.5 rounded-xl hover:bg-blue-800 transition-all shadow-md font-medium"
+            className="flex items-center gap-2 bg-[#003478] text-white
+                       px-5 py-2.5 rounded-xl hover:bg-blue-800
+                       transition-all shadow-md font-medium"
           >
             <span className="text-lg">+</span>
             Add Requestor
           </button>
         </div>
 
-        {/* Search Bar */}
+        {/* Search */}
         <div className="mb-6">
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               placeholder="Search by name, email, RCRC number or RCRC name..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm"
+              className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200
+                         rounded-xl text-sm focus:ring-2 focus:ring-blue-500
+                         focus:border-transparent outline-none shadow-sm"
             />
           </div>
         </div>
@@ -371,27 +351,20 @@ export default function RequestorsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">#</th>
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">Full Name</th>
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">Email</th>
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">Phone</th>
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">RCRC Number</th>
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">RCRC Name</th>
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">Status</th>
-                  <th className="text-left px-6 py-4 font-semibold text-gray-600">Actions</th>
+                  {['#','Full Name','Email','Phone','RCRC Number','RCRC Name','Status','Actions'].map(h => (
+                    <th key={h} className="text-left px-6 py-4 font-semibold text-gray-600">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-16 text-gray-400">
-                      <div className="flex flex-col items-center gap-2">
-                        <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <p className="font-medium">No requestors found</p>
-                        <p className="text-xs">Add your first requestor using the button above</p>
-                      </div>
+                      <p className="text-4xl mb-2">👥</p>
+                      <p className="font-medium">No requestors found</p>
+                      <p className="text-xs mt-1">Add your first requestor above</p>
                     </td>
                   </tr>
                 ) : (
@@ -400,11 +373,12 @@ export default function RequestorsPage() {
                       <td className="px-6 py-4 text-gray-400">{index + 1}</td>
                       <td className="px-6 py-4 font-medium text-gray-900">{r.full_name}</td>
                       <td className="px-6 py-4 text-gray-600">{r.email}</td>
-                      <td className="px-6 py-4 text-gray-600">{r.phone || '—'}</td>
+                      <td className="px-6 py-4 text-gray-600">{r.phone       || '—'}</td>
                       <td className="px-6 py-4 text-gray-600">{r.rcrc_number || '—'}</td>
                       <td className="px-6 py-4 text-gray-600">{r.rcrc_name   || '—'}</td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        <span className={`inline-flex items-center px-2.5 py-0.5
+                                         rounded-full text-xs font-medium ${
                           r.status === 'active'
                             ? 'bg-green-100 text-green-700'
                             : 'bg-red-100 text-red-700'
@@ -417,32 +391,26 @@ export default function RequestorsPage() {
                           {/* Edit */}
                           <button
                             onClick={() => openEdit(r)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                             title="Edit"
+                            className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
+                            ✏️
                           </button>
                           {/* Reset Password */}
                           <button
                             onClick={() => openReset(r)}
-                            className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
                             title="Reset Password"
+                            className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                            </svg>
+                            🔑
                           </button>
                           {/* Delete */}
                           <button
                             onClick={() => openDelete(r)}
-                            className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
                             title="Delete"
+                            className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            🗑️
                           </button>
                         </div>
                       </td>
@@ -453,7 +421,6 @@ export default function RequestorsPage() {
             </table>
           </div>
         </div>
-
       </div>
 
       {/* ── ADD MODAL ─────────────────────────────────── */}
@@ -466,7 +433,9 @@ export default function RequestorsPage() {
             form={form}
             onChange={handleFormChange}
             showPasswordField
-            onGeneratePassword={() => setForm(prev => ({ ...prev, password: generatePassword() }))}
+            onGeneratePassword={() =>
+              setForm(prev => ({ ...prev, password: generatePassword() }))
+            }
             loading={formLoading}
             onSubmit={handleAdd}
             onCancel={() => { setShowAddModal(false); setModalError('') }}
@@ -508,8 +477,12 @@ export default function RequestorsPage() {
               </div>
             )}
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="text-red-700 font-medium">Are you sure you want to delete this requestor?</p>
-              <p className="text-red-600 text-sm mt-1">This action cannot be undone.</p>
+              <p className="text-red-700 font-medium">
+                Are you sure you want to delete this requestor?
+              </p>
+              <p className="text-red-600 text-sm mt-1">
+                This action cannot be undone.
+              </p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
               <p className="font-medium text-gray-900">{selectedRequestor.full_name}</p>
@@ -518,14 +491,16 @@ export default function RequestorsPage() {
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => { setShowDeleteModal(false); setModalError('') }}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition font-medium"
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl
+                           text-gray-600 hover:bg-gray-50 transition font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={formLoading}
-                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition font-medium disabled:opacity-50"
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl
+                           hover:bg-red-700 transition font-medium disabled:opacity-50"
               >
                 {formLoading ? 'Deleting...' : 'Yes, Delete'}
               </button>
@@ -534,66 +509,59 @@ export default function RequestorsPage() {
         </Modal>
       )}
 
-      {/* ── RESET PASSWORD MODAL ─────────────────────── */}
-{showResetModal && selectedRequestor && (
-  <Modal
-    title="Reset Password"
-    onClose={() => { setShowResetModal(false); setModalError('') }}
-  >
-    <div className="space-y-4">
-      {modalError && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
-          <p className="text-red-700 text-sm font-medium">❌ {modalError}</p>
-        </div>
+      {/* ── RESET PASSWORD MODAL ──────────────────────── */}
+      {showResetModal && selectedRequestor && (
+        <Modal
+          title="Reset Password"
+          onClose={() => { setShowResetModal(false); setModalError('') }}
+        >
+          <div className="space-y-4">
+            {modalError && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
+                <p className="text-red-700 text-sm font-medium">❌ {modalError}</p>
+              </div>
+            )}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-blue-700 font-medium text-sm">
+                📧 A password reset link will be emailed to:
+              </p>
+              <p className="text-blue-900 font-bold mt-1">
+                {selectedRequestor.email}
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="font-medium text-gray-900">{selectedRequestor.full_name}</p>
+              <p className="text-gray-500 text-sm">{selectedRequestor.email}</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-amber-700 text-sm">
+                ⏰ The reset link will expire in <strong>1 hour</strong>.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setShowResetModal(false); setModalError('') }}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl
+                           text-gray-600 hover:bg-gray-50 transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetPassword}
+                disabled={formLoading}
+                className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl
+                           hover:bg-amber-600 transition font-medium disabled:opacity-50"
+              >
+                {formLoading ? '⏳ Sending...' : '📧 Send Reset Link'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
-      {/* Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <p className="text-blue-700 font-medium text-sm">
-          📧 A password reset link will be emailed to:
-        </p>
-        <p className="text-blue-900 font-bold mt-1">
-          {selectedRequestor.email}
-        </p>
-      </div>
-
-      {/* User info */}
-      <div className="bg-gray-50 rounded-xl p-4">
-        <p className="font-medium text-gray-900">
-          {selectedRequestor.full_name}
-        </p>
-        <p className="text-gray-500 text-sm">{selectedRequestor.email}</p>
-      </div>
-
-      {/* Expiry notice */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-        <p className="text-amber-700 text-sm">
-          ⏰ The reset link will expire in <strong>1 hour</strong>.
-        </p>
-      </div>
-
-      {/* Buttons */}
-      <div className="flex gap-3 pt-2">
-        <button
-          onClick={() => { setShowResetModal(false); setModalError('') }}
-          className="flex-1 py-2.5 border border-gray-200 rounded-xl 
-                     text-gray-600 hover:bg-gray-50 transition font-medium"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleResetPassword}
-          disabled={formLoading}
-          className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl 
-                     hover:bg-amber-600 transition font-medium disabled:opacity-50"
-        >
-          {formLoading ? '⏳ Sending...' : '📧 Send Reset Link'}
-        </button>
-      </div>
     </div>
-  </Modal>
-)}
-
+  )
+}
 
 // ── MODAL WRAPPER ─────────────────────────────────────
 function Modal({
@@ -606,17 +574,19 @@ function Modal({
   onClose:  () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center
+                    p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md
+                      max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4
+                        border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors
+                       text-gray-400 hover:text-gray-600 text-xl font-light"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            ×
           </button>
         </div>
         <div className="p-6">{children}</div>
@@ -648,17 +618,17 @@ function RequestorForm({
   error?:              string
 }) {
   const fields = [
-    { label: 'Full Name *', name: 'full_name',   type: 'text',  placeholder: 'John Doe'         },
-    { label: 'Email *',     name: 'email',        type: 'email', placeholder: 'john@example.com' },
-    { label: 'Phone',       name: 'phone',        type: 'tel',   placeholder: '(555) 123-4567'   },
-    { label: 'RCRC Number', name: 'rcrc_number',  type: 'text',  placeholder: 'RCRC-12345'       },
-    { label: 'RCRC Name',   name: 'rcrc_name',    type: 'text',  placeholder: 'Center Name'      },
+    { label: 'Full Name *', name: 'full_name',  type: 'text',  placeholder: 'John Doe'         },
+    { label: 'Email *',     name: 'email',       type: 'email', placeholder: 'john@example.com' },
+    { label: 'Phone',       name: 'phone',       type: 'tel',   placeholder: '(555) 123-4567'   },
+    { label: 'RCRC Number', name: 'rcrc_number', type: 'text',  placeholder: 'RCRC-12345'       },
+    { label: 'RCRC Name',   name: 'rcrc_name',   type: 'text',  placeholder: 'Center Name'      },
   ]
 
   return (
     <div className="space-y-4">
 
-      {/* Error inside modal */}
+      {/* Error Banner */}
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
           <p className="text-red-700 text-sm font-medium">❌ {error}</p>
@@ -676,12 +646,14 @@ function RequestorForm({
             value={(form as any)[f.name]}
             onChange={onChange}
             placeholder={f.placeholder}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl
+                       text-sm focus:ring-2 focus:ring-blue-500
+                       focus:border-transparent outline-none transition"
           />
         </div>
       ))}
 
-      {/* Password field — Add only */}
+      {/* Password */}
       {showPasswordField && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -694,15 +666,29 @@ function RequestorForm({
               value={form.password}
               onChange={onChange}
               placeholder="Ford@1234"
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl
+                         text-sm font-mono focus:ring-2 focus:ring-blue-500
+                         focus:border-transparent outline-none transition"
             />
             <button
               type="button"
               onClick={onGeneratePassword}
-              className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition"
               title="Generate password"
+              className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200
+                         rounded-xl text-gray-600 transition"
             >
               🔄
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(form.password)
+              }}
+              title="Copy password"
+              className="px-3 py-2.5 bg-blue-50 hover:bg-blue-100
+                         rounded-xl text-blue-600 transition"
+            >
+              📋
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-1">
@@ -716,7 +702,8 @@ function RequestorForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition font-medium"
+          className="flex-1 py-2.5 border border-gray-200 rounded-xl
+                     text-gray-600 hover:bg-gray-50 transition font-medium"
         >
           Cancel
         </button>
@@ -724,7 +711,8 @@ function RequestorForm({
           type="button"
           onClick={onSubmit}
           disabled={loading}
-          className="flex-1 py-2.5 bg-[#003478] text-white rounded-xl hover:bg-blue-800 transition font-medium disabled:opacity-50"
+          className="flex-1 py-2.5 bg-[#003478] text-white rounded-xl
+                     hover:bg-blue-800 transition font-medium disabled:opacity-50"
         >
           {loading ? 'Saving...' : submitLabel}
         </button>
