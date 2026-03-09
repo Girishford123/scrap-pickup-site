@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { signIn } from 'next-auth/react' 
 import { useUploadThing } from '@/lib/uploadthing'
+
 
 // ── Types ──────────────────────────────────────────────
 interface UserSession {
@@ -580,15 +582,17 @@ const requestId: string = submittedRecord?.id
 
             {/* Admin + back links */}
             <div className="text-center space-y-3">
-              <p className="text-sm text-gray-500">
-                Are you an Admin?{' '}
-                <Link
-                  href="/login/admin"
-                  className="text-[#003478] font-semibold hover:underline transition-colors"
-                >
-                  Admin Login →
-                </Link>
-              </p>
+              // ✅ FIXED CODE - Goes directly to Google sign-in
+<p className="text-sm text-gray-500">
+  Are you an Admin?{' '}
+  <button
+    type="button"
+    onClick={() => signIn('google', { callbackUrl: '/admin/dashboard' })}
+    className="text-[#003478] font-semibold hover:underline transition-colors"
+  >
+    Admin Login →
+  </button>
+</p>
               <Link
                 href="/"
                 className="block text-sm text-gray-400 hover:text-[#003478] hover:underline transition-colors"
