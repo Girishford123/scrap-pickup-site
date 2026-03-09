@@ -19,14 +19,15 @@ function ResetPasswordForm() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   // ── Verify token on load ────────────────────────
-  useEffect(() => {
-    if (!token) {
-      setVerifying(false)
-      setError('Invalid or missing reset link.')
-      return
-    }
-    verifyToken()
-  }, [token])
+ useEffect(() => {
+  if (!token) {
+    setVerifying(false)
+    setError('Invalid or missing reset link.')
+    return
+  }
+  verifyToken()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [token])
 
   const verifyToken = async () => {
     try {

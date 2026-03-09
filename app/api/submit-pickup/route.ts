@@ -35,28 +35,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── Send Email Notification ──────────────── ← ADD THIS
-    try {
-      await sendPickupEmail({
-        customerName:   body.contact_person     || body.rcrc_name || 'N/A',
-        customerEmail:  body.email              || null,
-        phone:          body.phone              || '',
-        address:        body.pickup_address     || '',
-        vehicleInfo:    body.quantity_details   || '',
-        preferredDate:  body.requested_pickup_date || '',
-        notes:          body.notes              || '',
-        requestId:      data?.[0]?.id           || '',
-        rcrcNumber:     body.rcrc_number        || '',
-        rcrcName:       body.rcrc_name          || '',
-        pickupHours:    body.pickup_hours       || '',
-      })
-      console.log('✅ Email sent successfully')
-    } catch (emailErr) {
-      // Don't fail the request if email fails
-      console.error('⚠️ Email failed but request saved:', emailErr)
-    }
-    // ────────────────────────────────────────────
-
     return NextResponse.json({
       success: true,
       data: data
