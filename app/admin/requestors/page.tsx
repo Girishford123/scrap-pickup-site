@@ -112,31 +112,33 @@ export default function RequestorsPage() {
     else         { setSuccess(msg); setTimeout(() => setSuccess(''), 4000) }
   }
 
-  // ── ADD Requestor ────────────────────────────────────
-  const handleAdd = async () => {
-    setFormLoading(true)
-    try {
-      const res    = await fetch('/api/admin/requestors', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(form),
-      })
-      const result = await res.json()
+ // ── ADD Requestor ────────────────────────────────────
+const handleAdd = async () => {
+  setFormLoading(true)
+  setError('')                               // ← clear previous error
+  try {
+    const res    = await fetch('/api/admin/requestors', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(form),
+    })
+    const result = await res.json()
 
-      if (result.success) {
-        showMessage(`✅ Requestor "${form.full_name}" added successfully!`)
-        setShowAddModal(false)
-        setForm(EMPTY_FORM)
-        fetchRequestors()
-      } else {
-        showMessage(result.error || 'Failed to add requestor', true)
-      }
-    } catch {
-      showMessage('Failed to add requestor', true)
-    } finally {
-      setFormLoading(false)
+    if (result.success) {
+      showMessage(`✅ Requestor "${form.full_name}" added successfully!`)
+      setShowAddModal(false)
+      setForm(EMPTY_FORM)
+      fetchRequestors()
+    } else {
+      // ← Error stays in modal, does NOT close
+      setError(result.error || 'Failed to add requestor')
     }
+  } catch {
+    setError('Failed to add requestor. Please try again.')
+  } finally {
+    setFormLoading(false)
   }
+}
 
   // ── EDIT Requestor ───────────────────────────────────
   const openEdit = (r: Requestor) => {
@@ -441,20 +443,30 @@ export default function RequestorsPage() {
       </div>
 
       {/* ── ADD MODAL ─────────────────────────────────── */}
-      {showAddModal && (
-        <Modal title="Add New Requestor" onClose={() => setShowAddModal(false)}>
-          <RequestorForm
-            form={form}
-            onChange={handleFormChange}
-            showPassword
-            onGeneratePassword={() => setForm(prev => ({ ...prev, password: generatePassword() }))}
-            loading={formLoading}
-            onSubmit={handleAdd}
-            onCancel={() => setShowAddModal(false)}
-            submitLabel="Add Requestor"
-          />
-        </Modal>
-      )}
+{showAddModal && (
+  <Modal title="Add New Requestor" onClose={() => { 
+    setShowAddModal(false)
+    setError('')            // ← clear error on close
+  }}>
+    <RequestorForm
+      form={form}
+      onChange={handleFormChange}
+      showPassword
+      onGeneratePassword={() => setForm(prev => ({ 
+        ...prev, 
+        password: generatePassword() 
+      }))}
+      loading={formLoading}
+      onSubmit={handleAdd}
+      onCancel={() => {
+        setShowAddModal(false)
+        setError('')          // ← clear error on cancel
+      }}
+      submitLabel="Add Requestor"
+      error={error}           // ← PASS ERROR TO FORM
+    />
+  </Modal>
+)}
 
       {/* ── EDIT MODAL ────────────────────────────────── */}
       {showEditModal && (
@@ -634,16 +646,27 @@ function RequestorForm({
   onSubmit,
   onCancel,
   submitLabel,
+  error,                    // ← ADD THIS PROP
 }: {
-  form:               FormState
-  onChange:           (e: React.ChangeEvent<HTMLInputElement>) => void
-  showPassword:       boolean
+  form:                FormState
+  onChange:            (e: React.ChangeEvent<HTMLInputElement>) => void
+  showPassword:        boolean
   onGeneratePassword?: () => void
-  loading:            boolean
-  onSubmit:           () => void
-  onCancel:           () => void
-  submitLabel:        string
+  loading:             boolean
+  onSubmit:            () => void
+  onCancel:            () => void
+  submitLabel:         string
+  error?:              string   // ← ADD THIS TYPE
 }) {
+  return (
+    <div className="space-y-4">
+
+      {/* ← ADD THIS ERROR BANNER INSIDE MODAL */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg">
+          <p className="text-red-700 text-sm font-medium">❌ {error}</p>
+        </div>
+      )} {
   const fields = [
     { label: 'Full Name *',   name: 'full_name',   type: 'text',  placeholder: 'John Doe'          },
     { label: 'Email *',       name: 'email',        type: 'email', placeholder: 'john@example.com'  },

@@ -55,6 +55,54 @@ export async function POST(req: NextRequest) {
       .from('users')
       .select('id')
       .eq('email', email.toLowerCase().trim())
+      .maybeSingle()                          // ← changed from .single()
+
+    if (existing) {
+      return NextResponse.json(
+        { error: 'A user with this email already exists.' },
+        { status: 409 }
+      )
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12)
+
+    // Insert new requestor
+    const { data, error } = await supabase
+      .from('users')
+      .insert([{
+        full_name,
+        email:       email.toLowerCase().trim(),
+        password:    hashedPassword,
+        phone:       phone       || null,    // ← null instead of ''
+        rcrc_number: rcrc_number || null,    // ← null instead of ''
+        rcrc_name:   rcrc_name   || null,    // ← null instead of ''
+        role:        'requestor',
+        status:      'active',
+      }])
+      .select()
+
+    if (error) {
+      console.error('Supabase insert error:', error)
+      return NextResponse.json(
+        { error: error.message },            // ← returns exact DB error
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, data })
+
+  } catch (err: any) {
+    console.error('POST requestor error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
+    // Check if email already exists
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase().trim())
       .single()
 
     if (existing) {
