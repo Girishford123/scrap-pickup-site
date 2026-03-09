@@ -1,5 +1,5 @@
 // lib/auth.ts
-import GoogleProvider        from 'next-auth/providers/google'
+import GoogleProvider from 'next-auth/providers/google'
 import type { NextAuthOptions } from 'next-auth'
 
 export interface User {
@@ -8,7 +8,6 @@ export interface User {
   image?: string
 }
 
-// ✅ Hardcoded allowed emails
 const ALLOWED_EMAILS = [
   'girishtrainer@gmail.com',
   'gkulkara@ford.com',
@@ -44,7 +43,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path:     '/',
-        secure:   true,
+        secure:   process.env.NODE_ENV === 'production',
       },
     },
   },
@@ -52,12 +51,9 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user }) {
       const userEmail = (user.email ?? '').toLowerCase().trim()
-
       console.log('=== SIGN IN ATTEMPT ===')
-      console.log('User email:     ', userEmail)
-      console.log('Allowed emails: ', ALLOWED_EMAILS)
-      console.log('Is allowed:     ', ALLOWED_EMAILS.includes(userEmail))
-
+      console.log('User email:', userEmail)
+      console.log('Is allowed:', ALLOWED_EMAILS.includes(userEmail))
       return ALLOWED_EMAILS.includes(userEmail)
     },
 
@@ -73,21 +69,31 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
+      // ✅ After Sign Out → always go to admin login
+      if (url.includes('/api/auth/signout')) {
+        return `${baseUrl}/admin/login`
+      }
+      // ✅ After Sign In → go to admin dashboard
+      if (url === baseUrl || url === `${baseUrl}/`) {
+        return `${baseUrl}/admin/dashboard`
+      }
       if (url.startsWith(baseUrl)) return url
       if (url.startsWith('/'))     return `${baseUrl}${url}`
       return `${baseUrl}/admin/dashboard`
     },
   },
 
+  // ✅ Added signOut page
   pages: {
-    signIn: '/admin/login',
-    error:  '/admin/login',
+    signIn:  '/admin/login',
+    signOut: '/admin/login',   // ← THIS was missing!
+    error:   '/admin/login',
   },
 
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
 }
 
-// ── Legacy helpers ────────────────────────────────────────
+// ── Legacy helpers ─────────────────────────────────────
 const SESSION_KEY = 'admin_user'
 
 export function getUserSession(): User | null {

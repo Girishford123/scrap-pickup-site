@@ -2673,18 +2673,7 @@ export default function AdminDashboard() {
     </span>
   </button>
 
-  {/* Sign Out */}
-  <button
-    onClick={() => signOut({ callbackUrl: '/admin/login' })}
-    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
-               rounded-xl bg-gray-100 hover:bg-gray-200
-               text-gray-600 transition-colors"
-  >
-    <span className="hidden sm:inline">Sign Out</span>
-    <span className="sm:hidden">👋</span>
-  </button>
-
-</div>
+  </div>
         </div>
       </div>
 

@@ -52,11 +52,14 @@ Last Updated: March 8, 2026
 - [ ] Remote image patterns set in next.config.ts
 
 ### 🔒 Security
-- [ ] Security headers added to next.config.ts
-- [ ] Rate limiting implemented
-- [ ] Supabase RLS policies
-- [ ] Input validation with Zod
-- [ ] Audit logging table
+- [x] Middleware auth protection        ✅ Done
+- [x] API key for sync route            ✅ Done
+- [x] Security headers (next.config.ts) ✅ Done - March 8, 2026
+- [ ] Supabase RLS policies             ⏳ Next
+- [ ] Rate limiting (Upstash)           ⏳ Pending
+- [ ] Input validation (Zod)            ⏳ Pending
+- [ ] Audit logging table               ⏳ Pending
+- [ ] Session timeout                   ⏳ Pending
 
 ---
 
