@@ -1,38 +1,13 @@
 import { NextResponse }  from 'next/server'
 import { createClient }  from '@supabase/supabase-js'
+import { Resend }        from 'resend'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// ── PHP Proxy Config ─────────────────────────────────────
-const EMAIL_PROXY_URL    = process.env.EMAIL_PROXY_URL!
-const EMAIL_PROXY_SECRET = process.env.EMAIL_PROXY_SECRET!
-
-// ── Core Send Function ───────────────────────────────────
-async function sendEmail(
-  to:      string,
-  subject: string,
-  html:    string
-): Promise<{ success: boolean; error?: any }> {
-  try {
-    const res = await fetch(EMAIL_PROXY_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key':    EMAIL_PROXY_SECRET,
-      },
-      body: JSON.stringify({ to, subject, body: html }),
-    })
-    const result = await res.json()
-    console.log('📧 Email proxy response:', result)
-    return result
-  } catch (err) {
-    console.error('❌ Email proxy failed:', err)
-    return { success: false, error: err }
-  }
-}
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 // ── Build HTML Email Body ────────────────────────────────
 function buildEmailHTML(stats: {
@@ -480,7 +455,6 @@ export async function POST() {
       process.env.REPORT_EMAIL_MANAGER!,
     ].filter(Boolean)
 
-    // ── Send to all recipients ───────────────────────────
     const subject = `📊 Daily Scrap Report — ${
       new Date().toLocaleDateString('en-US', {
         month: 'short',
@@ -492,8 +466,16 @@ export async function POST() {
       : '✅ All On Track'
     }`
 
+    // ✅ Send via Resend with verified domain
     await Promise.all(
-      recipients.map(r => sendEmail(r, subject, html))
+      recipients.map(r =>
+        resend.emails.send({
+          from:    'Ford Component Sales <noreply@fordcomponentsales.in>',
+          to:      [r],
+          subject: subject,
+          html:    html,
+        })
+      )
     )
 
     return NextResponse.json({

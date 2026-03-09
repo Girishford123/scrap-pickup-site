@@ -1,32 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
-// ── PHP Proxy Config ─────────────────────────────────────
-const EMAIL_PROXY_URL    = process.env.EMAIL_PROXY_URL!
-const EMAIL_PROXY_SECRET = process.env.EMAIL_PROXY_SECRET!
-
-// ── Core Send Function ───────────────────────────────────
-async function sendEmail(
-  to:      string,
-  subject: string,
-  html:    string
-): Promise<{ success: boolean; error?: any }> {
-  try {
-    const res = await fetch(EMAIL_PROXY_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key':    EMAIL_PROXY_SECRET,
-      },
-      body: JSON.stringify({ to, subject, body: html }),
-    })
-    const result = await res.json()
-    console.log('📧 Email proxy response:', result)
-    return result
-  } catch (err) {
-    console.error('❌ Email proxy failed:', err)
-    return { success: false, error: err }
-  }
-}
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,9 +38,9 @@ export async function POST(request: NextRequest) {
       <html>
         <head>
           <style>
-            body { font-family: Arial, sans-serif; 
+            body { font-family: Arial, sans-serif;
                    line-height: 1.6; color: #333; }
-            .container { max-width: 600px; 
+            .container { max-width: 600px;
                          margin: 0 auto; padding: 20px; }
             .header { background: linear-gradient(
                         135deg, #1e3a8a 0%, #1e40af 100%);
@@ -110,15 +85,11 @@ export async function POST(request: NextRequest) {
                 </h3>
                 <div class="info-row">
                   <span class="label">RCRC Number:</span>
-                  <span class="value">
-                    ${rcrcNumber || 'N/A'}
-                  </span>
+                  <span class="value">${rcrcNumber || 'N/A'}</span>
                 </div>
                 <div class="info-row">
                   <span class="label">RCRC Name:</span>
-                  <span class="value">
-                    ${rcrcName || 'N/A'}
-                  </span>
+                  <span class="value">${rcrcName || 'N/A'}</span>
                 </div>
                 <div class="info-row">
                   <span class="label">Contact Person:</span>
@@ -128,9 +99,7 @@ export async function POST(request: NextRequest) {
                 </div>
                 <div class="info-row">
                   <span class="label">Email:</span>
-                  <span class="value">
-                    ${rcrcEmail || 'N/A'}
-                  </span>
+                  <span class="value">${rcrcEmail || 'N/A'}</span>
                 </div>
                 <div class="info-row">
                   <span class="label">Phone:</span>
@@ -212,17 +181,17 @@ export async function POST(request: NextRequest) {
               </div>` : ''}
 
               <div style="text-align:center;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL 
-                          || 'http://localhost:3000'}
+                <a href="${process.env.NEXT_PUBLIC_APP_URL
+                          || 'https://www.fordcomponentsales.in'}
                           /login/admin" class="button">
                   View in Dashboard
                 </a>
               </div>
             </div>
             <div class="footer">
-              <p>Ford Component Sales - 
+              <p>Ford Component Sales -
                  Scrap Pickup Management System</p>
-              <p>This is an automated notification. 
+              <p>This is an automated notification.
                  Please do not reply to this email.</p>
             </div>
           </div>
@@ -274,8 +243,8 @@ export async function POST(request: NextRequest) {
             </div>
             <div class="content">
               <p>Hello ${requestorName},</p>
-              <p>Thank you for submitting your scrap pickup 
-                 request. We have received your request and 
+              <p>Thank you for submitting your scrap pickup
+                 request. We have received your request and
                  will process it shortly.</p>
 
               <div class="info-section">
@@ -320,51 +289,59 @@ export async function POST(request: NextRequest) {
                 </div>
               </div>
 
-              <div style="background:#fef3c7; padding:15px;
-                          border-radius:8px; margin:20px 0;
+              <div style="background:#fef3c7;padding:15px;
+                          border-radius:8px;margin:20px 0;
                           border-left:4px solid #f59e0b;">
                 <h4 style="margin-top:0;color:#92400e;">
                   ⏱️ What's Next?
                 </h4>
                 <ul style="margin:0;padding-left:20px;
                            color:#78350f;">
-                  <li>Our team will review your request 
+                  <li>Our team will review your request
                       within 24 hours</li>
-                  <li>You will receive a confirmation email 
+                  <li>You will receive a confirmation email
                       with pickup details</li>
-                  <li>Our driver will contact you 
+                  <li>Our driver will contact you
                       before arrival</li>
                 </ul>
               </div>
 
-              <div style="background:#dbeafe; padding:15px;
-                          border-radius:8px; margin:20px 0;
+              <div style="background:#dbeafe;padding:15px;
+                          border-radius:8px;margin:20px 0;
                           border-left:4px solid #2563eb;">
                 <h4 style="margin-top:0;color:#1e40af;">
                   📞 Need Help?
                 </h4>
                 <p style="margin:0;color:#1e3a8a;">
-                  Contact us at 
-                  <strong>support@fordcomponentsales.in</strong>
-                  <br>or call <strong>+91 1800-XXX-XXXX</strong>
+                  Contact us at
+                  <strong>
+                    support@fordcomponentsales.in
+                  </strong>
                 </p>
               </div>
             </div>
             <div class="footer">
-              <p>Ford Component Sales - 
+              <p>Ford Component Sales -
                  Scrap Pickup Management System</p>
-              <p>This is an automated confirmation. 
+              <p>This is an automated confirmation.
                  Please do not reply to this email.</p>
             </div>
           </div>
         </body>
       </html>`
 
-    const result = await sendEmail(to, subject, htmlContent)
+    // ✅ Send via Resend with verified domain
+    const { error: emailError } = await resend.emails.send({
+      from:    'Ford Component Sales <noreply@fordcomponentsales.in>',
+      to:      [to],
+      subject: subject,
+      html:    htmlContent,
+    })
 
-    if (!result.success) {
+    if (emailError) {
+      console.error('❌ Resend error:', emailError)
       return NextResponse.json(
-        { error: result.error },
+        { error: emailError },
         { status: 500 }
       )
     }

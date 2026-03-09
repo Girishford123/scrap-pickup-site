@@ -1,32 +1,7 @@
 import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
-// ── PHP Proxy Config ─────────────────────────────────────
-const EMAIL_PROXY_URL    = process.env.EMAIL_PROXY_URL!
-const EMAIL_PROXY_SECRET = process.env.EMAIL_PROXY_SECRET!
-
-// ── Core Send Function ───────────────────────────────────
-async function sendEmail(
-  to:      string,
-  subject: string,
-  html:    string
-): Promise<{ success: boolean; error?: any }> {
-  try {
-    const res = await fetch(EMAIL_PROXY_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key':    EMAIL_PROXY_SECRET,
-      },
-      body: JSON.stringify({ to, subject, body: html }),
-    })
-    const result = await res.json()
-    console.log('📧 Email proxy response:', result)
-    return result
-  } catch (err) {
-    console.error('❌ Email proxy failed:', err)
-    return { success: false, error: err }
-  }
-}
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: Request) {
   try {
@@ -44,8 +19,9 @@ export async function POST(request: Request) {
       <html>
         <head>
           <meta charset="utf-8">
-          <meta name="viewport" 
-                content="width=device-width,initial-scale=1.0">
+          <meta name="viewport"
+                content="width=device-width,
+                         initial-scale=1.0">
         </head>
         <body style="margin:0;padding:0;
                      background-color:#f3f4f6;
@@ -55,7 +31,7 @@ export async function POST(request: Request) {
                         padding:40px 20px;">
             <tr>
               <td align="center">
-                <table width="600" cellpadding="0" 
+                <table width="600" cellpadding="0"
                        cellspacing="0"
                        style="max-width:600px;width:100%;">
 
@@ -69,7 +45,7 @@ export async function POST(request: Request) {
                                 font-size:12px;
                                 letter-spacing:2px;
                                 text-transform:uppercase;">
-                        Ford Motor Company – 
+                        Ford Motor Company –
                         Component Sales Division
                       </p>
                     </td>
@@ -80,7 +56,7 @@ export async function POST(request: Request) {
                     <td style="background-color:#ffffff;
                                padding:40px;
                                border-radius:0 0 12px 12px;
-                               box-shadow:0 4px 6px 
+                               box-shadow:0 4px 6px
                                rgba(0,0,0,0.1);">
                       <div style="text-align:center;
                                   margin-bottom:24px;">
@@ -104,15 +80,15 @@ export async function POST(request: Request) {
                       <p style="color:#6b7280;font-size:15px;
                                 text-align:center;
                                 margin:0 0 32px 0;">
-                        We received a request to reset 
+                        We received a request to reset
                         your password.
                       </p>
                       <p style="color:#374151;font-size:15px;
                                 line-height:1.6;
                                 margin:0 0 24px 0;">
                         Hello,<br><br>
-                        Click the button below to reset your 
-                        password. This link will expire in 
+                        Click the button below to reset your
+                        password. This link will expire in
                         <strong>1 hour</strong>.
                       </p>
 
@@ -138,15 +114,15 @@ export async function POST(request: Request) {
                                   margin:24px 0;">
                         <p style="color:#92400e;
                                   font-size:13px;margin:0;">
-                          ⚠️ <strong>Security Notice:</strong> 
-                          If you did not request a password 
+                          ⚠️ <strong>Security Notice:</strong>
+                          If you did not request a password
                           reset, please ignore this email.
                         </p>
                       </div>
 
                       <p style="color:#6b7280;font-size:13px;
                                 margin:16px 0 0 0;">
-                        If the button doesn't work, copy and 
+                        If the button doesn't work, copy and
                         paste this link:<br>
                         <a href="${resetLink}"
                            style="color:#003478;
@@ -160,8 +136,8 @@ export async function POST(request: Request) {
                                  margin:32px 0;">
                       <p style="color:#9ca3af;font-size:12px;
                                 text-align:center;margin:0;">
-                        © ${new Date().getFullYear()} 
-                        Ford Motor Company. 
+                        © ${new Date().getFullYear()}
+                        Ford Motor Company.
                         All rights reserved.<br>
                         Ford Component Sales Division
                       </p>
@@ -176,21 +152,27 @@ export async function POST(request: Request) {
       </html>
     `
 
-    const result = await sendEmail(
-      email,
-      'Reset Your Password – Ford Component Sales',
-      html
-    )
+    // ✅ Send via Resend with verified domain
+    const { error: emailError } = await resend.emails.send({
+      from:    'Ford Component Sales <noreply@fordcomponentsales.in>',
+      to:      [email],
+      subject: 'Reset Your Password – Ford Component Sales',
+      html:    html,
+    })
 
-    if (!result.success) {
+    if (emailError) {
+      console.error('❌ Resend error:', emailError)
       return NextResponse.json(
-        { error: result.error },
+        { error: emailError },
         { status: 500 }
       )
     }
 
     console.log('✅ Password reset email sent to:', email)
-    return NextResponse.json({ success: true }, { status: 200 })
+    return NextResponse.json(
+      { success: true },
+      { status: 200 }
+    )
 
   } catch (err: any) {
     console.error('❌ API error:', err)

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 import crypto from 'crypto'
 
 const supabase = createClient(
@@ -7,33 +8,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// ── PHP Proxy Config ─────────────────────────────────────
-const EMAIL_PROXY_URL    = process.env.EMAIL_PROXY_URL!
-const EMAIL_PROXY_SECRET = process.env.EMAIL_PROXY_SECRET!
-
-// ── Core Send Function ───────────────────────────────────
-async function sendEmail(
-  to:      string,
-  subject: string,
-  html:    string
-): Promise<{ success: boolean; error?: any }> {
-  try {
-    const res = await fetch(EMAIL_PROXY_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key':    EMAIL_PROXY_SECRET,
-      },
-      body: JSON.stringify({ to, subject, body: html }),
-    })
-    const result = await res.json()
-    console.log('📧 Email proxy response:', result)
-    return result
-  } catch (err) {
-    console.error('❌ Email proxy failed:', err)
-    return { success: false, error: err }
-  }
-}
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: Request) {
   try {
@@ -98,182 +73,180 @@ export async function POST(request: Request) {
       `https://www.fordcomponentsales.in` +
       `/reset-password?token=${token}`
 
-    // Step 7: Build HTML email
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport"
-                content="width=device-width,
-                         initial-scale=1.0">
-        </head>
-        <body style="margin:0;padding:0;
-                     background-color:#f3f4f6;
-                     font-family:Arial,sans-serif;">
-          <table width="100%" cellpadding="0"
-                 cellspacing="0"
-                 style="background-color:#f3f4f6;
-                        padding:40px 20px;">
-            <tr>
-              <td align="center">
-                <table width="600" cellpadding="0"
-                       cellspacing="0"
-                       style="max-width:600px;
-                              width:100%;">
+    // Step 7: Send email via Resend with verified domain
+    const { error: emailError } = await resend.emails.send({
+      from:    'Ford Component Sales <noreply@fordcomponentsales.in>',
+      to:      [email],
+      subject: 'Reset Your Password – Ford Component Sales',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport"
+                  content="width=device-width,
+                           initial-scale=1.0">
+          </head>
+          <body style="margin:0;padding:0;
+                       background-color:#f3f4f6;
+                       font-family:Arial,sans-serif;">
+            <table width="100%" cellpadding="0"
+                   cellspacing="0"
+                   style="background-color:#f3f4f6;
+                          padding:40px 20px;">
+              <tr>
+                <td align="center">
+                  <table width="600" cellpadding="0"
+                         cellspacing="0"
+                         style="max-width:600px;
+                                width:100%;">
 
-                  <!-- Header -->
-                  <tr>
-                    <td style="background-color:#003478;
-                               padding:20px 40px;
-                               border-radius:12px 12px 0 0;
-                               text-align:center;">
-                      <p style="color:#ffffff;margin:0;
-                                font-size:12px;
-                                letter-spacing:2px;
-                                text-transform:uppercase;
-                                font-weight:600;">
-                        Ford Motor Company –
-                        Component Sales Division
-                      </p>
-                    </td>
-                  </tr>
+                    <!-- Header -->
+                    <tr>
+                      <td style="background-color:#003478;
+                                 padding:20px 40px;
+                                 border-radius:12px 12px 0 0;
+                                 text-align:center;">
+                        <p style="color:#ffffff;margin:0;
+                                  font-size:12px;
+                                  letter-spacing:2px;
+                                  text-transform:uppercase;
+                                  font-weight:600;">
+                          Ford Motor Company –
+                          Component Sales Division
+                        </p>
+                      </td>
+                    </tr>
 
-                  <!-- Body -->
-                  <tr>
-                    <td style="background-color:#ffffff;
-                               padding:40px;
-                               border-radius:0 0 12px 12px;">
+                    <!-- Body -->
+                    <tr>
+                      <td style="background-color:#ffffff;
+                                 padding:40px;
+                                 border-radius:0 0 12px 12px;">
 
-                      <div style="text-align:center;
-                                  margin-bottom:24px;">
-                        <div style="width:80px;height:80px;
-                                    background-color:#dbeafe;
-                                    border-radius:50%;
-                                    margin:0 auto;
-                                    text-align:center;
-                                    line-height:80px;
-                                    font-size:36px;">
-                          🔐
+                        <div style="text-align:center;
+                                    margin-bottom:24px;">
+                          <div style="width:80px;height:80px;
+                                      background-color:#dbeafe;
+                                      border-radius:50%;
+                                      margin:0 auto;
+                                      text-align:center;
+                                      line-height:80px;
+                                      font-size:36px;">
+                            🔐
+                          </div>
                         </div>
-                      </div>
 
-                      <h1 style="color:#111827;
-                                 font-size:26px;
-                                 font-weight:700;
-                                 text-align:center;
-                                 margin:0 0 8px 0;">
-                        Password Reset Request
-                      </h1>
-                      <p style="color:#6b7280;
-                                font-size:15px;
-                                text-align:center;
-                                margin:0 0 32px 0;">
-                        We received a request to reset
-                        your password.
-                      </p>
-                      <p style="color:#374151;
-                                font-size:15px;
-                                line-height:1.6;
-                                margin:0 0 24px 0;">
-                        Hello ${user.full_name || 'User'},
-                        <br><br>
-                        Click the button below to reset
-                        your password. This link will
-                        expire in
-                        <strong>1 hour</strong>.
-                      </p>
-
-                      <div style="text-align:center;
-                                  margin:32px 0;">
-                        <a href="${resetLink}"
-                           style="display:inline-block;
-                                  background-color:#003478;
-                                  color:#ffffff;
-                                  padding:16px 40px;
-                                  border-radius:8px;
-                                  text-decoration:none;
-                                  font-size:16px;
-                                  font-weight:700;">
-                          🔐 Reset My Password
-                        </a>
-                      </div>
-
-                      <div style="background-color:#f0f9ff;
-                                  border:1px solid #bae6fd;
-                                  border-radius:8px;
-                                  padding:16px;
-                                  margin:24px 0;
-                                  text-align:center;">
-                        <p style="color:#0369a1;
-                                  font-size:13px;
-                                  margin:0;">
-                          ⏰ This link expires in
+                        <h1 style="color:#111827;
+                                   font-size:26px;
+                                   font-weight:700;
+                                   text-align:center;
+                                   margin:0 0 8px 0;">
+                          Password Reset Request
+                        </h1>
+                        <p style="color:#6b7280;
+                                  font-size:15px;
+                                  text-align:center;
+                                  margin:0 0 32px 0;">
+                          We received a request to reset
+                          your password.
+                        </p>
+                        <p style="color:#374151;
+                                  font-size:15px;
+                                  line-height:1.6;
+                                  margin:0 0 24px 0;">
+                          Hello ${user.full_name || 'User'},
+                          <br><br>
+                          Click the button below to reset
+                          your password. This link will
+                          expire in
                           <strong>1 hour</strong>.
                         </p>
-                      </div>
 
-                      <div style="background-color:#fef3c7;
-                                  border:1px solid #fcd34d;
-                                  border-radius:8px;
-                                  padding:16px;
-                                  margin:24px 0;">
-                        <p style="color:#92400e;
-                                  font-size:13px;
-                                  margin:0;">
-                          ⚠️
-                          <strong>Security Notice:</strong>
-                          If you did not request this,
-                          please ignore this email.
-                          Your password will NOT be changed.
+                        <div style="text-align:center;
+                                    margin:32px 0;">
+                          <a href="${resetLink}"
+                             style="display:inline-block;
+                                    background-color:#003478;
+                                    color:#ffffff;
+                                    padding:16px 40px;
+                                    border-radius:8px;
+                                    text-decoration:none;
+                                    font-size:16px;
+                                    font-weight:700;">
+                            🔐 Reset My Password
+                          </a>
+                        </div>
+
+                        <div style="background-color:#f0f9ff;
+                                    border:1px solid #bae6fd;
+                                    border-radius:8px;
+                                    padding:16px;
+                                    margin:24px 0;
+                                    text-align:center;">
+                          <p style="color:#0369a1;
+                                    font-size:13px;
+                                    margin:0;">
+                            ⏰ This link expires in
+                            <strong>1 hour</strong>.
+                          </p>
+                        </div>
+
+                        <div style="background-color:#fef3c7;
+                                    border:1px solid #fcd34d;
+                                    border-radius:8px;
+                                    padding:16px;
+                                    margin:24px 0;">
+                          <p style="color:#92400e;
+                                    font-size:13px;
+                                    margin:0;">
+                            ⚠️
+                            <strong>Security Notice:</strong>
+                            If you did not request this,
+                            please ignore this email.
+                            Your password will NOT be changed.
+                          </p>
+                        </div>
+
+                        <p style="color:#6b7280;
+                                  font-size:12px;
+                                  margin:16px 0 0 0;">
+                          If the button does not work,
+                          copy and paste this link:<br>
+                          <a href="${resetLink}"
+                             style="color:#003478;
+                                    word-break:break-all;
+                                    font-size:11px;">
+                            ${resetLink}
+                          </a>
                         </p>
-                      </div>
 
-                      <p style="color:#6b7280;
-                                font-size:12px;
-                                margin:16px 0 0 0;">
-                        If the button does not work,
-                        copy and paste this link:<br>
-                        <a href="${resetLink}"
-                           style="color:#003478;
-                                  word-break:break-all;
-                                  font-size:11px;">
-                          ${resetLink}
-                        </a>
-                      </p>
+                        <hr style="border:none;
+                                   border-top:1px solid #e5e7eb;
+                                   margin:32px 0;">
+                        <p style="color:#9ca3af;
+                                  font-size:12px;
+                                  text-align:center;
+                                  margin:0;">
+                          © ${new Date().getFullYear()}
+                          Ford Motor Company.<br>
+                          All rights reserved.
+                        </p>
 
-                      <hr style="border:none;
-                                 border-top:1px solid #e5e7eb;
-                                 margin:32px 0;">
-                      <p style="color:#9ca3af;
-                                font-size:12px;
-                                text-align:center;
-                                margin:0;">
-                        © ${new Date().getFullYear()}
-                        Ford Motor Company.<br>
-                        All rights reserved.
-                      </p>
+                      </td>
+                    </tr>
 
-                    </td>
-                  </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `
+    })
 
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-      </html>
-    `
-
-    // Step 8: Send email via PHP Proxy
-    const result = await sendEmail(
-      email,
-      'Reset Your Password – Ford Component Sales',
-      html
-    )
-
-    if (!result.success) {
-      console.error('Email proxy error:', result.error)
+    if (emailError) {
+      console.error('❌ Resend error:', emailError)
       return NextResponse.json(
         { error: 'Failed to send email' },
         { status: 500 }
