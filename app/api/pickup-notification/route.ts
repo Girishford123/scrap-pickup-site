@@ -1,7 +1,16 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import { NextRequest, NextResponse } from 'next/server'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// ── cPanel SMTP Transporter ──────────────────────────────
+const transporter = nodemailer.createTransport({
+  host:   process.env.SMTP_HOST,
+  port:   Number(process.env.SMTP_PORT) || 465,
+  secure: true,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -230,21 +239,19 @@ export async function POST(request: NextRequest) {
       </html>
     `
 
-    const { data, error } = await resend.emails.send({
-      from: 'Ford Component Sales <onboarding@resend.dev>', // Change when you verify domain
-      to: [to],
+    // ── Send Email via cPanel SMTP ───────────────────────
+    await transporter.sendMail({
+      from:    `"Ford Component Sales" <${process.env.SMTP_FROM}>`,
+      to:      to,
       subject: subject,
-      html: htmlContent,
+      html:    htmlContent,
     })
 
-    if (error) {
-      console.error('Email send error:', error)
-      return NextResponse.json({ error: error.message }, { status: 400 })
-    }
+    console.log('✅ Email sent successfully to:', to)
+    return NextResponse.json({ success: true })
 
-    return NextResponse.json({ success: true, data })
   } catch (error: any) {
-    console.error('Email API error:', error)
+    console.error('❌ Email API error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

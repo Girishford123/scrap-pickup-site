@@ -87,8 +87,8 @@ export default function ForgotPassword() {
                              space-y-2 list-decimal list-inside">
                 <li>Open your email inbox</li>
                 <li>Find email from{' '}
-                  <strong>onboarding@resend.dev</strong>
-                </li>
+  <strong>noreply@fordcomponentsales.in</strong>
+</li>
                 <li>Click the{' '}
                   <strong>Reset My Password</strong>{' '}button
                 </li>

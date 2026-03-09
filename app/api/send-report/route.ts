@@ -9,13 +9,14 @@ const supabase = createClient(
 
 // ── Email transporter (Gmail) ────────────────────────────
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host:   process.env.SMTP_HOST,
+  port:   Number(process.env.SMTP_PORT) || 465,
+  secure: true,
   auth: {
-    user: process.env.REPORT_EMAIL_FROM!,
-    pass: process.env.REPORT_EMAIL_PASSWORD!,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
   },
 })
-
 // ── Build HTML email body ────────────────────────────────
 function buildEmailHTML(stats: {
   total:        number
@@ -466,7 +467,7 @@ export async function POST() {
     ].filter(Boolean)
 
     await transporter.sendMail({
-      from:    `"Ford Scrap Dashboard" <${process.env.REPORT_EMAIL_FROM}>`,
+      from: `"Ford Scrap Dashboard" <${process.env.SMTP_FROM}>`,
       to:      recipients.join(', '),
       subject: `📊 Daily Scrap Report — ${new Date().toLocaleDateString(
         'en-US',
