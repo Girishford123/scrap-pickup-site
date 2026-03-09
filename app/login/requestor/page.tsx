@@ -581,18 +581,24 @@ const requestId: string = submittedRecord?.id
             </div>
 
             {/* Admin + back links */}
-            <div className="text-center space-y-3">
-              // ✅ FIXED CODE - Goes directly to Google sign-in
-<p className="text-sm text-gray-500">
-  Are you an Admin?{' '}
-  <button
-    type="button"
-    onClick={() => signIn('google', { callbackUrl: '/admin/dashboard' })}
-    className="text-[#003478] font-semibold hover:underline transition-colors"
+<div className="text-center space-y-3">
+  <p className="text-sm text-gray-500">
+    Are you an Admin?{' '}
+    <button
+      type="button"
+      onClick={() => signIn('google', { callbackUrl: '/admin/dashboard' })}
+      className="text-[#003478] font-semibold hover:underline transition-colors"
+    >
+      Admin Login →
+    </button>
+  </p>
+  <Link
+    href="/"
+    className="block text-sm text-gray-400 hover:text-[#003478] hover:underline transition-colors"
   >
-    Admin Login →
-  </button>
-</p>
+    ← Back to Home
+  </Link>
+</div>
               <Link
                 href="/"
                 className="block text-sm text-gray-400 hover:text-[#003478] hover:underline transition-colors"
