@@ -2673,6 +2673,45 @@ export default function AdminDashboard() {
     </span>
   </button>
 
+  {/* Divider */}
+  <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+  {/* Requestor Management */}
+  <a
+    href="/admin/requestors"
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors bg-indigo-50
+               hover:bg-indigo-100 text-indigo-700 border
+               border-indigo-200 flex items-center gap-1.5"
+  >
+    👥 <span className="hidden sm:inline">Requestors</span>
+  </a>
+
+  {/* Admin Management */}
+  <a
+    href="/admin/admins"
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors bg-purple-50
+               hover:bg-purple-100 text-purple-700 border
+               border-purple-200 flex items-center gap-1.5"
+  >
+    🛡️ <span className="hidden sm:inline">Admins</span>
+  </a>
+
+  {/* Divider */}
+  <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+  {/* Sign Out */}
+  <button
+    onClick={() => signOut({ callbackUrl: '/admin/login' })}
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors bg-red-50
+               hover:bg-red-100 text-red-600 border
+               border-red-200 flex items-center gap-1.5"
+  >
+    🚪 <span className="hidden sm:inline">Sign Out</span>
+  </button>
+
   </div>
         </div>
       </div>
