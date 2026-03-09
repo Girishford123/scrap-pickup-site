@@ -10,10 +10,10 @@ const supabase = createClient(
 // ── PUT: Update requestor ─────────────────────────────
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const body   = await req.json()
     const {
       full_name,
@@ -23,6 +23,13 @@ export async function PUT(
       rcrc_name,
       status,
     } = body
+
+    if (!full_name || !email) {
+      return NextResponse.json(
+        { error: 'Full name and email are required.' },
+        { status: 400 }
+      )
+    }
 
     const { data, error } = await supabase
       .from('users')
@@ -52,10 +59,24 @@ export async function PUT(
 // ── DELETE: Remove requestor ──────────────────────────
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
+
+    // Check user exists first
+    const { data: existing, error: findError } = await supabase
+      .from('users')
+      .select('id, full_name')
+      .eq('id', id)
+      .single()
+
+    if (findError || !existing) {
+      return NextResponse.json(
+        { error: 'Requestor not found.' },
+        { status: 404 }
+      )
+    }
 
     const { error } = await supabase
       .from('users')
