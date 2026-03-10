@@ -11,6 +11,8 @@ export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
 
+    console.log('🔍 Login attempt for:', email)
+
     // Step 1: Validate inputs
     if (!email || !password) {
       return NextResponse.json(
@@ -19,38 +21,38 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 2: Find user — now selecting ALL profile fields
+    // Step 2: Find user in Supabase
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select(`
-        id,
-        email,
-        full_name,
-        role,
-        status,
-        password,
-        plant,
-        department,
-        phone,
-        rcrc_number,
-        rcrc_name,
-        rcrc_contact_person,
-        rcrc_address,
-        rcrc_address2,
-        state,
-        rcrc_zip_code
-      `)
+      .select('*')
       .eq('email', email.toLowerCase().trim())
       .maybeSingle()
 
+    // ✅ DEBUG LOG 1 — Check if user found
+    console.log('👤 User found:', user ? 'YES' : 'NO')
+    console.log('❌ Supabase error:', userError)
+
     if (userError || !user) {
+      console.log('🚫 User not found for email:', email)
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
 
-    // Step 3: Check plain text or hashed password
+    // ✅ DEBUG LOG 2 — Check user data
+    console.log('📋 User role:',   user.role)
+    console.log('📋 User status:', user.status)
+    console.log(
+      '📋 Password type:',
+      user.password?.startsWith('$2') ? 'bcrypt' : 'plain text'
+    )
+    console.log(
+      '📋 Password preview:',
+      user.password?.slice(0, 10)
+    )
+
+    // Step 3: Password check
     let passwordMatch = false
 
     const isHashed =
@@ -58,11 +60,11 @@ export async function POST(request: Request) {
       user.password.startsWith('$2b$')
 
     if (isHashed) {
-      // ✅ Already hashed — use bcrypt compare
       passwordMatch = await bcrypt.compare(password, user.password)
+      console.log('🔐 bcrypt compare result:', passwordMatch)
     } else {
-      // ⚠️ Old plain text — direct compare then auto-upgrade
       passwordMatch = (password === user.password)
+      console.log('🔐 Plain text compare result:', passwordMatch)
 
       if (passwordMatch) {
         const hashedPassword = await bcrypt.hash(password, 12)
@@ -70,24 +72,26 @@ export async function POST(request: Request) {
           .from('users')
           .update({ password: hashedPassword })
           .eq('id', user.id)
-        console.log('Auto-upgraded password to bcrypt for:', user.email)
+        console.log('✅ Password upgraded to bcrypt')
       }
     }
 
     // Step 4: Wrong password
     if (!passwordMatch) {
+      console.log('🚫 Password mismatch for:', email)
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
 
-    // Step 5: Check account status
+    // Step 5: Status check
     if (
       user.status &&
       user.status !== 'active' &&
       user.status !== 'approved'
     ) {
+      console.log('🚫 Account not active. Status:', user.status)
       return NextResponse.json(
         {
           error:
@@ -97,21 +101,20 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 6: Return full user profile
-    // ⚠️ NEVER return password field!
+    console.log('✅ Login successful for:', email)
+
+    // Step 6: Return full profile
     return NextResponse.json(
       {
         success: true,
         user: {
-          // ── Existing fields ──────────────────────
           id:                  user.id,
           email:               user.email,
           full_name:           user.full_name,
           role:                user.role,
           status:              user.status,
-          plant:               user.plant        || null,
-          department:          user.department   || null,
-          // ── NEW: Profile fields for form prefill ─
+          plant:               user.plant               || null,
+          department:          user.department          || null,
           phone:               user.phone               || '',
           rcrc_number:         user.rcrc_number         || '',
           rcrc_name:           user.rcrc_name           || '',
@@ -126,7 +129,7 @@ export async function POST(request: Request) {
     )
 
   } catch (err: any) {
-    console.error('Login API error:', err)
+    console.error('💥 Login API error:', err)
     return NextResponse.json(
       { error: 'Something went wrong. Please try again.' },
       { status: 500 }
