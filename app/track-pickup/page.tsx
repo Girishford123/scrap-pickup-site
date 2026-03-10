@@ -95,7 +95,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true)
       const { data, error } = await supabase
-        .from('pickup_requests')
+        .from('pickup_request')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -117,7 +117,7 @@ export default function AdminDashboard() {
       .channel('pickup_requests_changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'pickup_requests' },
+        { event: '*', schema: 'public', table: 'pickup_request' },
         () => { fetchRequests() }
       )
       .subscribe()
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
     try {
       setActionLoading(id)
       const { error } = await supabase
-        .from('pickup_requests')
+        .from('pickup_request')
         .update({
           status: newStatus,
           updated_at: new Date().toISOString()
@@ -282,7 +282,7 @@ export default function AdminDashboard() {
         : exportStatusFilter.toLowerCase()
     const dateLabel =
       exportDateFilter === 'all' ? 'all-dates' : exportDateFilter
-    a.download = `ford-pickup-requests-${statusLabel}-${dateLabel}-${
+    a.download = `ford-pickup-request-${statusLabel}-${dateLabel}-${
       new Date().toISOString().split('T')[0]
     }.csv`
     a.click()

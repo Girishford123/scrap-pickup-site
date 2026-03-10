@@ -55,6 +55,7 @@ export async function POST(request: Request) {
       .from('password_reset_tokens')
       .insert([{
         email:      email.toLowerCase().trim(),
+        user_id:    user.id,
         token:      token,
         expires_at: expiresAt.toISOString(),
         used:       false,

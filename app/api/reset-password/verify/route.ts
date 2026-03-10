@@ -11,7 +11,9 @@ export async function GET(req: NextRequest) {
     const token = req.nextUrl.searchParams.get('token')
 
     if (!token) {
-      return NextResponse.json({ valid: false, error: 'Token missing.' })
+      return NextResponse.json(
+        { valid: false, error: 'Token missing.' }
+      )
     }
 
     const { data, error } = await supabase
@@ -21,20 +23,28 @@ export async function GET(req: NextRequest) {
       .single()
 
     if (error || !data) {
-      return NextResponse.json({ valid: false, error: 'Invalid reset link.' })
+      return NextResponse.json(
+        { valid: false, error: 'Invalid reset link.' }
+      )
     }
 
     if (data.used) {
-      return NextResponse.json({ valid: false, error: 'This link has already been used.' })
+      return NextResponse.json(
+        { valid: false, error: 'This link has already been used.' }
+      )
     }
 
     if (new Date(data.expires_at) < new Date()) {
-      return NextResponse.json({ valid: false, error: 'This reset link has expired.' })
+      return NextResponse.json(
+        { valid: false, error: 'This reset link has expired.' }
+      )
     }
 
     return NextResponse.json({ valid: true })
 
   } catch (err: any) {
-    return NextResponse.json({ valid: false, error: err.message })
+    return NextResponse.json(
+      { valid: false, error: err.message }
+    )
   }
 }
