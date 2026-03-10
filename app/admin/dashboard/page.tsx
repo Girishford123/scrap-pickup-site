@@ -1913,7 +1913,7 @@ export default function AdminDashboard() {
     setLoading(true)
     try {
       const { data, error } = await supabase
-        .from('pickup_requests')
+        .from('pickup_request')
         .select('*')
         .order('created_at', { ascending: false })
       if (error) throw error
