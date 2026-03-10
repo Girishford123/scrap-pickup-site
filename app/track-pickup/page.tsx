@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter }                         from 'next/navigation'
 import { createClient }                      from '@supabase/supabase-js'
 import Image                                 from 'next/image'
-import * as XLSX                             from 'xlsx'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
