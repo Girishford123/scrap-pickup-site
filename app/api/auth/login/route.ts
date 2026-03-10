@@ -11,8 +11,6 @@ export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
 
-    console.log('🔍 Login attempt for:', email)
-
     // Step 1: Validate inputs
     if (!email || !password) {
       return NextResponse.json(
@@ -28,29 +26,12 @@ export async function POST(request: Request) {
       .eq('email', email.toLowerCase().trim())
       .maybeSingle()
 
-    // ✅ DEBUG LOG 1 — Check if user found
-    console.log('👤 User found:', user ? 'YES' : 'NO')
-    console.log('❌ Supabase error:', userError)
-
     if (userError || !user) {
-      console.log('🚫 User not found for email:', email)
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
-
-    // ✅ DEBUG LOG 2 — Check user data
-    console.log('📋 User role:',   user.role)
-    console.log('📋 User status:', user.status)
-    console.log(
-      '📋 Password type:',
-      user.password?.startsWith('$2') ? 'bcrypt' : 'plain text'
-    )
-    console.log(
-      '📋 Password preview:',
-      user.password?.slice(0, 10)
-    )
 
     // Step 3: Password check
     let passwordMatch = false
@@ -61,24 +42,19 @@ export async function POST(request: Request) {
 
     if (isHashed) {
       passwordMatch = await bcrypt.compare(password, user.password)
-      console.log('🔐 bcrypt compare result:', passwordMatch)
     } else {
       passwordMatch = (password === user.password)
-      console.log('🔐 Plain text compare result:', passwordMatch)
-
       if (passwordMatch) {
         const hashedPassword = await bcrypt.hash(password, 12)
         await supabase
           .from('users')
           .update({ password: hashedPassword })
           .eq('id', user.id)
-        console.log('✅ Password upgraded to bcrypt')
       }
     }
 
     // Step 4: Wrong password
     if (!passwordMatch) {
-      console.log('🚫 Password mismatch for:', email)
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -91,7 +67,6 @@ export async function POST(request: Request) {
       user.status !== 'active' &&
       user.status !== 'approved'
     ) {
-      console.log('🚫 Account not active. Status:', user.status)
       return NextResponse.json(
         {
           error:
@@ -101,9 +76,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('✅ Login successful for:', email)
-
-    // Step 6: Return full profile
+    // Step 6: Return full user profile
     return NextResponse.json(
       {
         success: true,
@@ -129,7 +102,7 @@ export async function POST(request: Request) {
     )
 
   } catch (err: any) {
-    console.error('💥 Login API error:', err)
+    console.error('Login API error:', err)
     return NextResponse.json(
       { error: 'Something went wrong. Please try again.' },
       { status: 500 }

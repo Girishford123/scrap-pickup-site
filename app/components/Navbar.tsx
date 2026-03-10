@@ -7,7 +7,7 @@ import { motion }                 from 'framer-motion'
 import { useSession, signOut }    from 'next-auth/react'
 import DarkModeToggle             from './DarkModeToggle'
 
-// ── Ford Logo ──────────────────────────────────────────
+// ── Ford Logo ───────────────────────────────────────────
 function FordLogo({ height = 36 }: { height?: number }) {
   return (
     <div style={{
@@ -24,17 +24,13 @@ function FordLogo({ height = 36 }: { height?: number }) {
       <img
         src="/ford-logo.png"
         alt="Ford Logo"
-        style={{
-          height:  `${height}px`,
-          width:   'auto',
-          display: 'block',
-        }}
+        style={{ height: `${height}px`, width: 'auto', display: 'block' }}
       />
     </div>
   )
 }
 
-// ── FCS Logo ───────────────────────────────────────────
+// ── FCS Logo ────────────────────────────────────────────
 function FCSLogo({ height = 36 }: { height?: number }) {
   return (
     <div style={{
@@ -51,17 +47,13 @@ function FCSLogo({ height = 36 }: { height?: number }) {
       <img
         src="/FCS-logo.png"
         alt="FCS Logo"
-        style={{
-          height:  `${height}px`,
-          width:   'auto',
-          display: 'block',
-        }}
+        style={{ height: `${height}px`, width: 'auto', display: 'block' }}
       />
     </div>
   )
 }
 
-// ── Profile Dropdown Component ─────────────────────────
+// ── Profile Dropdown ────────────────────────────────────
 function ProfileDropdown({
   name,
   email,
@@ -92,108 +84,79 @@ function ProfileDropdown({
         hover:bg-white/20 border border-white/20
         rounded-full pl-1 pr-3 py-1 transition duration-200"
       >
-        {/* Round Avatar */}
-        <div
-          className={`w-8 h-8 rounded-full flex items-center
-          justify-center font-bold text-sm shadow-md ${
-            isAdmin
-              ? 'bg-yellow-400 text-[#1B4332]'
-              : 'bg-white     text-[#1B4332]'
-          }`}
-        >
+        <div className={`w-8 h-8 rounded-full flex items-center
+        justify-center font-bold text-sm shadow-md ${
+          isAdmin
+            ? 'bg-yellow-400 text-[#1B4332]'
+            : 'bg-white text-[#1B4332]'
+        }`}>
           {initials}
         </div>
-
-        {/* Name */}
         <span className="text-white text-xs font-medium
         hidden md:block">
           {name.split(' ')[0]}
         </span>
-
-        {/* Chevron */}
         <svg
           className={`w-3 h-3 text-white/70 transition-transform
           duration-200 ${open ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round"
+                strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Dropdown */}
       {open && (
         <div className="absolute right-0 top-12 bg-white
         rounded-xl shadow-2xl border border-gray-100
         w-56 z-50 overflow-hidden">
 
-          {/* User Info Header */}
+          {/* User Info */}
           <div className="px-4 py-3 bg-gray-50
           border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <div
-                className={`w-10 h-10 rounded-full flex
-                items-center justify-center font-bold text-sm ${
-                  isAdmin
-                    ? 'bg-yellow-400 text-[#1B4332]'
-                    : 'bg-[#1B4332]  text-white'
-                }`}
-              >
+              <div className={`w-10 h-10 rounded-full flex
+              items-center justify-center font-bold text-sm ${
+                isAdmin
+                  ? 'bg-yellow-400 text-[#1B4332]'
+                  : 'bg-[#1B4332] text-white'
+              }`}>
                 {initials}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold
-                text-gray-900 truncate">
-                  {name}
-                </p>
+                text-gray-900 truncate">{name}</p>
                 <p className="text-xs text-gray-500 truncate">
                   {email}
                 </p>
-                <span
-                  className={`inline-block text-xs font-bold
-                  px-2 py-0.5 rounded-full mt-0.5 ${
-                    isAdmin
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-green-100  text-green-700'
-                  }`}
-                >
+                <span className={`inline-block text-xs font-bold
+                px-2 py-0.5 rounded-full mt-0.5 ${
+                  isAdmin
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-green-100 text-green-700'
+                }`}>
                   {isAdmin ? '🛡️ Admin' : '👤 Requestor'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Menu Items */}
+          {/* Sign Out */}
           <div className="py-1">
             <button
-              onClick={() => {
-                onLogout()
-                setOpen(false)
-              }}
+              onClick={() => { onLogout(); setOpen(false) }}
               className="w-full flex items-center gap-3
               px-4 py-3 text-sm text-red-600
               hover:bg-red-50 transition duration-200"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3
-                  0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3
-                  3 0 013 3v1"
-                />
+              <svg className="w-4 h-4" fill="none"
+                   stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round"
+                      strokeLinejoin="round" strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0
+                      01-3 3H6a3 3 0 01-3-3V7a3 3 0
+                      013-3h4a3 3 0 013 3v1" />
               </svg>
               Sign Out
             </button>
@@ -202,7 +165,7 @@ function ProfileDropdown({
         </div>
       )}
 
-      {/* Backdrop to close dropdown */}
+      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-40"
@@ -214,7 +177,7 @@ function ProfileDropdown({
   )
 }
 
-// ── Main Navbar Component ──────────────────────────────
+// ── Main Navbar ─────────────────────────────────────────
 export default function Navbar() {
   const router   = useRouter()
   const pathname = usePathname()
@@ -224,7 +187,6 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mounted,  setMounted]  = useState(false)
 
-  // ── Admin emails list ────────────────────────────────
   const ADMIN_EMAILS = (
     process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? ''
   ).split(',').map((e) => e.trim())
@@ -233,7 +195,6 @@ export default function Navbar() {
   const isAdmin    = ADMIN_EMAILS.includes(userEmail)
   const isLoggedIn = status === 'authenticated'
 
-  // ── Hide Navbar on these pages ───────────────────────
   const hideOnPaths = [
     '/',
     '/login/requestor',
@@ -248,33 +209,26 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // ── Logout Handler ───────────────────────────────────
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/' })
   }
 
-  // Do not render before mount
   if (!mounted)                       return null
   if (status === 'loading')           return null
   if (hideOnPaths.includes(pathname)) return null
 
-  // ── Admin Links ──────────────────────────────────────
   const adminLinks = [
     { label: '📊 Dashboard',       href: '/admin/dashboard' },
     { label: '📦 Manage Requests', href: '/admin/dashboard' },
   ]
 
-  // ── Requestor Links ──────────────────────────────────
   const requestorLinks = [
     { label: '🏠 Home',           href: '/'               },
     { label: '📋 Request Pickup', href: '/request-pickup' },
     { label: '🔍 Track Pickup',   href: '/track-pickup'   },
   ]
 
-  // ── Guest Links ──────────────────────────────────────
-  const guestLinks = [
-    { label: '🏠 Home', href: '/' },
-  ]
+  const guestLinks = [{ label: '🏠 Home', href: '/' }]
 
   const navLinks = !isLoggedIn
     ? guestLinks
@@ -295,14 +249,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
 
-          {/* ── Logos ── */}
+          {/* Logos */}
           <Link href="/" className="flex items-center gap-4">
             <FordLogo height={32} />
             <div className="h-10 w-px bg-white/30" />
             <FCSLogo  height={32} />
           </Link>
 
-          {/* ── Nav Links ── */}
+          {/* Nav Links */}
           <div className="hidden md:flex items-center space-x-2">
             {navLinks.map((link) => (
               <Link
@@ -320,28 +274,20 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* ── Right Side ── */}
+          {/* Right Side */}
           <div className="flex items-center gap-4">
             <DarkModeToggle />
 
             {isLoggedIn ? (
-
-              // ── LOGGED IN ───────────────────────────
               <div className="flex items-center gap-3">
                 <ProfileDropdown
-                  name={
-                    session?.user?.name ??
-                    userEmail.split('@')[0]
-                  }
+                  name={session?.user?.name ?? userEmail.split('@')[0]}
                   email={userEmail}
                   isAdmin={isAdmin}
                   onLogout={handleLogout}
                 />
               </div>
-
             ) : (
-
-              // ── NOT LOGGED IN ───────────────────────
               <div className="flex items-center gap-2">
                 <Link
                   href="/login/requestor"
@@ -362,7 +308,6 @@ export default function Navbar() {
                   Admin Login
                 </Link>
               </div>
-
             )}
           </div>
 

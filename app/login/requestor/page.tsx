@@ -7,18 +7,14 @@ import { useUploadThing } from '@/lib/uploadthing'
 
 // ── Types ──────────────────────────────────────────────
 interface UserSession {
-  id: string | number
-  email: string
+  id:        string | number
+  email:     string
   full_name: string
-  role: string
+  role:      string
 }
 
 interface FormData {
-  // ── NEW: 3 Category Dropdowns ─────────────────────
-  warrantyCats: string
-  paycats:      string
-  battery:      string
-  // ── Existing Fields ───────────────────────────────
+  category:            string
   rcrcNumber:          string
   rcrcName:            string
   rcrcContactPerson:   string
@@ -36,58 +32,26 @@ interface FormData {
 }
 
 interface Attachment {
-  url: string
+  url:  string
   name: string
 }
 
-// ── Session helpers (localStorage) ────────────────────
+// ── Session Helpers ────────────────────────────────────
 function saveSession(user: UserSession) {
   localStorage.setItem('user_session', JSON.stringify(user))
-}
-
-function getSession(): UserSession | null {
-  try {
-    const raw = localStorage.getItem('user_session')
-    if (!raw) return null
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
 }
 
 function clearSession() {
   localStorage.removeItem('user_session')
 }
 
-// ── US States ─────────────────────────────────────────
+// ── US States ──────────────────────────────────────────
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
   'HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
   'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
   'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
   'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
-]
-
-// ── Dropdown Options ───────────────────────────────────
-const WARRANTY_CATS_OPTIONS = [
-  'Warranty Cat A',
-  'Warranty Cat B',
-  'Warranty Cat C',
-  'Warranty Cat D',
-]
-
-const PAYCATS_OPTIONS = [
-  'Paycat 1',
-  'Paycat 2',
-  'Paycat 3',
-  'Paycat 4',
-]
-
-const BATTERY_OPTIONS = [
-  'Battery Type A',
-  'Battery Type B',
-  'Battery Type C',
-  'No Battery',
 ]
 
 // ── Time Slots ─────────────────────────────────────────
@@ -99,11 +63,9 @@ const TIME_SLOTS = [
   '9:00 AM – 5:00 PM',
 ]
 
-// ── Default form state ────────────────────────────────
+// ── Default Form ───────────────────────────────────────
 const DEFAULT_FORM: FormData = {
-  warrantyCats:        '',
-  paycats:             '',
-  battery:             '',
+  category:            '',
   rcrcNumber:          '',
   rcrcName:            '',
   rcrcContactPerson:   '',
@@ -120,7 +82,7 @@ const DEFAULT_FORM: FormData = {
   notes:               '',
 }
 
-// ── Shared Input Classes ───────────────────────────────
+// ── Shared Classes ─────────────────────────────────────
 const inputCls =
   'w-full px-4 py-3 border border-gray-300 rounded-lg ' +
   'focus:ring-2 focus:ring-blue-500 focus:border-transparent ' +
@@ -129,44 +91,52 @@ const inputCls =
 const labelCls = 'block text-sm font-medium text-gray-700 mb-2'
 
 // ── Required Star ──────────────────────────────────────
-const Req = () => <span className="text-red-500 ml-0.5">*</span>
+const Req = () => (
+  <span className="text-red-500 ml-0.5">*</span>
+)
 
-// ── Main Component ────────────────────────────────────
+// ══════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ══════════════════════════════════════════════════════
 export default function RequestorPage() {
 
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [showPass, setShowPass] = useState(false)
+  const [email,        setEmail]        = useState('')
+  const [password,     setPassword]     = useState('')
+  const [showPass,     setShowPass]     = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
 
-  const [isLoggedIn, setIsLoggedIn]   = useState(false)
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null)
+  const [isLoggedIn,   setIsLoggedIn]   = useState(false)
+  const [currentUser,  setCurrentUser]  = useState<UserSession | null>(null)
 
-  const [formData, setFormData] = useState<FormData>(DEFAULT_FORM)
+  const [formData,     setFormData]     = useState<FormData>(DEFAULT_FORM)
 
-  const [error, setError]                   = useState('')
-  const [submitLoading, setSubmitLoading]   = useState(false)
-  const [submitSuccess, setSubmitSuccess]   = useState(false)
+  const [error,          setError]          = useState('')
+  const [submitLoading,  setSubmitLoading]  = useState(false)
+  const [submitSuccess,  setSubmitSuccess]  = useState(false)
   const [uploadProgress, setUploadProgress] = useState(false)
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   const { startUpload } = useUploadThing('pickupAttachment')
 
-  // ── Handlers ──────────────────────────────────────────
+  // ── Form Change Handler ────────────────────────────
   const handleFormChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
   }
 
+  // ── Remove File ────────────────────────────────────
   const handleRemoveFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  // ── Login ──────────────────────────────────────────────
+  // ── Login Handler ──────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -203,7 +173,7 @@ export default function RequestorPage() {
       setCurrentUser(user)
       setIsLoggedIn(true)
 
-      // ✅ FIX 3 — Prefill ALL fields from user profile
+      // ✅ Prefill all fields from user profile
       setFormData(prev => ({
         ...prev,
         rcrcEmail:           data.user.email               || '',
@@ -225,7 +195,7 @@ export default function RequestorPage() {
     }
   }
 
-  // ── Logout ─────────────────────────────────────────────
+  // ── Logout Handler ─────────────────────────────────
   const handleLogout = () => {
     clearSession()
     setIsLoggedIn(false)
@@ -238,7 +208,7 @@ export default function RequestorPage() {
     setError('')
   }
 
-  // ── Submit Pickup Request ──────────────────────────────
+  // ── Submit Pickup Request ──────────────────────────
   const handlePickupSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -267,35 +237,31 @@ export default function RequestorPage() {
       }
     }
 
-    // Step 2: Build insert payload
+    // Step 2: Build payload
     const insertPayload = {
-      // ── NEW: 3 Category Fields ──────────────────────
-      warranty_cats:        formData.warrantyCats        || '',
-      paycats:              formData.paycats             || '',
-      battery:              formData.battery             || '',
-      // ── Existing Fields ────────────────────────────
-      customer_name:        formData.rcrcContactPerson   || currentUser?.full_name || '',
-      phone:                formData.rcrcPhoneNumber     || '',
-      email:                formData.rcrcEmail           || currentUser?.email     || '',
-      address1:             formData.rcrcAddress         || '',
-      address2:             formData.rcrcAddress2        || '',
-      city:                 formData.rcrcName            || '',
-      state:                formData.state               || '',
-      zip:                  formData.rcrcZipCode         || '',
-      preferred_date:       formData.preferredDate       || '',
-      time_window:          formData.pickupHours         || '',
+      category:             formData.category             || '',
+      customer_name:        formData.rcrcContactPerson    || currentUser?.full_name || '',
+      phone:                formData.rcrcPhoneNumber      || '',
+      email:                formData.rcrcEmail            || currentUser?.email     || '',
+      address1:             formData.rcrcAddress          || '',
+      address2:             formData.rcrcAddress2         || '',
+      city:                 formData.rcrcName             || '',
+      state:                formData.state                || '',
+      zip:                  formData.rcrcZipCode          || '',
+      preferred_date:       formData.preferredDate        || '',
+      time_window:          formData.pickupHours          || '',
       scrap_category:       'Components',
-      description:          formData.notes               || '',
+      description:          formData.notes                || '',
       status:               'pending',
       user_id:              String(currentUser?.id),
-      rcrc_number:          formData.rcrcNumber          || '',
-      rcrc_name:            formData.rcrcName            || '',
-      rcrc_contact_person:  formData.rcrcContactPerson   || '',
-      rcrc_email:           formData.rcrcEmail           || '',
-      rcrc_phone_number:    formData.rcrcPhoneNumber     || '',
-      rcrc_address:         formData.rcrcAddress         || '',
-      rcrc_address2:        formData.rcrcAddress2        || '',
-      rcrc_zip_code:        formData.rcrcZipCode         || '',
+      rcrc_number:          formData.rcrcNumber           || '',
+      rcrc_name:            formData.rcrcName             || '',
+      rcrc_contact_person:  formData.rcrcContactPerson    || '',
+      rcrc_email:           formData.rcrcEmail            || '',
+      rcrc_phone_number:    formData.rcrcPhoneNumber      || '',
+      rcrc_address:         formData.rcrcAddress          || '',
+      rcrc_address2:        formData.rcrcAddress2         || '',
+      rcrc_zip_code:        formData.rcrcZipCode          || '',
       pallet_quantity:      formData.palletQuantity
         ? parseInt(formData.palletQuantity) : 0,
       total_pieces_quantity: formData.totalPiecesQuantity
@@ -306,8 +272,6 @@ export default function RequestorPage() {
 
     // Step 3: Submit to API
     try {
-      console.log('📦 Submitting via API:', insertPayload)
-
       const res = await fetch('/api/pickup-request', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -318,25 +282,22 @@ export default function RequestorPage() {
       try {
         result = await res.json()
       } catch {
-        console.error('❌ Non-JSON response. HTTP Status:', res.status)
         setError(
           `Server error (${res.status}): API route not found or ` +
-          `returned no JSON. Check /api/pickup-request/route.ts exists.`
+          `returned no JSON.`
         )
         setSubmitLoading(false)
         return
       }
 
       if (!res.ok || !result.success) {
-        console.error('❌ Insert failed:', result)
         setError(
-          `Database Error (${res.status}): ${result.error || 'Unknown error'}`
+          `Database Error (${res.status}): ` +
+          `${result.error || 'Unknown error'}`
         )
         setSubmitLoading(false)
         return
       }
-
-      console.log('✅ Insert success:', result.data)
 
       const submittedRecord = result.data?.[0]
       const requestId: string = submittedRecord?.id
@@ -352,6 +313,7 @@ export default function RequestorPage() {
             to:                  formData.rcrcEmail || currentUser?.email,
             subject:             'Pickup Request Confirmation – Ford Component Sales',
             requestorName:       formData.rcrcContactPerson || currentUser?.full_name,
+            category:            formData.category,
             rcrcNumber:          formData.rcrcNumber,
             rcrcName:            formData.rcrcName,
             rcrcContactPerson:   formData.rcrcContactPerson,
@@ -366,9 +328,6 @@ export default function RequestorPage() {
             palletQuantity:      formData.palletQuantity,
             totalPiecesQuantity: formData.totalPiecesQuantity,
             notes:               formData.notes,
-            warrantyCats:        formData.warrantyCats,
-            paycats:             formData.paycats,
-            battery:             formData.battery,
             requestId,
             attachments,
           }),
@@ -386,6 +345,7 @@ export default function RequestorPage() {
             to:                  'gkulkara@ford.com',
             subject:             'New Pickup Request Submitted',
             requestorName:       formData.rcrcContactPerson || currentUser?.full_name,
+            category:            formData.category,
             rcrcNumber:          formData.rcrcNumber,
             rcrcName:            formData.rcrcName,
             rcrcContactPerson:   formData.rcrcContactPerson,
@@ -400,9 +360,6 @@ export default function RequestorPage() {
             palletQuantity:      formData.palletQuantity,
             totalPiecesQuantity: formData.totalPiecesQuantity,
             notes:               formData.notes,
-            warrantyCats:        formData.warrantyCats,
-            paycats:             formData.paycats,
-            battery:             formData.battery,
             requestId,
             attachments,
           }),
@@ -424,7 +381,7 @@ export default function RequestorPage() {
       setTimeout(() => setSubmitSuccess(false), 5000)
 
     } catch (err: any) {
-      console.error('❌ Submit error:', err)
+      console.error('Submit error:', err)
       setError(`Error: ${err.message}`)
       setSubmitLoading(false)
     }
@@ -435,14 +392,14 @@ export default function RequestorPage() {
   // ════════════════════════════════════════════════════
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50
-      via-white to-blue-50 flex flex-col items-center
-      justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br
+      from-blue-50 via-white to-blue-50 flex flex-col
+      items-center justify-center p-4">
 
         {/* Ford header bar */}
         <div className="w-full max-w-md">
-          <div className="bg-[#003478] rounded-t-2xl px-6 py-3
-          text-center">
+          <div className="bg-[#003478] rounded-t-2xl
+          px-6 py-3 text-center">
             <p className="text-white text-xs tracking-widest
             uppercase font-medium">
               Ford Motor Company – Component Sales Division
@@ -451,19 +408,20 @@ export default function RequestorPage() {
         </div>
 
         {/* Login card */}
-        <div className="w-full max-w-md bg-white rounded-b-2xl
-        shadow-xl p-8">
+        <div className="w-full max-w-md bg-white
+        rounded-b-2xl shadow-xl p-8">
 
           {/* Avatar */}
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-blue-100 rounded-full
-            flex items-center justify-center shadow-inner">
+            <div className="w-20 h-20 bg-blue-100
+            rounded-full flex items-center justify-center
+            shadow-inner">
               <svg className="w-10 h-10 text-[#003478]"
                    fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4
-                12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0
-                2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"
-                />
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7
+                2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0
+                2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4
+                c0-3.2-6.4-4.8-9.6-4.8z" />
               </svg>
             </div>
           </div>
@@ -482,17 +440,21 @@ export default function RequestorPage() {
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200
             rounded-xl p-4 flex items-start gap-3">
-              <span className="text-red-500 text-lg mt-0.5">❌</span>
+              <span className="text-red-500 text-lg mt-0.5">
+                ❌
+              </span>
               <div>
                 <p className="text-red-700 font-medium text-sm">
                   Login Failed
                 </p>
-                <p className="text-red-600 text-sm mt-0.5">{error}</p>
+                <p className="text-red-600 text-sm mt-0.5">
+                  {error}
+                </p>
               </div>
             </div>
           )}
 
-          {/* Form */}
+          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-5">
 
             {/* Email */}
@@ -503,16 +465,17 @@ export default function RequestorPage() {
                 Email Address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3
-                flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0
+                pl-3 flex items-center pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400"
                        fill="none" stroke="currentColor"
                        viewBox="0 0 24 24">
                     <path strokeLinecap="round"
-                          strokeLinejoin="round" strokeWidth={2}
+                          strokeLinejoin="round"
+                          strokeWidth={2}
                           d="M16 12a4 4 0 10-8 0 4 4 0 008
-                          0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0
-                          10-9 9m4.5-1.206a8.959 8.959 0
+                          0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9
+                          0 10-9 9m4.5-1.206a8.959 8.959 0
                           01-4.5 1.207" />
                   </svg>
                 </div>
@@ -541,16 +504,17 @@ export default function RequestorPage() {
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3
-                flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0
+                pl-3 flex items-center pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400"
                        fill="none" stroke="currentColor"
                        viewBox="0 0 24 24">
                     <path strokeLinecap="round"
-                          strokeLinejoin="round" strokeWidth={2}
-                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2
-                          2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002
-                          2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6
+                          a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2
+                          0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
                 <input
@@ -576,32 +540,40 @@ export default function RequestorPage() {
                 >
                   {showPass ? (
                     <svg className="w-5 h-5" fill="none"
-                         stroke="currentColor" viewBox="0 0 24 24">
+                         stroke="currentColor"
+                         viewBox="0 0 24 24">
                       <path strokeLinecap="round"
-                            strokeLinejoin="round" strokeWidth={2}
-                            d="M13.875 18.825A10.05 10.05 0 0112
-                            19c-4.478 0-8.268-2.943-9.543-7a9.97
-                            9.97 0 011.563-3.029m5.858.908a3 3 0
-                            114.243 4.243M9.878 9.878l4.242
-                            4.242M9.88 9.88l-3.29-3.29m7.532
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13.875 18.825A10.05 10.05 0
+                            0112 19c-4.478 0-8.268-2.943
+                            -9.543-7a9.97 9.97 0 011.563
+                            -3.029m5.858.908a3 3 0 114.243
+                            4.243M9.878 9.878l4.242 4.242
+                            M9.88 9.88l-3.29-3.29m7.532
                             7.532l3.29 3.29M3 3l3.59 3.59m0
                             0A9.953 9.953 0 0112 5c4.478 0
-                            8.268 2.943 9.543 7a10.025 10.025
-                            0 01-4.132 5.411m0 0L21 21" />
+                            8.268 2.943 9.543 7a10.025
+                            10.025 0 01-4.132 5.411m0 0L21
+                            21" />
                     </svg>
                   ) : (
                     <svg className="w-5 h-5" fill="none"
-                         stroke="currentColor" viewBox="0 0 24 24">
+                         stroke="currentColor"
+                         viewBox="0 0 24 24">
                       <path strokeLinecap="round"
-                            strokeLinejoin="round" strokeWidth={2}
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016
-                            0z" />
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0
+                            016 0z" />
                       <path strokeLinecap="round"
-                            strokeLinejoin="round" strokeWidth={2}
-                            d="M2.458 12C3.732 7.943 7.523 5 12
-                            5c4.478 0 8.268 2.943 9.542
-                            7-1.274 4.057-5.064 7-9.542
-                            7-4.477 0-8.268-2.943-9.542-7z" />
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523
+                            5 12 5c4.478 0 8.268 2.943
+                            9.542 7-1.274 4.057-5.064
+                            7-9.542 7-4.477 0-8.268-2.943
+                            -9.542-7z" />
                     </svg>
                   )}
                 </button>
@@ -612,20 +584,23 @@ export default function RequestorPage() {
             <button
               type="submit"
               disabled={loginLoading}
-              className={`w-full py-3.5 rounded-xl font-semibold
-              text-white text-sm transition-all duration-200
-              shadow-md ${loginLoading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-[#003478] to-blue-600 ' +
-                  'hover:from-blue-800 hover:to-blue-700 ' +
-                  'hover:shadow-lg active:scale-95'
+              className={`w-full py-3.5 rounded-xl
+              font-semibold text-white text-sm
+              transition-all duration-200 shadow-md ${
+                loginLoading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-[#003478] ' +
+                    'to-blue-600 hover:from-blue-800 ' +
+                    'hover:to-blue-700 hover:shadow-lg ' +
+                    'active:scale-95'
               }`}
             >
               {loginLoading ? (
                 <span className="flex items-center
                 justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white
-                  border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2
+                  border-white border-t-transparent
+                  rounded-full animate-spin" />
                   Signing In...
                 </span>
               ) : (
@@ -633,9 +608,11 @@ export default function RequestorPage() {
                 justify-center gap-2">
                   Sign In
                   <svg className="w-4 h-4" fill="none"
-                       stroke="currentColor" viewBox="0 0 24 24">
+                       stroke="currentColor"
+                       viewBox="0 0 24 24">
                     <path strokeLinecap="round"
-                          strokeLinejoin="round" strokeWidth={2}
+                          strokeLinejoin="round"
+                          strokeWidth={2}
                           d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </span>
@@ -658,14 +635,14 @@ export default function RequestorPage() {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200" />
               </div>
-              <div className="relative flex justify-center text-xs">
+              <div className="relative flex justify-center
+              text-xs">
                 <span className="bg-white px-3 text-gray-400">
                   OR
                 </span>
               </div>
             </div>
 
-            {/* Admin + back links */}
             <div className="text-center space-y-3">
               <p className="text-sm text-gray-500">
                 Are you an Admin?{' '}
@@ -673,7 +650,7 @@ export default function RequestorPage() {
                   type="button"
                   onClick={() =>
                     signIn('google', {
-                      callbackUrl: '/admin/dashboard'
+                      callbackUrl: '/admin/dashboard',
                     })
                   }
                   className="text-[#003478] font-semibold
@@ -708,7 +685,7 @@ export default function RequestorPage() {
   }
 
   // ════════════════════════════════════════════════════
-  // RENDER: PICKUP REQUEST FORM (after login)
+  // RENDER: PICKUP REQUEST FORM
   // ════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-gradient-to-br
@@ -727,14 +704,13 @@ export default function RequestorPage() {
             </p>
           </div>
 
-          {/* ✅ FIX 2 — Profile Icon + Logout */}
+          {/* Profile + Logout */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2
             bg-blue-50 border border-blue-200
             rounded-full pl-2 pr-4 py-1.5">
-              {/* Avatar Circle */}
-              <div className="w-8 h-8 bg-[#003478] rounded-full
-              flex items-center justify-center
+              <div className="w-8 h-8 bg-[#003478]
+              rounded-full flex items-center justify-center
               font-bold text-white text-sm shadow">
                 {currentUser?.full_name
                   ?.split(' ')
@@ -743,40 +719,40 @@ export default function RequestorPage() {
                   .toUpperCase()
                   .slice(0, 2) || 'U'}
               </div>
-              <span className="text-sm font-medium text-gray-700
-              hidden sm:block">
+              <span className="text-sm font-medium
+              text-gray-700 hidden sm:block">
                 {currentUser?.full_name?.split(' ')[0]}
               </span>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-600
-              text-white px-4 py-2 rounded-lg
+              className="flex items-center gap-2
+              bg-red-600 text-white px-4 py-2 rounded-lg
               hover:bg-red-700 transition-all shadow-md
               hover:shadow-lg font-medium text-sm"
             >
               <svg className="w-4 h-4" fill="none"
                    stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round"
-                      strokeLinejoin="round" strokeWidth={2}
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3
-                      3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0
-                      013-3h4a3 3 0 013 3v1" />
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6
+                      4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7
+                      a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
               Sign Out
             </button>
           </div>
-
         </div>
       </header>
 
-      {/* Main content */}
+      {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6
       lg:px-8 py-12">
         <div className="bg-white rounded-2xl shadow-xl
         overflow-hidden">
 
-          {/* Page title bar */}
+          {/* Title Bar */}
           <div className="bg-gradient-to-r from-blue-900
           to-blue-700 px-8 py-6">
             <h1 className="text-3xl font-bold text-white">
@@ -790,7 +766,7 @@ export default function RequestorPage() {
           {/* Form */}
           <form onSubmit={handlePickupSubmit} className="p-8">
 
-            {/* Error banner */}
+            {/* Error Banner */}
             {error && (
               <div className="mb-6 bg-red-50 border-l-4
               border-red-500 p-4 rounded">
@@ -798,7 +774,7 @@ export default function RequestorPage() {
               </div>
             )}
 
-            {/* Success banner */}
+            {/* Success Banner */}
             {submitSuccess && (
               <div className="mb-6 bg-green-50 border-l-4
               border-green-500 p-4 rounded">
@@ -811,17 +787,18 @@ export default function RequestorPage() {
 
             <div className="space-y-8">
 
-              {/* ══════════════════════════════════════
+              {/* ════════════════════════════════════
                   SECTION 0: Category Selection
-                  FIX 5 — 3 New Dropdowns at TOP
-              ══════════════════════════════════════ */}
+                  Single Dropdown with 3 options
+              ════════════════════════════════════ */}
               <div className="pb-8 border-b-2 border-blue-100
               bg-blue-50 rounded-xl p-6">
+
                 <h3 className="text-lg font-semibold
                 text-gray-900 mb-2 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white
-                  rounded-full flex items-center justify-center
-                  mr-3 text-sm font-bold">
+                  <span className="w-8 h-8 bg-blue-900
+                  text-white rounded-full flex items-center
+                  justify-center mr-3 text-sm font-bold">
                     ★
                   </span>
                   Category Selection
@@ -831,85 +808,53 @@ export default function RequestorPage() {
                     Required
                   </span>
                 </h3>
+
                 <p className="text-sm text-gray-500 ml-11 mb-6">
-                  Please select all three categories before
-                  filling the form below.
+                  Please select a category before filling
+                  the form below.
                 </p>
 
-                <div className="grid md:grid-cols-3 gap-6 ml-11">
-
-                  {/* Warranty Cats */}
-                  <div>
-                    <label className={labelCls}>
-                      Warranty Cats <Req />
-                    </label>
-                    <select
-                      name="warrantyCats"
-                      value={formData.warrantyCats}
-                      onChange={handleFormChange}
-                      required
-                      className={inputCls}
-                    >
-                      <option value="">Select Warranty Cat</option>
-                      {WARRANTY_CATS_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Paycats */}
-                  <div>
-                    <label className={labelCls}>
-                      Paycats <Req />
-                    </label>
-                    <select
-                      name="paycats"
-                      value={formData.paycats}
-                      onChange={handleFormChange}
-                      required
-                      className={inputCls}
-                    >
-                      <option value="">Select Paycat</option>
-                      {PAYCATS_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Battery */}
-                  <div>
-                    <label className={labelCls}>
-                      Battery <Req />
-                    </label>
-                    <select
-                      name="battery"
-                      value={formData.battery}
-                      onChange={handleFormChange}
-                      required
-                      className={inputCls}
-                    >
-                      <option value="">Select Battery</option>
-                      {BATTERY_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-
+                {/* ✅ Single Dropdown */}
+                <div className="ml-11 max-w-sm">
+                  <label className={labelCls}>
+                    Select Category <Req />
+                  </label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleFormChange}
+                    required
+                    className={inputCls}
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Warranty Cats">
+                      Warranty Cats
+                    </option>
+                    <option value="Paycats">
+                      Paycats
+                    </option>
+                    <option value="Battery">
+                      Battery
+                    </option>
+                  </select>
                 </div>
+
               </div>
 
-              {/* ══════════════════════════════════════
+              {/* ════════════════════════════════════
                   SECTION 1: RCRC Information
-                  FIX 4 — All fields required
-              ══════════════════════════════════════ */}
+              ════════════════════════════════════ */}
               <div>
                 <h3 className="text-lg font-semibold
                 text-gray-900 mb-6 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white
-                  rounded-full flex items-center justify-center
-                  mr-3 text-sm">1</span>
+                  <span className="w-8 h-8 bg-blue-900
+                  text-white rounded-full flex items-center
+                  justify-center mr-3 text-sm">
+                    1
+                  </span>
                   RCRC Information
                 </h3>
+
                 <div className="space-y-6 ml-11">
 
                   <div className="grid md:grid-cols-2 gap-6">
@@ -1020,8 +965,10 @@ export default function RequestorPage() {
                   <div>
                     <label className={labelCls}>
                       RCRC Address 2
-                      <span className="ml-2 text-xs font-normal
-                      text-gray-400">(Optional)</span>
+                      <span className="ml-2 text-xs
+                      font-normal text-gray-400">
+                        (Optional)
+                      </span>
                     </label>
                     <input
                       type="text"
@@ -1075,19 +1022,22 @@ export default function RequestorPage() {
                 </div>
               </div>
 
-              {/* ══════════════════════════════════════
+              {/* ════════════════════════════════════
                   SECTION 2: Pickup Schedule
-                  FIX 7 — Updated Time Slots
-              ══════════════════════════════════════ */}
+              ════════════════════════════════════ */}
               <div className="pt-6 border-t">
                 <h3 className="text-lg font-semibold
                 text-gray-900 mb-6 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white
-                  rounded-full flex items-center justify-center
-                  mr-3 text-sm">2</span>
+                  <span className="w-8 h-8 bg-blue-900
+                  text-white rounded-full flex items-center
+                  justify-center mr-3 text-sm">
+                    2
+                  </span>
                   Pickup Schedule
                 </h3>
-                <div className="grid md:grid-cols-2 gap-6 ml-11">
+
+                <div className="grid md:grid-cols-2
+                gap-6 ml-11">
 
                   {/* Preferred Date */}
                   <div>
@@ -1100,12 +1050,14 @@ export default function RequestorPage() {
                       value={formData.preferredDate}
                       onChange={handleFormChange}
                       required
-                      min={new Date().toISOString().split('T')[0]}
+                      min={new Date()
+                        .toISOString()
+                        .split('T')[0]}
                       className={inputCls}
                     />
                   </div>
 
-                  {/* Pickup Hours — FIX 7 New Time Slots */}
+                  {/* Pickup Hours */}
                   <div>
                     <label className={labelCls}>
                       Pickup Hours <Req />
@@ -1129,19 +1081,22 @@ export default function RequestorPage() {
                 </div>
               </div>
 
-              {/* ══════════════════════════════════════
+              {/* ════════════════════════════════════
                   SECTION 3: Quantities
-                  FIX 4 — Required
-              ══════════════════════════════════════ */}
+              ════════════════════════════════════ */}
               <div className="pt-6 border-t">
                 <h3 className="text-lg font-semibold
                 text-gray-900 mb-6 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white
-                  rounded-full flex items-center justify-center
-                  mr-3 text-sm">3</span>
+                  <span className="w-8 h-8 bg-blue-900
+                  text-white rounded-full flex items-center
+                  justify-center mr-3 text-sm">
+                    3
+                  </span>
                   Quantities
                 </h3>
-                <div className="grid md:grid-cols-2 gap-6 ml-11">
+
+                <div className="grid md:grid-cols-2
+                gap-6 ml-11">
 
                   {/* Pallet Quantity */}
                   <div>
@@ -1180,15 +1135,17 @@ export default function RequestorPage() {
                 </div>
               </div>
 
-              {/* ══════════════════════════════════════
+              {/* ════════════════════════════════════
                   SECTION 4: Notes — Optional
-              ══════════════════════════════════════ */}
+              ════════════════════════════════════ */}
               <div className="pt-6 border-t">
                 <h3 className="text-lg font-semibold
                 text-gray-900 mb-6 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white
-                  rounded-full flex items-center justify-center
-                  mr-3 text-sm">4</span>
+                  <span className="w-8 h-8 bg-blue-900
+                  text-white rounded-full flex items-center
+                  justify-center mr-3 text-sm">
+                    4
+                  </span>
                   Additional Information
                   <span className="ml-2 text-sm font-normal
                   text-gray-400">(Optional)</span>
@@ -1200,22 +1157,24 @@ export default function RequestorPage() {
                     value={formData.notes}
                     onChange={handleFormChange}
                     rows={5}
-                    placeholder="Any special instructions or
-                    additional details..."
+                    placeholder="Any special instructions
+                    or additional details..."
                     className={`${inputCls} resize-none`}
                   />
                 </div>
               </div>
 
-              {/* ══════════════════════════════════════
+              {/* ════════════════════════════════════
                   SECTION 5: Attachments — Optional
-              ══════════════════════════════════════ */}
+              ════════════════════════════════════ */}
               <div className="pt-6 border-t">
                 <h3 className="text-lg font-semibold
                 text-gray-900 mb-6 flex items-center">
-                  <span className="w-8 h-8 bg-blue-900 text-white
-                  rounded-full flex items-center justify-center
-                  mr-3 text-sm">5</span>
+                  <span className="w-8 h-8 bg-blue-900
+                  text-white rounded-full flex items-center
+                  justify-center mr-3 text-sm">
+                    5
+                  </span>
                   Attachments
                   <span className="ml-2 text-sm font-normal
                   text-gray-400">(Optional)</span>
@@ -1223,23 +1182,28 @@ export default function RequestorPage() {
 
                 <div className="ml-11">
 
-                  {/* Drop zone */}
+                  {/* Drop Zone */}
                   <div className="border-2 border-dashed
                   border-gray-300 rounded-xl p-6 text-center
-                  hover:border-blue-400 transition-colors bg-gray-50">
-                    <svg className="mx-auto h-10 w-10 text-gray-400
-                    mb-3" fill="none" stroke="currentColor"
+                  hover:border-blue-400 transition-colors
+                  bg-gray-50">
+                    <svg className="mx-auto h-10 w-10
+                    text-gray-400 mb-3" fill="none"
+                         stroke="currentColor"
                          viewBox="0 0 24 24">
                       <path strokeLinecap="round"
-                            strokeLinejoin="round" strokeWidth={1.5}
-                            d="M7 16a4 4 0 01-.88-7.903A5 5 0
-                            1115.9 6L16 6a5 5 0 011 9.9M15
-                            13l-3-3m0 0l-3 3m3-3v12" />
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5
+                            0 1115.9 6L16 6a5 5 0 011
+                            9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-semibold text-blue-600">
+                      <span className="font-semibold
+                      text-blue-600">
                         Click to upload
-                      </span>{' '}or drag and drop
+                      </span>
+                      {' '}or drag and drop
                     </p>
                     <p className="text-xs text-gray-400 mb-4">
                       JPEG images or Excel files —
@@ -1252,7 +1216,9 @@ export default function RequestorPage() {
                       id="file-upload"
                       className="hidden"
                       onChange={e => {
-                        const files = Array.from(e.target.files || [])
+                        const files = Array.from(
+                          e.target.files || []
+                        )
                         if (files.length > 3) {
                           setError('Maximum 3 files allowed.')
                           return
@@ -1265,47 +1231,57 @@ export default function RequestorPage() {
                       htmlFor="file-upload"
                       className="cursor-pointer inline-flex
                       items-center gap-2 bg-white border
-                      border-gray-300 text-gray-700 px-4 py-2
-                      rounded-lg text-sm font-medium
+                      border-gray-300 text-gray-700 px-4
+                      py-2 rounded-lg text-sm font-medium
                       hover:bg-gray-50 transition shadow-sm"
                     >
                       Choose Files
                     </label>
                   </div>
 
-                  {/* Selected file list */}
+                  {/* Selected Files */}
                   {selectedFiles.length > 0 && (
                     <div className="mt-4 space-y-2">
-                      <p className="text-sm font-medium text-gray-700">
-                        Selected Files ({selectedFiles.length}/3):
+                      <p className="text-sm font-medium
+                      text-gray-700">
+                        Selected Files (
+                        {selectedFiles.length}/3):
                       </p>
                       {selectedFiles.map((file, index) => (
-                        <div key={index}
-                             className="flex items-center
-                             justify-between bg-blue-50
-                             border border-blue-200 rounded-lg
-                             px-4 py-2">
-                          <div className="flex items-center gap-2">
+                        <div
+                          key={index}
+                          className="flex items-center
+                          justify-between bg-blue-50
+                          border border-blue-200
+                          rounded-lg px-4 py-2"
+                        >
+                          <div className="flex items-center
+                          gap-2">
                             <span>
                               {file.type.includes('image')
                                 ? '🖼️' : '📊'}
                             </span>
-                            <span className="text-sm text-gray-700
-                            truncate max-w-xs">
+                            <span className="text-sm
+                            text-gray-700 truncate max-w-xs">
                               {file.name}
                             </span>
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs
+                            text-gray-400">
                               ({(file.size / 1024 / 1024)
                                 .toFixed(2)} MB)
                             </span>
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleRemoveFile(index)}
+                            onClick={() =>
+                              handleRemoveFile(index)
+                            }
                             className="text-red-400
-                            hover:text-red-600 transition ml-2"
+                            hover:text-red-600
+                            transition ml-2"
                           >
-                            <svg className="w-4 h-4" fill="none"
+                            <svg className="w-4 h-4"
+                                 fill="none"
                                  stroke="currentColor"
                                  viewBox="0 0 24 24">
                               <path strokeLinecap="round"
@@ -1319,10 +1295,11 @@ export default function RequestorPage() {
                     </div>
                   )}
 
-                  {/* Upload progress */}
+                  {/* Upload Progress */}
                   {uploadProgress && (
-                    <div className="mt-4 flex items-center gap-3
-                    bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="mt-4 flex items-center
+                    gap-3 bg-blue-50 border border-blue-200
+                    rounded-lg p-3">
                       <div className="w-4 h-4 border-2
                       border-blue-500 border-t-transparent
                       rounded-full animate-spin" />
@@ -1337,31 +1314,36 @@ export default function RequestorPage() {
 
             </div>
 
-            {/* Submit button */}
+            {/* Submit Button */}
             <div className="mt-8 pt-6 border-t">
               <button
                 type="submit"
                 disabled={submitLoading || uploadProgress}
-                className="w-full bg-blue-900 text-white py-4
-                px-6 rounded-lg font-semibold text-lg
+                className="w-full bg-blue-900 text-white
+                py-4 px-6 rounded-lg font-semibold text-lg
                 hover:bg-blue-800 focus:outline-none
                 focus:ring-4 focus:ring-blue-300
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transform hover:scale-[1.02] transition-all
-                duration-200 shadow-lg"
+                disabled:opacity-50
+                disabled:cursor-not-allowed
+                transform hover:scale-[1.02]
+                transition-all duration-200 shadow-lg"
               >
                 {submitLoading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5
-                    text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12"
-                              r="10" stroke="currentColor"
+                  <span className="flex items-center
+                  justify-center">
+                    <svg className="animate-spin -ml-1
+                    mr-3 h-5 w-5 text-white" fill="none"
+                         viewBox="0 0 24 24">
+                      <circle className="opacity-25"
+                              cx="12" cy="12" r="10"
+                              stroke="currentColor"
                               strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373
-                            0 12h4zm2 5.291A7.962 7.962 0 014
-                            12H0c0 3.042 1.135 5.824 3
-                            7.938l3-2.647z" />
+                      <path className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373
+                            0 0 5.373 0 12h4zm2 5.291A7.962
+                            7.962 0 014 12H0c0 3.042 1.135
+                            5.824 3 7.938l3-2.647z" />
                     </svg>
                     Submitting Request...
                   </span>
@@ -1369,9 +1351,12 @@ export default function RequestorPage() {
                   'Submit Pickup Request'
                 )}
               </button>
-              <p className="text-center text-xs text-gray-400 mt-3">
+              <p className="text-center text-xs
+              text-gray-400 mt-3">
                 Fields marked with{' '}
-                <span className="text-red-500 font-bold">*</span>
+                <span className="text-red-500 font-bold">
+                  *
+                </span>
                 {' '}are required
               </p>
             </div>

@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// ── Types ──────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────
 interface Attachment {
   url:  string
   name: string
@@ -27,30 +27,27 @@ interface PickupRequest {
   status:        'NEW' | 'new' | 'pending' | 'approved' | 'rejected' | 'completed'
   created_at:    string
   notes?:        string
-  // ── RCRC Fields ──────────────────────────────────
-  rcrc_number?:          string
-  rcrc_name?:            string
-  rcrc_contact_person?:  string
-  rcrc_email?:           string
-  rcrc_phone_number?:    string
-  rcrc_address?:         string
-  rcrc_address2?:        string
-  rcrc_zip_code?:        string
-  preferred_date?:       string
-  time_window?:          string
-  pallet_quantity?:      number
+  // ── RCRC Fields ────────────────────────────────────
+  rcrc_number?:           string
+  rcrc_name?:             string
+  rcrc_contact_person?:   string
+  rcrc_email?:            string
+  rcrc_phone_number?:     string
+  rcrc_address?:          string
+  rcrc_address2?:         string
+  rcrc_zip_code?:         string
+  preferred_date?:        string
+  time_window?:           string
+  pallet_quantity?:       number
   total_pieces_quantity?: number
-  special_instructions?: string
-  state?:                string
-  // ── Attachments ───────────────────────────────────
-  attachments?: Attachment[]
-  // ✅ FIX 6 — 3 New Category Fields
-  warranty_cats?: string
-  paycats?:       string
-  battery?:       string
+  special_instructions?:  string
+  state?:                 string
+  attachments?:           Attachment[]
+  // ✅ UPDATED — Single Category Field
+  category?:              string
 }
 
-// ── Main Component ─────────────────────────────────────
+// ── Main Component ──────────────────────────────────────
 export default function AdminDashboard() {
   const router = useRouter()
 
@@ -74,7 +71,6 @@ export default function AdminDashboard() {
     type:    'success' | 'error'
   } | null>(null)
   const [fordLogoError,      setFordLogoError]      = useState(false)
-
   const [exportStatusFilter, setExportStatusFilter] = useState<
     'all' | 'NEW' | 'pending' | 'approved' | 'rejected' | 'completed'
   >('all')
@@ -83,13 +79,13 @@ export default function AdminDashboard() {
   >('all')
   const [exportPreview,      setExportPreview]      = useState<PickupRequest[]>([])
 
-  // ── Toast ──────────────────────────────────────────
+  // ── Toast ─────────────────────────────────────────────
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
   }
 
-  // ── Auth Check ─────────────────────────────────────
+  // ── Auth Check ────────────────────────────────────────
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isAdminLoggedIn')
     if (isLoggedIn !== 'true') {
@@ -99,7 +95,7 @@ export default function AdminDashboard() {
     setIsAuthenticated(true)
   }, [router])
 
-  // ── Fetch Requests ─────────────────────────────────
+  // ── Fetch Requests ────────────────────────────────────
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true)
@@ -107,7 +103,6 @@ export default function AdminDashboard() {
         .from('pickup_request')
         .select('*')
         .order('created_at', { ascending: false })
-
       if (error) throw error
       setRequests(data || [])
     } catch (error) {
@@ -118,11 +113,10 @@ export default function AdminDashboard() {
     }
   }, [])
 
-  // ── Realtime Subscription ──────────────────────────
+  // ── Realtime Subscription ─────────────────────────────
   useEffect(() => {
     if (!isAuthenticated) return
     fetchRequests()
-
     const channel = supabase
       .channel('pickup_requests_changes')
       .on(
@@ -131,11 +125,10 @@ export default function AdminDashboard() {
         () => { fetchRequests() }
       )
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [isAuthenticated, fetchRequests])
 
-  // ── Export Preview Filter ──────────────────────────
+  // ── Export Preview Filter ─────────────────────────────
   useEffect(() => {
     const now      = new Date()
     const filtered = requests.filter(req => {
@@ -147,17 +140,16 @@ export default function AdminDashboard() {
         }
       }
       const created = new Date(req.created_at)
-      if (exportDateFilter === 'today') {
+      if (exportDateFilter === 'today')
         return created.toDateString() === now.toDateString()
-      }
       if (exportDateFilter === 'week') {
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         return created >= weekAgo
       }
       if (exportDateFilter === 'month') {
         return (
-          created.getMonth()     === now.getMonth() &&
-          created.getFullYear()  === now.getFullYear()
+          created.getMonth()    === now.getMonth() &&
+          created.getFullYear() === now.getFullYear()
         )
       }
       return true
@@ -165,7 +157,7 @@ export default function AdminDashboard() {
     setExportPreview(filtered)
   }, [exportStatusFilter, exportDateFilter, requests])
 
-  // ── Status Change ──────────────────────────────────
+  // ── Status Change ─────────────────────────────────────
   const handleStatusChange = async (
     id:        number,
     newStatus: 'approved' | 'rejected' | 'completed' | 'pending'
@@ -179,9 +171,7 @@ export default function AdminDashboard() {
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
-
       if (error) throw error
-
       setRequests(prev =>
         prev.map(req =>
           req.id === id ? { ...req, status: newStatus } : req
@@ -197,7 +187,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // ── Export CSV ─────────────────────────────────────
+  // ── Export CSV ────────────────────────────────────────
   const exportToCSV = () => {
     if (exportPreview.length === 0) {
       showToast('No data to export with selected filters', 'error')
@@ -214,10 +204,12 @@ export default function AdminDashboard() {
       {} as Record<string, PickupRequest[]>
     )
 
+    // ✅ UPDATED headers — single Category column
     const headers = [
-      'ID', 'Customer Name', 'Email', 'Phone', 'Address',
-      'Scrap Type', 'Quantity', 'Warranty Cats', 'Paycats',
-      'Battery', 'Status', 'Submitted Date',
+      'ID', 'Customer Name', 'Email', 'Phone',
+      'Address', 'Scrap Type', 'Quantity',
+      'Category',
+      'Status', 'Submitted Date',
     ]
 
     let csvContent = ''
@@ -251,15 +243,13 @@ export default function AdminDashboard() {
     sortedData.forEach(r => {
       const row = [
         r.id,
-        r.customer_name    || '',
-        r.email            || '',
-        r.phone            || '',
-        r.address          || '',
-        r.scrap_type       || '',
-        r.quantity         || '',
-        r.warranty_cats    || '',   // ✅ NEW
-        r.paycats          || '',   // ✅ NEW
-        r.battery          || '',   // ✅ NEW
+        r.customer_name || '',
+        r.email         || '',
+        r.phone         || '',
+        r.address       || '',
+        r.scrap_type    || '',
+        r.quantity      || '',
+        r.category      || '',   // ✅ single category
         r.status.toUpperCase(),
         new Date(r.created_at).toLocaleDateString('en-IN', {
           day: '2-digit', month: 'short', year: 'numeric',
@@ -275,15 +265,13 @@ export default function AdminDashboard() {
       items.forEach(r => {
         const row = [
           r.id,
-          r.customer_name    || '',
-          r.email            || '',
-          r.phone            || '',
-          r.address          || '',
-          r.scrap_type       || '',
-          r.quantity         || '',
-          r.warranty_cats    || '',  // ✅ NEW
-          r.paycats          || '',  // ✅ NEW
-          r.battery          || '',  // ✅ NEW
+          r.customer_name || '',
+          r.email         || '',
+          r.phone         || '',
+          r.address       || '',
+          r.scrap_type    || '',
+          r.quantity      || '',
+          r.category      || '',  // ✅ single category
           r.status.toUpperCase(),
           new Date(r.created_at).toLocaleDateString('en-IN', {
             day: '2-digit', month: 'short', year: 'numeric',
@@ -317,7 +305,7 @@ export default function AdminDashboard() {
     )
   }
 
-  // ── Date Filter Helper ─────────────────────────────
+  // ── Date Filter Helper ────────────────────────────────
   const applyDateFilter = (req: PickupRequest) => {
     if (dateFilter === 'all') return true
     const created = new Date(req.created_at)
@@ -340,7 +328,7 @@ export default function AdminDashboard() {
   const isNewStatus = (status: string) =>
     status === 'NEW' || status === 'new'
 
-  // ── Filtered + Sorted Requests ─────────────────────
+  // ── Filtered + Sorted Requests ────────────────────────
   const filteredRequests = requests
     .filter(req => {
       if (filter === 'all') return true
@@ -358,7 +346,8 @@ export default function AdminDashboard() {
         req.scrap_type?.toLowerCase().includes(q)    ||
         req.address?.toLowerCase().includes(q)       ||
         req.rcrc_number?.toLowerCase().includes(q)   ||
-        req.rcrc_name?.toLowerCase().includes(q)
+        req.rcrc_name?.toLowerCase().includes(q)     ||
+        req.category?.toLowerCase().includes(q)
       )
     })
     .sort((a, b) => {
@@ -367,14 +356,14 @@ export default function AdminDashboard() {
       return sortOrder === 'newest' ? dateB - dateA : dateA - dateB
     })
 
-  // ── Logout ─────────────────────────────────────────
+  // ── Logout ────────────────────────────────────────────
   const handleLogout = () => {
     localStorage.removeItem('isAdminLoggedIn')
     localStorage.removeItem('adminEmail')
     router.push('/')
   }
 
-  // ── Status Badge ───────────────────────────────────
+  // ── Status Badge ──────────────────────────────────────
   const getStatusBadge = (status: string) => {
     const badges: Record<string, string> = {
       new:       'bg-purple-100 text-purple-800',
@@ -387,7 +376,7 @@ export default function AdminDashboard() {
     return badges[status] || 'bg-gray-100 text-gray-800'
   }
 
-  // ── Stats ──────────────────────────────────────────
+  // ── Stats ─────────────────────────────────────────────
   const stats = {
     total:     requests.length,
     new:       requests.filter(r => isNewStatus(r.status)).length,
@@ -397,13 +386,14 @@ export default function AdminDashboard() {
     rejected:  requests.filter(r => r.status === 'rejected').length,
   }
 
-  // ── Render Attachments ─────────────────────────────
+  // ── Render Attachments ────────────────────────────────
   const renderAttachments = (attachments?: Attachment[]) => {
     if (!attachments || attachments.length === 0) return null
     return (
       <div className="mt-4">
-        <p className="text-xs text-gray-500 uppercase font-medium mb-2">
-          📎 Attachments ({attachments.length})
+        <p className="text-xs text-gray-500 uppercase
+        font-medium mb-2">
+          Attachments ({attachments.length})
         </p>
         <div className="space-y-2">
           {attachments.map((file, idx) => {
@@ -442,15 +432,17 @@ export default function AdminDashboard() {
     )
   }
 
-  // ── Loading States ─────────────────────────────────
+  // ── Loading States ────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center
-      justify-center">
+      <div className="min-h-screen bg-gray-50 flex
+      items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12
           border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Checking authentication...</p>
+          <p className="text-gray-600">
+            Checking authentication...
+          </p>
         </div>
       </div>
     )
@@ -458,8 +450,8 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center
-      justify-center">
+      <div className="min-h-screen bg-gray-50 flex
+      items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12
           border-b-2 border-blue-600 mx-auto mb-4" />
@@ -469,9 +461,9 @@ export default function AdminDashboard() {
     )
   }
 
-  // ════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   // RENDER
-  // ════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -498,7 +490,7 @@ export default function AdminDashboard() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  📊 Export to CSV
+                  Export to CSV
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
                   Choose filters before downloading
@@ -508,7 +500,9 @@ export default function AdminDashboard() {
                 onClick={() => setShowExportModal(false)}
                 className="text-gray-400 hover:text-gray-600
                 text-2xl font-light"
-              >✕</button>
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -521,12 +515,12 @@ export default function AdminDashboard() {
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'all',       label: '📋 All',      count: stats.total     },
-                    { value: 'NEW',       label: '🆕 New',      count: stats.new       },
-                    { value: 'pending',   label: '⏳ Pending',  count: stats.pending   },
-                    { value: 'approved',  label: '✓ Approved',  count: stats.approved  },
-                    { value: 'rejected',  label: '✕ Rejected',  count: stats.rejected  },
-                    { value: 'completed', label: '✅ Done',     count: stats.completed },
+                    { value: 'all',       label: 'All',      count: stats.total     },
+                    { value: 'NEW',       label: 'New',      count: stats.new       },
+                    { value: 'pending',   label: 'Pending',  count: stats.pending   },
+                    { value: 'approved',  label: 'Approved', count: stats.approved  },
+                    { value: 'rejected',  label: 'Rejected', count: stats.rejected  },
+                    { value: 'completed', label: 'Done',     count: stats.completed },
                   ].map(option => (
                     <button
                       key={option.value}
@@ -535,8 +529,8 @@ export default function AdminDashboard() {
                           option.value as typeof exportStatusFilter
                         )
                       }
-                      className={`p-2 rounded-lg border-2 text-xs
-                      font-medium transition text-center ${
+                      className={`p-2 rounded-lg border-2
+                      text-xs font-medium transition text-center ${
                         exportStatusFilter === option.value
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
@@ -571,8 +565,8 @@ export default function AdminDashboard() {
                           option.value as typeof exportDateFilter
                         )
                       }
-                      className={`p-2 rounded-lg border-2 text-xs
-                      font-medium transition text-center ${
+                      className={`p-2 rounded-lg border-2
+                      text-xs font-medium transition text-center ${
                         exportDateFilter === option.value
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
                           : 'border-gray-200 hover:border-gray-300 text-gray-600'
@@ -592,7 +586,7 @@ export default function AdminDashboard() {
               }`}>
                 <p className="text-sm font-semibold
                 text-gray-700 mb-2">
-                  📋 Export Preview
+                  Export Preview
                 </p>
                 {exportPreview.length > 0 ? (
                   <div>
@@ -623,7 +617,7 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <p className="text-red-600 font-medium">
-                    ⚠️ No records match selected filters
+                    No records match selected filters
                   </p>
                 )}
               </div>
@@ -649,7 +643,7 @@ export default function AdminDashboard() {
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
-                📥 Download ({exportPreview.length})
+                Download ({exportPreview.length})
               </button>
             </div>
 
@@ -658,7 +652,7 @@ export default function AdminDashboard() {
       )}
 
       {/* ════════════════════════════════════════════════
-          VIEW DETAILS MODAL — WITH ALL FIELDS
+          VIEW DETAILS MODAL
       ════════════════════════════════════════════════ */}
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50
@@ -675,55 +669,29 @@ export default function AdminDashboard() {
                 onClick={() => setShowModal(false)}
                 className="text-gray-400 hover:text-gray-600
                 text-2xl"
-              >✕</button>
+              >
+                ✕
+              </button>
             </div>
 
-            {/* ── Step 6+7: 3 Category Badges at top of modal ── */}
-            {(selectedRequest.warranty_cats ||
-              selectedRequest.paycats       ||
-              selectedRequest.battery) && (
-              <div className="flex flex-wrap gap-2 mb-4
-              p-3 bg-gray-50 rounded-xl border border-gray-200">
-                {selectedRequest.warranty_cats && (
-                  <div className="flex flex-col items-start">
-                    <p className="text-xs text-gray-400 mb-1">
-                      Warranty Cats
-                    </p>
-                    <span className="inline-flex items-center
-                    px-3 py-1 rounded-full text-xs font-semibold
-                    bg-purple-100 text-purple-800">
-                      {selectedRequest.warranty_cats}
-                    </span>
-                  </div>
-                )}
-                {selectedRequest.paycats && (
-                  <div className="flex flex-col items-start">
-                    <p className="text-xs text-gray-400 mb-1">
-                      Paycats
-                    </p>
-                    <span className="inline-flex items-center
-                    px-3 py-1 rounded-full text-xs font-semibold
-                    bg-blue-100 text-blue-800">
-                      {selectedRequest.paycats}
-                    </span>
-                  </div>
-                )}
-                {selectedRequest.battery && (
-                  <div className="flex flex-col items-start">
-                    <p className="text-xs text-gray-400 mb-1">
-                      Battery
-                    </p>
-                    <span className="inline-flex items-center
-                    px-3 py-1 rounded-full text-xs font-semibold
-                    bg-green-100 text-green-800">
-                      {selectedRequest.battery}
-                    </span>
-                  </div>
-                )}
+            {/* ✅ Category Badge at top of modal */}
+            {selectedRequest.category && (
+              <div className="flex flex-wrap gap-2 mb-4 p-3
+              bg-gray-50 rounded-xl border border-gray-200">
+                <div className="flex flex-col items-start">
+                  <p className="text-xs text-gray-400 mb-1">
+                    Category
+                  </p>
+                  <span className="inline-flex items-center
+                  px-3 py-1 rounded-full text-xs font-semibold
+                  bg-purple-100 text-purple-800">
+                    {selectedRequest.category}
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* ── Basic Info Grid ── */}
+            {/* ── Detail Grid ── */}
             <div className="grid grid-cols-2 gap-4">
 
               <div>
@@ -783,7 +751,6 @@ export default function AdminDashboard() {
                 </p>
               </div>
 
-              {/* ── RCRC Details ── */}
               {selectedRequest.rcrc_number && (
                 <div>
                   <p className="text-xs text-gray-500
@@ -890,39 +857,15 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ✅ FIX 6 Step 7: 3 Category Fields in Modal */}
-              {selectedRequest.warranty_cats && (
+              {/* ✅ Category in detail grid */}
+              {selectedRequest.category && (
                 <div>
                   <p className="text-xs text-gray-500
-                  uppercase font-medium">Warranty Cats</p>
+                  uppercase font-medium">Category</p>
                   <span className="inline-flex items-center
                   px-2 py-1 rounded-full text-xs font-medium mt-1
                   bg-purple-100 text-purple-800">
-                    {selectedRequest.warranty_cats}
-                  </span>
-                </div>
-              )}
-
-              {selectedRequest.paycats && (
-                <div>
-                  <p className="text-xs text-gray-500
-                  uppercase font-medium">Paycats</p>
-                  <span className="inline-flex items-center
-                  px-2 py-1 rounded-full text-xs font-medium mt-1
-                  bg-blue-100 text-blue-800">
-                    {selectedRequest.paycats}
-                  </span>
-                </div>
-              )}
-
-              {selectedRequest.battery && (
-                <div>
-                  <p className="text-xs text-gray-500
-                  uppercase font-medium">Battery</p>
-                  <span className="inline-flex items-center
-                  px-2 py-1 rounded-full text-xs font-medium mt-1
-                  bg-green-100 text-green-800">
-                    {selectedRequest.battery}
+                    {selectedRequest.category}
                   </span>
                 </div>
               )}
@@ -948,7 +891,7 @@ export default function AdminDashboard() {
 
             </div>
 
-            {/* Attachments in Modal */}
+            {/* Attachments */}
             {renderAttachments(selectedRequest.attachments)}
 
             {/* Action Buttons */}
@@ -1015,7 +958,8 @@ export default function AdminDashboard() {
       ════════════════════════════════════════════════ */}
       <header className="bg-white shadow-sm
       border-b border-gray-200">
-        <div className="bg-[#003478] px-4 sm:px-6 lg:px-8 py-1">
+        <div className="bg-[#003478] px-4 sm:px-6
+        lg:px-8 py-1">
           <p className="text-white text-xs text-center
           tracking-widest font-medium uppercase">
             Ford Motor Company – Component Sales Division
@@ -1024,7 +968,8 @@ export default function AdminDashboard() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6
         lg:px-8 py-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center
+          justify-between gap-4">
 
             <div className="flex items-center gap-4">
               {!fordLogoError ? (
@@ -1048,9 +993,7 @@ export default function AdminDashboard() {
               <div className="w-px h-10 bg-gray-300" />
               <div>
                 <h1 className="text-xl font-bold text-gray-900
-                leading-tight">
-                  Admin Dashboard
-                </h1>
+                leading-tight">Admin Dashboard</h1>
                 <p className="text-xs text-gray-500">
                   Scrap Pickup Management
                 </p>
@@ -1058,30 +1001,6 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2
-              bg-[#003478] px-4 py-2 rounded-lg shadow">
-                <div className="flex flex-col items-center">
-                  <span className="text-white text-xs font-light
-                  tracking-widest uppercase">Ford</span>
-                  <span className="text-[#c9a84c] text-sm
-                  font-bold tracking-wide uppercase leading-tight">
-                    Component
-                  </span>
-                  <span className="text-[#c9a84c] text-sm
-                  font-bold tracking-wide uppercase leading-tight">
-                    Sales
-                  </span>
-                </div>
-                <div className="w-px h-10 bg-blue-400
-                opacity-50 mx-1" />
-                <div className="w-8 h-8 bg-[#c9a84c] rounded-full
-                flex items-center justify-center">
-                  <span className="text-[#003478] font-bold text-xs">
-                    CS
-                  </span>
-                </div>
-              </div>
-
               <button
                 onClick={fetchRequests}
                 className="px-3 py-2 bg-gray-100 text-gray-700
@@ -1159,10 +1078,12 @@ export default function AdminDashboard() {
 
             <div className="flex-1 relative">
               <span className="absolute left-3 top-1/2
-              -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+              -translate-y-1/2 text-gray-400 text-sm">
+                🔍
+              </span>
               <input
                 type="text"
-                placeholder="Search by name, email, RCRC number..."
+                placeholder="Search by name, email, RCRC, category..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-9 py-2 border
@@ -1176,7 +1097,9 @@ export default function AdminDashboard() {
                   className="absolute right-3 top-1/2
                   -translate-y-1/2 text-gray-400
                   hover:text-gray-600 text-sm"
-                >✕</button>
+                >
+                  ✕
+                </button>
               )}
             </div>
 
@@ -1186,8 +1109,8 @@ export default function AdminDashboard() {
                 setDateFilter(e.target.value as typeof dateFilter)
               }
               className="px-3 py-2 border border-gray-300
-              rounded-lg text-sm focus:ring-2 focus:ring-blue-500
-              outline-none min-w-[140px]"
+              rounded-lg text-sm focus:ring-2
+              focus:ring-blue-500 outline-none min-w-[140px]"
             >
               <option value="all">📅 All Dates</option>
               <option value="today">📅 Today</option>
@@ -1201,26 +1124,21 @@ export default function AdminDashboard() {
                 setSortOrder(e.target.value as 'newest' | 'oldest')
               }
               className="px-3 py-2 border border-gray-300
-              rounded-lg text-sm focus:ring-2 focus:ring-blue-500
-              outline-none min-w-[150px]"
+              rounded-lg text-sm focus:ring-2
+              focus:ring-blue-500 outline-none min-w-[150px]"
             >
               <option value="newest">🔽 Newest First</option>
               <option value="oldest">🔼 Oldest First</option>
             </select>
 
           </div>
+
           <p className="text-xs text-gray-500 mt-3">
             Showing{' '}
             <span className="font-bold text-gray-700">
               {filteredRequests.length}
             </span>{' '}
             of {requests.length} requests
-            {searchQuery && (
-              <span>
-                {' '}matching &quot;
-                <strong>{searchQuery}</strong>&quot;
-              </span>
-            )}
           </p>
         </div>
 
@@ -1266,35 +1184,31 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
 
-              {/* ✅ FIX 6 Step 4 — Table Headers */}
+              {/* ✅ UPDATED Table Headers — single Category column */}
               <thead className="bg-[#003478]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">#</th>
 
                   <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase">Customer</th>
+                  font-medium text-white uppercase">
+                    Customer
+                  </th>
 
                   <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase">Contact</th>
+                  font-medium text-white uppercase">
+                    Contact
+                  </th>
 
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">
                     Scrap Details
                   </th>
 
-                  {/* ✅ NEW: 3 Category Columns */}
-                  <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase whitespace-nowrap">
-                    Warranty Cats
-                  </th>
+                  {/* ✅ Single Category column */}
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">
-                    Paycats
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase">
-                    Battery
+                    Category
                   </th>
 
                   <th className="px-4 py-3 text-left text-xs
@@ -1311,13 +1225,14 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
 
-              {/* ✅ FIX 6 Step 5 — Table Rows */}
+              {/* ✅ UPDATED Table Rows — single Category cell */}
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredRequests.map((request, index) => (
                   <tr
                     key={request.id}
                     className="hover:bg-blue-50 transition"
                   >
+
                     {/* # */}
                     <td className="px-4 py-4 text-sm text-gray-400">
                       {index + 1}
@@ -1360,7 +1275,8 @@ export default function AdminDashboard() {
 
                     {/* Scrap Details */}
                     <td className="px-4 py-4">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium
+                      text-gray-900">
                         {request.scrap_type}
                       </p>
                       <p className="text-sm text-gray-500">
@@ -1368,43 +1284,14 @@ export default function AdminDashboard() {
                       </p>
                     </td>
 
-                    {/* ✅ NEW: Warranty Cats */}
+                    {/* ✅ Single Category Cell */}
                     <td className="px-4 py-4">
-                      {request.warranty_cats ? (
+                      {request.category ? (
                         <span className="inline-flex items-center
                         px-2 py-1 rounded-full text-xs font-medium
-                        bg-purple-100 text-purple-800 whitespace-nowrap">
-                          {request.warranty_cats}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">
-                          —
-                        </span>
-                      )}
-                    </td>
-
-                    {/* ✅ NEW: Paycats */}
-                    <td className="px-4 py-4">
-                      {request.paycats ? (
-                        <span className="inline-flex items-center
-                        px-2 py-1 rounded-full text-xs font-medium
-                        bg-blue-100 text-blue-800 whitespace-nowrap">
-                          {request.paycats}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">
-                          —
-                        </span>
-                      )}
-                    </td>
-
-                    {/* ✅ NEW: Battery */}
-                    <td className="px-4 py-4">
-                      {request.battery ? (
-                        <span className="inline-flex items-center
-                        px-2 py-1 rounded-full text-xs font-medium
-                        bg-green-100 text-green-800 whitespace-nowrap">
-                          {request.battery}
+                        bg-purple-100 text-purple-800
+                        whitespace-nowrap">
+                          {request.category}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-400 italic">
@@ -1414,8 +1301,8 @@ export default function AdminDashboard() {
                     </td>
 
                     {/* Date */}
-                    <td className="px-4 py-4 text-sm text-gray-500
-                    whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm
+                    text-gray-500 whitespace-nowrap">
                       {new Date(request.created_at)
                         .toLocaleDateString('en-IN', {
                           day:   '2-digit',
@@ -1433,7 +1320,7 @@ export default function AdminDashboard() {
                       </span>
                     </td>
 
-                    {/* Files / Attachments */}
+                    {/* Files */}
                     <td className="px-4 py-4">
                       {request.attachments &&
                       request.attachments.length > 0 ? (
@@ -1472,8 +1359,8 @@ export default function AdminDashboard() {
 
                     {/* Actions */}
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-2
-                      flex-wrap">
+                      <div className="flex items-center
+                      gap-2 flex-wrap">
                         <button
                           onClick={() => {
                             setSelectedRequest(request)
@@ -1481,8 +1368,8 @@ export default function AdminDashboard() {
                           }}
                           className="text-gray-600
                           hover:text-gray-900 bg-gray-100
-                          hover:bg-gray-200 px-2 py-1 rounded
-                          text-xs transition"
+                          hover:bg-gray-200 px-2 py-1
+                          rounded text-xs transition"
                         >
                           👁️ View
                         </button>
@@ -1499,8 +1386,9 @@ export default function AdminDashboard() {
                               disabled={actionLoading === request.id}
                               className="text-blue-600
                               hover:text-blue-900 bg-blue-50
-                              hover:bg-blue-100 px-2 py-1 rounded
-                              text-xs transition disabled:opacity-50"
+                              hover:bg-blue-100 px-2 py-1
+                              rounded text-xs transition
+                              disabled:opacity-50"
                             >
                               {actionLoading === request.id
                                 ? '...' : '✓ Approve'}
@@ -1514,8 +1402,9 @@ export default function AdminDashboard() {
                               disabled={actionLoading === request.id}
                               className="text-red-600
                               hover:text-red-900 bg-red-50
-                              hover:bg-red-100 px-2 py-1 rounded
-                              text-xs transition disabled:opacity-50"
+                              hover:bg-red-100 px-2 py-1
+                              rounded text-xs transition
+                              disabled:opacity-50"
                             >
                               {actionLoading === request.id
                                 ? '...' : '✕ Reject'}
@@ -1533,8 +1422,9 @@ export default function AdminDashboard() {
                             disabled={actionLoading === request.id}
                             className="text-green-600
                             hover:text-green-900 bg-green-50
-                            hover:bg-green-100 px-2 py-1 rounded
-                            text-xs transition disabled:opacity-50"
+                            hover:bg-green-100 px-2 py-1
+                            rounded text-xs transition
+                            disabled:opacity-50"
                           >
                             {actionLoading === request.id
                               ? '...' : '✅ Complete'}
