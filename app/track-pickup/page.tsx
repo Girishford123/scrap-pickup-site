@@ -452,75 +452,98 @@ export default function AdminDashboard() {
   // NEW — Upload Functions
   // ══════════════════════════════════════════════════════
 
-  // ── Download Excel Template ───────────────────────────
-  const downloadTemplate = () => {
-    const headers = [
-      'First Name',
-      'Last Name',
-      'RCRC Email',
-      'RCRC Number',
-      'RCRC Name',
-      'RCRC Address',
-      'Phone Number',
-      'RCRC Contact Person',
-      'State',
-      'Zip Code',
-      'Role',
-    ]
-    const sampleData = [[
-      'John',
-      'Doe',
-      'john.doe@example.com',
-      'RCRC001',
-      'Ford RCRC Center',
-      '123 Main St',
-      '9876543210',
-      'Jane Smith',
-      'Michigan',
-      '48126',
-      'requestor',
-    ]]
-    const workbook  = XLSX.utils.book_new()
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      headers,
-      ...sampleData,
-    ])
-    worksheet['!cols'] = headers.map(() => ({ wch: 20 }))
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Users')
-    XLSX.writeFile(workbook, 'ford-users-upload-template.xlsx')
-    showToast('Template downloaded!', 'success')
+  // ── Download CSV Template ─────────────────────────
+const downloadTemplate = () => {
+  const headers = [
+    'First Name',
+    'Last Name',
+    'RCRC Email',
+    'RCRC Number',
+    'RCRC Name',
+    'RCRC Address',
+    'Phone Number',
+    'RCRC Contact Person',
+    'State',
+    'Zip Code',
+    'Role',
+  ]
+
+  const sampleRow = [
+    'John',
+    'Doe',
+    'john.doe@example.com',
+    'RCRC001',
+    'Ford RCRC Center',
+    '123 Main St',
+    '9876543210',
+    'Jane Smith',
+    'Michigan',
+    '48126',
+    'requestor',
+  ]
+
+  const csvContent =
+    headers.join(',') + '\n' +
+    sampleRow.join(',') + '\n'
+
+  const blob     = new Blob([csvContent], {
+    type: 'text/csv;charset=utf-8;'
+  })
+  const url      = URL.createObjectURL(blob)
+  const a        = document.createElement('a')
+  a.href         = url
+  a.download     = 'ford-users-upload-template.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+  showToast('Template downloaded!', 'success')
+}
+
+
+  // ── Handle CSV File Select & Preview ─────────────
+const handleFileSelect = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+
+  // Validate CSV
+  if (!file.name.endsWith('.csv')) {
+    showToast('Please upload a valid CSV file (.csv)', 'error')
+    return
   }
 
-  // ── Handle File Select & Preview ─────────────────────
-  const handleFileSelect = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  setUploadFile(file)
 
-    const validTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-    ]
-    if (!validTypes.includes(file.type)) {
-      showToast(
-        'Please upload a valid Excel file (.xlsx or .xls)',
-        'error'
-      )
-      return
-    }
+  // Read CSV content
+  const text = await file.text()
+  const rows = parseCSV(text)
 
-    setUploadFile(file)
+  // Preview first 5 data rows
+  setPreviewData(rows.slice(0, 5))
+  setUploadStep('preview')
+}
 
-    const buffer    = await file.arrayBuffer()
-    const workbook  = XLSX.read(buffer, { type: 'array' })
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
-    const rows      = XLSX.utils.sheet_to_json(worksheet)
+// ── CSV Parser Helper ─────────────────────────────
+const parseCSV = (text: string): any[] => {
+  const lines   = text.trim().split('\n')
+  if (lines.length < 2) return []
 
-    setPreviewData(rows.slice(0, 5))
-    setUploadStep('preview')
-  }
+  const headers = lines[0]
+    .split(',')
+    .map(h => h.trim().replace(/^"|"$/g, ''))
+
+  return lines.slice(1).map(line => {
+    const values = line
+      .split(',')
+      .map(v => v.trim().replace(/^"|"$/g, ''))
+    const row: any = {}
+    headers.forEach((header, idx) => {
+      row[header] = values[idx] || ''
+    })
+    return row
+  })
+}
+
 
   // ── Handle Upload ─────────────────────────────────────
   const handleUpload = async () => {
@@ -1162,29 +1185,29 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* File Upload Area */}
-                <div
-                  className="border-2 border-dashed border-gray-300
-                  rounded-xl p-8 text-center hover:border-blue-400
-                  transition cursor-pointer"
-                  onClick={() =>
-                    document.getElementById('excel-upload')?.click()
-                  }
-                >
-                  <div className="text-5xl mb-3">📊</div>
-                  <p className="text-sm font-semibold text-gray-700">
-                    Click to upload Excel file
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Supports .xlsx and .xls files
-                  </p>
-                  <input
-                    id="excel-upload"
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-                </div>
+<div
+  className="border-2 border-dashed border-gray-300
+  rounded-xl p-8 text-center hover:border-blue-400
+  transition cursor-pointer"
+  onClick={() =>
+    document.getElementById('excel-upload')?.click()
+  }
+>
+  <div className="text-5xl mb-3">📄</div>
+  <p className="text-sm font-semibold text-gray-700">
+    Click to upload CSV file
+  </p>
+  <p className="text-xs text-gray-500 mt-1">
+    Supports .csv files only
+  </p>
+  <input
+    id="excel-upload"
+    type="file"
+    accept=".csv"
+    className="hidden"
+    onChange={handleFileSelect}
+  />
+</div>
 
                 {/* Required Columns Info */}
                 <div className="bg-gray-50 border border-gray-200
