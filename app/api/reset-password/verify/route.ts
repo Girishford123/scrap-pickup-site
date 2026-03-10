@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
   try {
     const token = req.nextUrl.searchParams.get('token')
 
+    console.log('🔍 Verifying token:', token?.substring(0, 10) + '...')
+
     if (!token) {
       return NextResponse.json(
         { valid: false, error: 'Token missing.' }
@@ -21,6 +23,8 @@ export async function GET(req: NextRequest) {
       .select('id, expires_at, used')
       .eq('token', token)
       .single()
+
+    console.log('📦 Token data:', data, 'Error:', error)
 
     if (error || !data) {
       return NextResponse.json(
@@ -40,9 +44,11 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    console.log('✅ Token is valid!')
     return NextResponse.json({ valid: true })
 
   } catch (err: any) {
+    console.error('❌ Verify token error:', err)
     return NextResponse.json(
       { valid: false, error: err.message }
     )

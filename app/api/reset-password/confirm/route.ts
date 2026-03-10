@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── Verify token ─────────────────────────────────
+    // ── Verify token ──────────────────────────────
     const { data: tokenData, error: tokenError } = await supabase
       .from('password_reset_tokens')
       .select('id, email, user_id, expires_at, used')
@@ -46,11 +46,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── Hash new password ─────────────────────────────
+    // ── Hash new password ─────────────────────────
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // ── Update user password ──────────────────────────
-    // Use user_id if available, fallback to email
+    // ── Update user password ──────────────────────
     let updateError
 
     if (tokenData.user_id) {
@@ -81,7 +80,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── Mark token as used ────────────────────────────
+    // ── Mark token as used ────────────────────────
     await supabase
       .from('password_reset_tokens')
       .update({ used: true })
