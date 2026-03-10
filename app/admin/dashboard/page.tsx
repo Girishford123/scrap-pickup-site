@@ -757,33 +757,13 @@ function AnalyticsDashboard({
         >
           {exporting ? '⏳ Generating...' : '📄 Export PDF'}
         </button>
-        <button
+         <button
           onClick={sendDailyEmail}
           className="flex items-center gap-2 px-4 py-2
                      bg-emerald-600 hover:bg-emerald-700
                      text-white text-sm font-semibold
                      rounded-xl shadow-sm transition-colors"
         >
-         // ── Upload Modal States ──────────────────────────────
-  const [showUploadModal, setShowUploadModal] = useState(false)
-  const [uploadFile,      setUploadFile]      = useState<File | null>(null)
-  const [uploadStep,      setUploadStep]      = useState<
-    'upload' | 'preview' | 'result'
-  >('upload')
-  const [previewData,    setPreviewData]    = useState<any[]>([])
-  const [uploadLoading,  setUploadLoading]  = useState(false)
-  const [uploadResult,   setUploadResult]   = useState<{
-    success:    number
-    duplicates: number
-    skipped:    number
-    failed:     number
-    details: {
-      successful: { email: string; name: string }[]
-      duplicate:  { email: string; name: string }[]
-      skipped:    { row: number; reason: string; data: string }[]
-      failed:     { email: string; error: string }[]
-    }
-  } | null>(null)
           📧 Email Report
         </button>
       </div>
