@@ -1,0 +1,244 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import * as XLSX        from 'xlsx'
+
+// ── Supabase Admin Client ────────────────────────────
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken:  false,
+      persistSession:    false,
+    }
+  }
+)
+
+// ── Types ────────────────────────────────────────────
+interface ExcelRow {
+  'First Name'?:          string
+  'Last Name'?:           string
+  'RCRC Email'?:          string
+  'RCRC Number'?:         string
+  'RCRC Name'?:           string
+  'RCRC Address'?:        string
+  'Phone Number'?:        string
+  'RCRC Contact Person'?: string
+  'State'?:               string
+  'Zip Code'?:            string
+  'Role'?:                string
+}
+
+interface UploadResult {
+  success:    number
+  duplicates: number
+  skipped:    number
+  failed:     number
+  details: {
+    successful: { email: string; name: string }[]
+    duplicate:  { email: string; name: string }[]
+    skipped:    { row: number;   reason: string; data: string }[]
+    failed:     { email: string; error: string }[]
+  }
+}
+
+// ── POST Handler ─────────────────────────────────────
+export async function POST(request: Request) {
+  try {
+
+    // ── Parse FormData ─────────────────────────────
+    const formData = await request.formData()
+    const file     = formData.get('file') as File | null
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file uploaded' },
+        { status: 400 }
+      )
+    }
+
+    // ── Read Excel File ────────────────────────────
+    const buffer    = await file.arrayBuffer()
+    const workbook  = XLSX.read(buffer, { type: 'array' })
+    const sheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[sheetName]
+    const rows      = XLSX.utils.sheet_to_json<ExcelRow>(worksheet)
+
+    if (!rows || rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Excel file is empty or has no valid data' },
+        { status: 400 }
+      )
+    }
+
+    // ── Initialize Result ──────────────────────────
+    const result: UploadResult = {
+      success:    0,
+      duplicates: 0,
+      skipped:    0,
+      failed:     0,
+      details: {
+        successful: [],
+        duplicate:  [],
+        skipped:    [],
+        failed:     [],
+      }
+    }
+
+    // ── Process Each Row ───────────────────────────
+    for (let i = 0; i < rows.length; i++) {
+      const row     = rows[i]
+      const rowNum  = i + 2 // Excel row number (1 = header)
+
+      const firstName   = row['First Name']?.toString().trim()         || ''
+      const lastName    = row['Last Name']?.toString().trim()          || ''
+      const email       = row['RCRC Email']?.toString().trim().toLowerCase() || ''
+      const rcrcNumber  = row['RCRC Number']?.toString().trim()        || ''
+      const rcrcName    = row['RCRC Name']?.toString().trim()          || ''
+      const rcrcAddress = row['RCRC Address']?.toString().trim()       || ''
+      const phone       = row['Phone Number']?.toString().trim()       || ''
+      const contactPerson = row['RCRC Contact Person']?.toString().trim() || ''
+      const state       = row['State']?.toString().trim()              || ''
+      const zipCode     = row['Zip Code']?.toString().trim()           || ''
+      const role        = row['Role']?.toString().trim().toLowerCase() || 'requestor'
+      const fullName    = `${firstName} ${lastName}`.trim()
+
+      // ── Check Required Fields ──────────────────
+      const missingFields: string[] = []
+      if (!firstName)   missingFields.push('First Name')
+      if (!lastName)    missingFields.push('Last Name')
+      if (!email)       missingFields.push('RCRC Email')
+      if (!rcrcNumber)  missingFields.push('RCRC Number')
+
+      if (missingFields.length > 0) {
+        result.skipped++
+        result.details.skipped.push({
+          row:    rowNum,
+          reason: `Missing required fields: ${missingFields.join(', ')}`,
+          data:   fullName || `Row ${rowNum}`,
+        })
+        continue
+      }
+
+      // ── Validate Email Format ──────────────────
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email)) {
+        result.skipped++
+        result.details.skipped.push({
+          row:    rowNum,
+          reason: `Invalid email format: ${email}`,
+          data:   fullName,
+        })
+        continue
+      }
+
+      // ── Check Duplicate in Supabase Auth ──────
+      const { data: existingUsers } =
+        await supabaseAdmin.auth.admin.listUsers()
+
+      const emailExists = existingUsers?.users?.some(
+        (u) => u.email?.toLowerCase() === email
+      )
+
+      if (emailExists) {
+        result.duplicates++
+        result.details.duplicate.push({
+          email,
+          name: fullName,
+        })
+        continue
+      }
+
+      // ── Also Check in users table ──────────────
+      const { data: existingInTable } = await supabaseAdmin
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle()
+
+      if (existingInTable) {
+        result.duplicates++
+        result.details.duplicate.push({
+          email,
+          name: fullName,
+        })
+        continue
+      }
+
+      // ── Create User via Supabase Invite ───────
+      try {
+        const { data: authData, error: authError } =
+          await supabaseAdmin.auth.admin.inviteUserByEmail(
+            email,
+            {
+              data: {
+                full_name:           fullName,
+                first_name:          firstName,
+                last_name:           lastName,
+                role:                role,
+                rcrc_number:         rcrcNumber,
+                rcrc_name:           rcrcName,
+                rcrc_address:        rcrcAddress,
+                rcrc_contact_person: contactPerson,
+                phone:               phone,
+                state:               state,
+                rcrc_zip_code:       zipCode,
+              },
+              redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/login/requestor`
+            }
+          )
+
+        if (authError) throw authError
+
+        // ── Insert into users table ────────────
+        const { error: dbError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            id:                   authData.user.id,
+            email:                email,
+            full_name:            fullName,
+            first_name:           firstName,
+            last_name:            lastName,
+            role:                 role,
+            status:               'active',
+            rcrc_number:          rcrcNumber,
+            rcrc_name:            rcrcName,
+            rcrc_address:         rcrcAddress,
+            rcrc_contact_person:  contactPerson,
+            phone:                phone,
+            state:                state,
+            rcrc_zip_code:        zipCode,
+            password_reset_at:    new Date().toISOString(),
+            created_at:           new Date().toISOString(),
+          })
+
+        if (dbError) {
+          console.error('DB insert error:', dbError)
+        }
+
+        result.success++
+        result.details.successful.push({
+          email,
+          name: fullName,
+        })
+
+      } catch (inviteError: any) {
+        result.failed++
+        result.details.failed.push({
+          email,
+          error: inviteError?.message || 'Unknown error',
+        })
+      }
+
+    } // ── End Row Loop ───────────────────────────
+
+    return NextResponse.json({ success: true, result })
+
+  } catch (error: any) {
+    console.error('Upload users error:', error)
+    return NextResponse.json(
+      { error: error?.message || 'Something went wrong' },
+      { status: 500 }
+    )
+  }
+}

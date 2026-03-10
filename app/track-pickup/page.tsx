@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter }                         from 'next/navigation'
 import { createClient }                      from '@supabase/supabase-js'
 import Image                                 from 'next/image'
+import * as XLSX                             from 'xlsx'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +28,6 @@ interface PickupRequest {
   status:        'NEW' | 'new' | 'pending' | 'approved' | 'rejected' | 'completed'
   created_at:    string
   notes?:        string
-  // ── RCRC Fields ────────────────────────────────────
   rcrc_number?:           string
   rcrc_name?:             string
   rcrc_contact_person?:   string
@@ -43,14 +43,28 @@ interface PickupRequest {
   special_instructions?:  string
   state?:                 string
   attachments?:           Attachment[]
-  // ✅ UPDATED — Single Category Field
   category?:              string
+}
+
+// ── Upload Result Type ──────────────────────────────────
+interface UploadResult {
+  success:    number
+  duplicates: number
+  skipped:    number
+  failed:     number
+  details: {
+    successful: { email: string; name: string }[]
+    duplicate:  { email: string; name: string }[]
+    skipped:    { row: number; reason: string; data: string }[]
+    failed:     { email: string; error: string }[]
+  }
 }
 
 // ── Main Component ──────────────────────────────────────
 export default function AdminDashboard() {
   const router = useRouter()
 
+  // ── Existing States ───────────────────────────────────
   const [isAuthenticated,    setIsAuthenticated]    = useState(false)
   const [requests,           setRequests]           = useState<PickupRequest[]>([])
   const [loading,            setLoading]            = useState(true)
@@ -79,6 +93,15 @@ export default function AdminDashboard() {
   >('all')
   const [exportPreview,      setExportPreview]      = useState<PickupRequest[]>([])
 
+  // ── NEW Upload States ─────────────────────────────────
+  const [showUploadModal,  setShowUploadModal]  = useState(false)
+  const [uploadFile,       setUploadFile]       = useState<File | null>(null)
+  const [uploadLoading,    setUploadLoading]    = useState(false)
+  const [uploadResult,     setUploadResult]     = useState<UploadResult | null>(null)
+  const [uploadStep,       setUploadStep]       = useState<
+    'upload' | 'preview' | 'result'
+  >('upload')
+  const [previewData,      setPreviewData]      = useState<any[]>([])
   // ── Toast ─────────────────────────────────────────────
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
@@ -89,7 +112,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isAdminLoggedIn')
     if (isLoggedIn !== 'true') {
-      router.push('/admin')   // ✅ FIX 8 — correct redirect
+      router.push('/admin')
       return
     }
     setIsAuthenticated(true)
@@ -143,7 +166,9 @@ export default function AdminDashboard() {
       if (exportDateFilter === 'today')
         return created.toDateString() === now.toDateString()
       if (exportDateFilter === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        const weekAgo = new Date(
+          now.getTime() - 7 * 24 * 60 * 60 * 1000
+        )
         return created >= weekAgo
       }
       if (exportDateFilter === 'month') {
@@ -193,7 +218,6 @@ export default function AdminDashboard() {
       showToast('No data to export with selected filters', 'error')
       return
     }
-
     const grouped = exportPreview.reduce(
       (acc, req) => {
         const status = req.status.toUpperCase()
@@ -203,15 +227,11 @@ export default function AdminDashboard() {
       },
       {} as Record<string, PickupRequest[]>
     )
-
-    // ✅ UPDATED headers — single Category column
     const headers = [
       'ID', 'Customer Name', 'Email', 'Phone',
       'Address', 'Scrap Type', 'Quantity',
-      'Category',
-      'Status', 'Submitted Date',
+      'Category', 'Status', 'Submitted Date',
     ]
-
     let csvContent = ''
     csvContent += `"FORD COMPONENT SALES - SCRAP PICKUP REQUESTS EXPORT"\n`
     csvContent += `"Exported On:","${new Date().toLocaleString()}"\n`
@@ -222,15 +242,12 @@ export default function AdminDashboard() {
     csvContent += `"Date Filter:","${
       exportDateFilter === 'all' ? 'All Dates' : exportDateFilter
     }"\n\n`
-
     csvContent += '"STATUS SUMMARY"\n"Status","Count"\n'
     Object.entries(grouped).forEach(([status, items]) => {
       csvContent += `"${status}","${items.length}"\n`
     })
-
     csvContent += '\n"ALL REQUESTS DATA"\n'
     csvContent += headers.map(h => `"${h}"`).join(',') + '\n'
-
     const sortedData = [...exportPreview].sort((a, b) => {
       if (a.status < b.status) return -1
       if (a.status > b.status) return  1
@@ -239,7 +256,6 @@ export default function AdminDashboard() {
         new Date(a.created_at).getTime()
       )
     })
-
     sortedData.forEach(r => {
       const row = [
         r.id,
@@ -249,7 +265,7 @@ export default function AdminDashboard() {
         r.address       || '',
         r.scrap_type    || '',
         r.quantity      || '',
-        r.category      || '',   // ✅ single category
+        r.category      || '',
         r.status.toUpperCase(),
         new Date(r.created_at).toLocaleDateString('en-IN', {
           day: '2-digit', month: 'short', year: 'numeric',
@@ -257,7 +273,6 @@ export default function AdminDashboard() {
       ]
       csvContent += row.map(cell => `"${cell}"`).join(',') + '\n'
     })
-
     csvContent += '\n"SECTION-WISE BREAKDOWN"\n'
     Object.entries(grouped).forEach(([status, items]) => {
       csvContent += `\n"--- ${status} REQUESTS (${items.length}) ---"\n`
@@ -271,7 +286,7 @@ export default function AdminDashboard() {
           r.address       || '',
           r.scrap_type    || '',
           r.quantity      || '',
-          r.category      || '',  // ✅ single category
+          r.category      || '',
           r.status.toUpperCase(),
           new Date(r.created_at).toLocaleDateString('en-IN', {
             day: '2-digit', month: 'short', year: 'numeric',
@@ -280,8 +295,7 @@ export default function AdminDashboard() {
         csvContent += row.map(cell => `"${cell}"`).join(',') + '\n'
       })
     })
-
-    const blob = new Blob([csvContent], {
+    const blob        = new Blob([csvContent], {
       type: 'text/csv;charset=utf-8;',
     })
     const url         = URL.createObjectURL(blob)
@@ -313,7 +327,9 @@ export default function AdminDashboard() {
     if (dateFilter === 'today')
       return created.toDateString() === now.toDateString()
     if (dateFilter === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const weekAgo = new Date(
+        now.getTime() - 7 * 24 * 60 * 60 * 1000
+      )
       return created >= weekAgo
     }
     if (dateFilter === 'month') {
@@ -432,6 +448,115 @@ export default function AdminDashboard() {
     )
   }
 
+  // ══════════════════════════════════════════════════════
+  // NEW — Upload Functions
+  // ══════════════════════════════════════════════════════
+
+  // ── Download Excel Template ───────────────────────────
+  const downloadTemplate = () => {
+    const headers = [
+      'First Name',
+      'Last Name',
+      'RCRC Email',
+      'RCRC Number',
+      'RCRC Name',
+      'RCRC Address',
+      'Phone Number',
+      'RCRC Contact Person',
+      'State',
+      'Zip Code',
+      'Role',
+    ]
+    const sampleData = [[
+      'John',
+      'Doe',
+      'john.doe@example.com',
+      'RCRC001',
+      'Ford RCRC Center',
+      '123 Main St',
+      '9876543210',
+      'Jane Smith',
+      'Michigan',
+      '48126',
+      'requestor',
+    ]]
+    const workbook  = XLSX.utils.book_new()
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      headers,
+      ...sampleData,
+    ])
+    worksheet['!cols'] = headers.map(() => ({ wch: 20 }))
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Users')
+    XLSX.writeFile(workbook, 'ford-users-upload-template.xlsx')
+    showToast('Template downloaded!', 'success')
+  }
+
+  // ── Handle File Select & Preview ─────────────────────
+  const handleFileSelect = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ]
+    if (!validTypes.includes(file.type)) {
+      showToast(
+        'Please upload a valid Excel file (.xlsx or .xls)',
+        'error'
+      )
+      return
+    }
+
+    setUploadFile(file)
+
+    const buffer    = await file.arrayBuffer()
+    const workbook  = XLSX.read(buffer, { type: 'array' })
+    const sheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[sheetName]
+    const rows      = XLSX.utils.sheet_to_json(worksheet)
+
+    setPreviewData(rows.slice(0, 5))
+    setUploadStep('preview')
+  }
+
+  // ── Handle Upload ─────────────────────────────────────
+  const handleUpload = async () => {
+    if (!uploadFile) return
+    try {
+      setUploadLoading(true)
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      const response = await fetch('/api/admin/upload-users', {
+        method: 'POST',
+        body:   formData,
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        showToast(data.error || 'Upload failed', 'error')
+        return
+      }
+      setUploadResult(data.result)
+      setUploadStep('result')
+    } catch (error) {
+      console.error('Upload error:', error)
+      showToast('Upload failed. Please try again.', 'error')
+    } finally {
+      setUploadLoading(false)
+    }
+  }
+
+  // ── Reset Upload Modal ────────────────────────────────
+  const resetUploadModal = () => {
+    setShowUploadModal(false)
+    setUploadFile(null)
+    setUploadResult(null)
+    setUploadStep('upload')
+    setPreviewData([])
+  }
+
   // ── Loading States ────────────────────────────────────
   if (!isAuthenticated) {
     return (
@@ -460,7 +585,6 @@ export default function AdminDashboard() {
       </div>
     )
   }
-
   // ══════════════════════════════════════════════════════
   // RENDER
   // ══════════════════════════════════════════════════════
@@ -660,7 +784,6 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-2xl shadow-2xl
           max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
 
-            {/* Modal Header */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">
                 Request Details
@@ -674,7 +797,6 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* ✅ Category Badge at top of modal */}
             {selectedRequest.category && (
               <div className="flex flex-wrap gap-2 mb-4 p-3
               bg-gray-50 rounded-xl border border-gray-200">
@@ -691,7 +813,6 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* ── Detail Grid ── */}
             <div className="grid grid-cols-2 gap-4">
 
               <div>
@@ -857,7 +978,6 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ✅ Category in detail grid */}
               {selectedRequest.category && (
                 <div>
                   <p className="text-xs text-gray-500
@@ -891,10 +1011,8 @@ export default function AdminDashboard() {
 
             </div>
 
-            {/* Attachments */}
             {renderAttachments(selectedRequest.attachments)}
 
-            {/* Action Buttons */}
             <div className="mt-6 flex gap-3 flex-wrap">
               {(isNewStatus(selectedRequest.status) ||
                 selectedRequest.status === 'pending') && (
@@ -954,12 +1072,429 @@ export default function AdminDashboard() {
       )}
 
       {/* ════════════════════════════════════════════════
+          UPLOAD USERS MODAL
+      ════════════════════════════════════════════════ */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50
+        z-40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl
+          max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  📤 Upload Users
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Upload Excel file to create requestor accounts
+                </p>
+              </div>
+              <button
+                onClick={resetUploadModal}
+                className="text-gray-400 hover:text-gray-600
+                text-2xl font-light"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Step Indicator */}
+            <div className="flex items-center gap-2 mb-6">
+              {['Upload', 'Preview', 'Result'].map((step, idx) => {
+                const stepKey = ['upload', 'preview', 'result'][idx]
+                const isActive = uploadStep === stepKey
+                const isDone =
+                  ['upload', 'preview', 'result'].indexOf(uploadStep) > idx
+                return (
+                  <div key={step} className="flex items-center gap-2">
+                    <div className={`w-7 h-7 rounded-full flex
+                    items-center justify-center text-xs font-bold
+                    transition-all ${
+                      isDone
+                        ? 'bg-green-500 text-white'
+                        : isActive
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {isDone ? '✓' : idx + 1}
+                    </div>
+                    <span className={`text-xs font-medium ${
+                      isActive ? 'text-blue-600' : 'text-gray-400'
+                    }`}>
+                      {step}
+                    </span>
+                    {idx < 2 && (
+                      <div className={`h-px w-8 ${
+                        isDone ? 'bg-green-400' : 'bg-gray-200'
+                      }`} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* ── STEP 1: UPLOAD ── */}
+            {uploadStep === 'upload' && (
+              <div className="space-y-4">
+
+                {/* Download Template */}
+                <div className="bg-blue-50 border border-blue-200
+                rounded-xl p-4 flex items-center
+                justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">
+                      📋 Need the template?
+                    </p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      Download the Excel template with correct
+                      column headers
+                    </p>
+                  </div>
+                  <button
+                    onClick={downloadTemplate}
+                    className="bg-blue-600 text-white px-4 py-2
+                    rounded-lg text-sm font-medium
+                    hover:bg-blue-700 transition whitespace-nowrap"
+                  >
+                    ⬇️ Download Template
+                  </button>
+                </div>
+
+                {/* File Upload Area */}
+                <div
+                  className="border-2 border-dashed border-gray-300
+                  rounded-xl p-8 text-center hover:border-blue-400
+                  transition cursor-pointer"
+                  onClick={() =>
+                    document.getElementById('excel-upload')?.click()
+                  }
+                >
+                  <div className="text-5xl mb-3">📊</div>
+                  <p className="text-sm font-semibold text-gray-700">
+                    Click to upload Excel file
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Supports .xlsx and .xls files
+                  </p>
+                  <input
+                    id="excel-upload"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                </div>
+
+                {/* Required Columns Info */}
+                <div className="bg-gray-50 border border-gray-200
+                rounded-xl p-4">
+                  <p className="text-xs font-semibold text-gray-700
+                  mb-2 uppercase">
+                    Required Columns in Excel:
+                  </p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[
+                      'First Name',
+                      'Last Name',
+                      'RCRC Email',
+                      'RCRC Number',
+                      'RCRC Name',
+                      'RCRC Address',
+                      'Phone Number',
+                      'RCRC Contact Person',
+                      'State',
+                      'Zip Code',
+                      'Role',
+                    ].map((col, idx) => (
+                      <div key={col} className="flex items-center
+                      gap-1 text-xs text-gray-600">
+                        <span className="text-blue-500 font-bold">
+                          {idx + 1}.
+                        </span>
+                        {col}
+                        {['First Name', 'Last Name',
+                          'RCRC Email', 'RCRC Number'].includes(col) && (
+                          <span className="text-red-500 text-xs">*</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-red-500 mt-2">
+                    * Required fields
+                  </p>
+                </div>
+
+              </div>
+            )}
+
+            {/* ── STEP 2: PREVIEW ── */}
+            {uploadStep === 'preview' && (
+              <div className="space-y-4">
+
+                <div className="bg-green-50 border border-green-200
+                rounded-xl p-3 flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">
+                      File loaded: {uploadFile?.name}
+                    </p>
+                    <p className="text-xs text-green-700">
+                      Showing first 5 rows preview
+                    </p>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div className="overflow-x-auto rounded-xl border
+                border-gray-200">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-[#003478]">
+                      <tr>
+                        {[
+                          'First Name',
+                          'Last Name',
+                          'RCRC Email',
+                          'RCRC Number',
+                          'Role',
+                        ].map(h => (
+                          <th key={h} className="px-3 py-2 text-left
+                          text-white font-medium whitespace-nowrap">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {previewData.map((row: any, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-gray-700">
+                            {row['First Name'] || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-700">
+                            {row['Last Name'] || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-700">
+                            {row['RCRC Email'] || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-700">
+                            {row['RCRC Number'] || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-700">
+                            {row['Role'] || 'requestor'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <p className="text-xs text-gray-500 text-center">
+                  Each user will receive an email invite from
+                  Supabase to set their own password
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setUploadStep('upload')
+                      setUploadFile(null)
+                      setPreviewData([])
+                    }}
+                    className="flex-1 px-4 py-3 bg-gray-100
+                    text-gray-700 rounded-xl hover:bg-gray-200
+                    transition font-medium text-sm"
+                  >
+                    ← Choose Different File
+                  </button>
+                  <button
+                    onClick={handleUpload}
+                    disabled={uploadLoading}
+                    className="flex-1 px-4 py-3 bg-[#003478]
+                    text-white rounded-xl hover:bg-blue-800
+                    transition font-medium text-sm
+                    disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadLoading ? (
+                      <span className="flex items-center
+                      justify-center gap-2">
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12" cy="12" r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
+                        </svg>
+                        Uploading...
+                      </span>
+                    ) : (
+                      '📤 Upload & Create Users'
+                    )}
+                  </button>
+                </div>
+
+              </div>
+            )}
+
+            {/* ── STEP 3: RESULT ── */}
+            {uploadStep === 'result' && uploadResult && (
+              <div className="space-y-4">
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-green-50 border border-green-200
+                  rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      {uploadResult.success}
+                    </p>
+                    <p className="text-xs text-green-700
+                    font-medium mt-1">✅ Created</p>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200
+                  rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {uploadResult.duplicates}
+                    </p>
+                    <p className="text-xs text-yellow-700
+                    font-medium mt-1">⚠️ Duplicate</p>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200
+                  rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-orange-600">
+                      {uploadResult.skipped}
+                    </p>
+                    <p className="text-xs text-orange-700
+                    font-medium mt-1">⏭️ Skipped</p>
+                  </div>
+                  <div className="bg-red-50 border border-red-200
+                  rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-red-600">
+                      {uploadResult.failed}
+                    </p>
+                    <p className="text-xs text-red-700
+                    font-medium mt-1">❌ Failed</p>
+                  </div>
+                </div>
+
+                {/* Successful */}
+                {uploadResult.details.successful.length > 0 && (
+                  <div className="bg-green-50 border border-green-200
+                  rounded-xl p-4">
+                    <p className="text-sm font-semibold
+                    text-green-800 mb-2">
+                      ✅ Successfully Created (
+                      {uploadResult.details.successful.length})
+                    </p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {uploadResult.details.successful.map((u, idx) => (
+                        <div key={idx} className="flex items-center
+                        gap-2 text-xs text-green-700">
+                          <span>•</span>
+                          <span className="font-medium">{u.name}</span>
+                          <span className="text-green-500">
+                            ({u.email})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-green-600 mt-2 italic">
+                      📧 Invite emails sent — users can set
+                      their own password
+                    </p>
+                  </div>
+                )}
+
+                {/* Duplicates */}
+                {uploadResult.details.duplicate.length > 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200
+                  rounded-xl p-4">
+                    <p className="text-sm font-semibold
+                    text-yellow-800 mb-2">
+                      ⚠️ Duplicate Emails Skipped (
+                      {uploadResult.details.duplicate.length})
+                    </p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {uploadResult.details.duplicate.map((u, idx) => (
+                        <div key={idx} className="flex items-center
+                        gap-2 text-xs text-yellow-700">
+                          <span>•</span>
+                          <span className="font-medium">{u.name}</span>
+                          <span>— {u.email} already exists</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skipped */}
+                {uploadResult.details.skipped.length > 0 && (
+                  <div className="bg-orange-50 border border-orange-200
+                  rounded-xl p-4">
+                    <p className="text-sm font-semibold
+                    text-orange-800 mb-2">
+                      ⏭️ Skipped Rows (
+                      {uploadResult.details.skipped.length})
+                    </p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {uploadResult.details.skipped.map((s, idx) => (
+                        <div key={idx} className="text-xs
+                        text-orange-700">
+                          • Row {s.row}: {s.reason}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Failed */}
+                {uploadResult.details.failed.length > 0 && (
+                  <div className="bg-red-50 border border-red-200
+                  rounded-xl p-4">
+                    <p className="text-sm font-semibold
+                    text-red-800 mb-2">
+                      ❌ Failed ({uploadResult.details.failed.length})
+                    </p>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {uploadResult.details.failed.map((f, idx) => (
+                        <div key={idx} className="text-xs text-red-700">
+                          • {f.email}: {f.error}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={resetUploadModal}
+                  className="w-full px-4 py-3 bg-[#003478]
+                  text-white rounded-xl hover:bg-blue-800
+                  transition font-medium text-sm"
+                >
+                  ✅ Done — Close
+                </button>
+
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════
           HEADER
       ════════════════════════════════════════════════ */}
-      <header className="bg-white shadow-sm
-      border-b border-gray-200">
-        <div className="bg-[#003478] px-4 sm:px-6
-        lg:px-8 py-1">
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="bg-[#003478] px-4 sm:px-6 lg:px-8 py-1">
           <p className="text-white text-xs text-center
           tracking-widest font-medium uppercase">
             Ford Motor Company – Component Sales Division
@@ -968,8 +1503,7 @@ export default function AdminDashboard() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6
         lg:px-8 py-4">
-          <div className="flex items-center
-          justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
 
             <div className="flex items-center gap-4">
               {!fordLogoError ? (
@@ -1000,6 +1534,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* ── Header Buttons ── */}
             <div className="flex items-center gap-3">
               <button
                 onClick={fetchRequests}
@@ -1009,6 +1544,23 @@ export default function AdminDashboard() {
               >
                 🔄 Refresh
               </button>
+
+              {/* ✅ NEW — Upload Users Button */}
+              <button
+                onClick={() => {
+                  setUploadStep('upload')
+                  setUploadResult(null)
+                  setUploadFile(null)
+                  setPreviewData([])
+                  setShowUploadModal(true)
+                }}
+                className="px-3 py-2 bg-[#003478] text-white
+                rounded-lg hover:bg-blue-800 transition
+                text-sm font-medium"
+              >
+                👥 Upload Users
+              </button>
+
               <button
                 onClick={() => {
                   setExportStatusFilter('all')
@@ -1179,53 +1731,33 @@ export default function AdminDashboard() {
         </div>
 
         {/* ── Requests Table ── */}
-        <div className="bg-white rounded-xl shadow-sm
-        overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
 
-              {/* ✅ UPDATED Table Headers — single Category column */}
               <thead className="bg-[#003478]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">#</th>
-
                   <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase">
-                    Customer
-                  </th>
-
+                  font-medium text-white uppercase">Customer</th>
                   <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase">
-                    Contact
-                  </th>
-
+                  font-medium text-white uppercase">Contact</th>
                   <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase">
-                    Scrap Details
-                  </th>
-
-                  {/* ✅ Single Category column */}
+                  font-medium text-white uppercase">Scrap Details</th>
                   <th className="px-4 py-3 text-left text-xs
-                  font-medium text-white uppercase">
-                    Category
-                  </th>
-
+                  font-medium text-white uppercase">Category</th>
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">Date</th>
-
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">Status</th>
-
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">Files</th>
-
                   <th className="px-4 py-3 text-left text-xs
                   font-medium text-white uppercase">Actions</th>
                 </tr>
               </thead>
 
-              {/* ✅ UPDATED Table Rows — single Category cell */}
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredRequests.map((request, index) => (
                   <tr
@@ -1233,19 +1765,16 @@ export default function AdminDashboard() {
                     className="hover:bg-blue-50 transition"
                   >
 
-                    {/* # */}
                     <td className="px-4 py-4 text-sm text-gray-400">
                       {index + 1}
                     </td>
 
-                    {/* Customer */}
                     <td className="px-4 py-4">
                       <div className="flex items-center">
                         <div className="w-9 h-9 bg-[#003478]
                         rounded-full flex items-center
                         justify-center flex-shrink-0">
-                          <span className="text-white font-bold
-                          text-sm">
+                          <span className="text-white font-bold text-sm">
                             {request.customer_name
                               ?.charAt(0)?.toUpperCase() || '?'}
                           </span>
@@ -1263,7 +1792,6 @@ export default function AdminDashboard() {
                       </div>
                     </td>
 
-                    {/* Contact */}
                     <td className="px-4 py-4">
                       <p className="text-sm text-gray-900">
                         {request.email}
@@ -1273,10 +1801,8 @@ export default function AdminDashboard() {
                       </p>
                     </td>
 
-                    {/* Scrap Details */}
                     <td className="px-4 py-4">
-                      <p className="text-sm font-medium
-                      text-gray-900">
+                      <p className="text-sm font-medium text-gray-900">
                         {request.scrap_type}
                       </p>
                       <p className="text-sm text-gray-500">
@@ -1284,13 +1810,11 @@ export default function AdminDashboard() {
                       </p>
                     </td>
 
-                    {/* ✅ Single Category Cell */}
                     <td className="px-4 py-4">
                       {request.category ? (
                         <span className="inline-flex items-center
                         px-2 py-1 rounded-full text-xs font-medium
-                        bg-purple-100 text-purple-800
-                        whitespace-nowrap">
+                        bg-purple-100 text-purple-800 whitespace-nowrap">
                           {request.category}
                         </span>
                       ) : (
@@ -1300,7 +1824,6 @@ export default function AdminDashboard() {
                       )}
                     </td>
 
-                    {/* Date */}
                     <td className="px-4 py-4 text-sm
                     text-gray-500 whitespace-nowrap">
                       {new Date(request.created_at)
@@ -1311,7 +1834,6 @@ export default function AdminDashboard() {
                         })}
                     </td>
 
-                    {/* Status */}
                     <td className="px-4 py-4">
                       <span className={`px-3 py-1 inline-flex
                       text-xs font-semibold rounded-full
@@ -1320,7 +1842,6 @@ export default function AdminDashboard() {
                       </span>
                     </td>
 
-                    {/* Files */}
                     <td className="px-4 py-4">
                       {request.attachments &&
                       request.attachments.length > 0 ? (
@@ -1342,8 +1863,7 @@ export default function AdminDashboard() {
                                 <span>
                                   {isImage ? '🖼️' : '📊'}
                                 </span>
-                                <span className="truncate
-                                max-w-[80px]">
+                                <span className="truncate max-w-[80px]">
                                   {file.name || `File ${idx + 1}`}
                                 </span>
                               </a>
@@ -1357,7 +1877,6 @@ export default function AdminDashboard() {
                       )}
                     </td>
 
-                    {/* Actions */}
                     <td className="px-4 py-4">
                       <div className="flex items-center
                       gap-2 flex-wrap">
