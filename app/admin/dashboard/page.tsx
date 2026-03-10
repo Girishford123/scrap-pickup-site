@@ -533,6 +533,7 @@ function SlowMCLsModal({
     </div>
   )
 }
+
 // ─────────────────────────────────────────────────────────
 // AnalyticsDashboard
 // ─────────────────────────────────────────────────────────
@@ -763,6 +764,26 @@ function AnalyticsDashboard({
                      text-white text-sm font-semibold
                      rounded-xl shadow-sm transition-colors"
         >
+         // ── Upload Modal States ──────────────────────────────
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadFile,      setUploadFile]      = useState<File | null>(null)
+  const [uploadStep,      setUploadStep]      = useState<
+    'upload' | 'preview' | 'result'
+  >('upload')
+  const [previewData,    setPreviewData]    = useState<any[]>([])
+  const [uploadLoading,  setUploadLoading]  = useState(false)
+  const [uploadResult,   setUploadResult]   = useState<{
+    success:    number
+    duplicates: number
+    skipped:    number
+    failed:     number
+    details: {
+      successful: { email: string; name: string }[]
+      duplicate:  { email: string; name: string }[]
+      skipped:    { row: number; reason: string; data: string }[]
+      failed:     { email: string; error: string }[]
+    }
+  } | null>(null)
           📧 Email Report
         </button>
       </div>
@@ -1684,204 +1705,742 @@ function RequestCard({
     closed:           null,
   }
 
-  const statusStyle: Record<TabKey, string> = {
-    total_requests:   'bg-blue-100   text-blue-700   border-blue-200',
-    sent_for_pickup:  'bg-yellow-100 text-yellow-700 border-yellow-200',
-    in_transit:       'bg-purple-100 text-purple-700 border-purple-200',
-    shipment_arrived: 'bg-green-100  text-green-700  border-green-200',
-    closed:           'bg-teal-100   text-teal-700   border-teal-200',
+  const next = nextMap[req.status as TabKey] ?? null
+
+  const statusStyle: Record<string, string> = {
+    total_requests:   'bg-blue-100   text-blue-700',
+    sent_for_pickup:  'bg-yellow-100 text-yellow-700',
+    in_transit:       'bg-purple-100 text-purple-700',
+    shipment_arrived: 'bg-green-100  text-green-700',
+    closed:           'bg-teal-100   text-teal-700',
   }
 
-  const next = nextMap[req.status]
+  const statusLabel: Record<string, string> = {
+    total_requests:   '📋 New Request',
+    sent_for_pickup:  '🚚 Sent for Pickup',
+    in_transit:       '🔄 In Transit',
+    shipment_arrived: '✅ Shipment Arrived',
+    closed:           '🧾 Closed',
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100
-                    shadow-sm hover:shadow-md transition-all
-                    duration-200 overflow-hidden">
+                    shadow-sm p-4 flex flex-col gap-3
+                    hover:shadow-md transition-shadow">
 
-      {/* Card Top Bar */}
-      <div className={`h-1 w-full ${
-        req.status === 'total_requests'   ? 'bg-blue-400'   :
-        req.status === 'sent_for_pickup'  ? 'bg-yellow-400' :
-        req.status === 'in_transit'       ? 'bg-purple-400' :
-        req.status === 'shipment_arrived' ? 'bg-green-400'  :
-        'bg-teal-400'
-      }`} />
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs text-gray-400 font-medium">MCL Number</p>
+          <p className="text-base font-bold text-gray-800">
+            {req.mcl_number ?? '—'}
+          </p>
+        </div>
+        <span className={`text-xs font-semibold px-2.5 py-1
+                         rounded-full whitespace-nowrap ${
+          statusStyle[req.status] ?? 'bg-gray-100 text-gray-600'
+        }`}>
+          {statusLabel[req.status] ?? req.status}
+        </span>
+      </div>
 
-      <div className="p-4">
+      {/* RCRC Info */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <p className="text-gray-400">RCRC Name</p>
+          <p className="font-semibold text-gray-700 truncate">
+            {req.rcrc_name ?? '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-400">RCRC #</p>
+          <p className="font-semibold text-gray-700">
+            {req.rcrc_number ?? '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-400">Est. Value</p>
+          <p className="font-semibold text-emerald-600">
+            {req.fcsd_offer_amount ? fmtMoney(req.fcsd_offer_amount) : '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-400">Pieces</p>
+          <p className="font-semibold text-gray-700">
+            {req.total_pieces_quantity?.toLocaleString() ?? '—'}
+          </p>
+        </div>
+      </div>
 
-        {/* Header Row */}
-        <div className="flex items-start justify-between mb-3">
+      {/* Key Dates */}
+      <div className="text-xs space-y-1 pt-2 border-t border-gray-50">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Requested</span>
+          <span className="text-gray-600 font-medium">
+            {req.requested_pickup_date
+              ? fmtDate(req.requested_pickup_date)
+              : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Scheduled</span>
+          <span className="text-gray-600 font-medium">
+            {req.scheduled_pickup_date
+              ? fmtDate(req.scheduled_pickup_date)
+              : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Actual Pickup</span>
+          <span className="text-gray-600 font-medium">
+            {req.actual_pickup_date
+              ? fmtDate(req.actual_pickup_date)
+              : '—'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-400">Invoice Submitted</span>
+          <span className="text-gray-600 font-medium">
+            {req.invoice_submitted_date
+              ? fmtDate(req.invoice_submitted_date)
+              : '—'}
+          </span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => onView(req)}
+          className="flex-1 py-2 rounded-xl bg-blue-50
+                     hover:bg-blue-100 text-blue-700
+                     text-xs font-semibold transition-colors"
+        >
+          ✏️ View / Edit
+        </button>
+        {next && (
+          <button
+            onClick={() => onStatusChange(req.id, next.key)}
+            className="flex-1 py-2 rounded-xl bg-green-50
+                       hover:bg-green-100 text-green-700
+                       text-xs font-semibold transition-colors"
+          >
+            {next.icon} {next.label}
+          </button>
+        )}
+        <button
+          onClick={() => onDelete(req)}
+          className="py-2 px-3 rounded-xl bg-red-50
+                     hover:bg-red-100 text-red-500
+                     text-xs font-semibold transition-colors"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  )
+}
+// ─────────────────────────────────────────────────────────
+// ViewModal Field Helpers — MUST be outside ViewModal!
+// ─────────────────────────────────────────────────────────
+function ReadRow({
+  label,
+  value,
+}: {
+  label: string
+  value?: string | number | null
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="text-xs text-gray-400 font-medium">{label}</p>
+      <p className="text-sm font-semibold text-gray-800">
+        {value ?? '—'}
+      </p>
+    </div>
+  )
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+}: {
+  label:        string
+  value:        string | number | undefined
+  onChange:     (val: string | number) => void
+  placeholder?: string
+  type?:        string
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-gray-500">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value ?? ''}
+        onChange={e =>
+          onChange(
+            type === 'number' ? Number(e.target.value) : e.target.value
+          )
+        }
+        placeholder={placeholder}
+        className="text-sm border border-gray-200 rounded-xl
+                   px-3 py-2 focus:outline-none focus:ring-2
+                   focus:ring-blue-300 bg-white"
+      />
+    </div>
+  )
+}
+
+function DateField({
+  label,
+  value,
+  onChange,
+}: {
+  label:    string
+  value:    string | undefined
+  onChange: (val: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-gray-500">
+        {label}
+      </label>
+      <input
+        type="date"
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        className="text-sm border border-gray-200 rounded-xl
+                   px-3 py-2 focus:outline-none focus:ring-2
+                   focus:ring-blue-300 bg-white"
+      />
+    </div>
+  )
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 2,
+}: {
+  label:        string
+  value:        string | undefined
+  onChange:     (val: string) => void
+  placeholder?: string
+  rows?:        number
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-gray-500">
+        {label}
+      </label>
+      <textarea
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="text-sm border border-gray-200 rounded-xl
+                   px-3 py-2 resize-none focus:outline-none
+                   focus:ring-2 focus:ring-blue-300 bg-white"
+      />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// ViewModal
+// ─────────────────────────────────────────────────────────
+function ViewModal({
+  req,
+  onClose,
+  onSave,
+  onStatusChange,
+}: {
+  req:            PickupRequest
+  onClose:        () => void
+  onSave:         (updated: Partial<PickupRequest>) => Promise<void>
+  onStatusChange: (id: number, newStatus: TabKey) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [form,    setForm]    = useState<Partial<PickupRequest>>({
+    mcl_number:             req.mcl_number             ?? '',
+    status:                 req.status,
+    fcsd_offer_amount:      req.fcsd_offer_amount       ?? undefined,
+    admin_notes:            req.admin_notes             ?? '',
+    notes:                  req.notes                  ?? '',
+    requested_pickup_date:  req.requested_pickup_date   ?? '',
+    date_sent_to_techemet:  req.date_sent_to_techemet   ?? '',
+    scheduled_pickup_date:  req.scheduled_pickup_date   ?? '',
+    actual_pickup_date:     req.actual_pickup_date      ?? '',
+    invoice_submitted_date: req.invoice_submitted_date  ?? '',
+    rcrc_number:            req.rcrc_number             ?? '',
+    rcrc_name:              req.rcrc_name               ?? '',
+    rcrc_contact_person:    req.rcrc_contact_person     ?? '',
+    rcrc_email:             req.rcrc_email              ?? '',
+    rcrc_phone_number:      req.rcrc_phone_number       ?? '',
+    rcrc_address:           req.rcrc_address            ?? '',
+    rcrc_zip_code:          req.rcrc_zip_code           ?? '',
+    pallet_quantity:        req.pallet_quantity         ?? undefined,
+    total_pieces_quantity:  req.total_pieces_quantity   ?? undefined,
+    special_instructions:   req.special_instructions    ?? '',
+  })
+
+  // ── Single updater — no more per-field set() ──────────
+  function update(key: keyof PickupRequest, val: string | number) {
+    setForm(prev => ({ ...prev, [key]: val }))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    await onSave(form)
+    setSaving(false)
+    setEditing(false)
+  }
+
+  const statusStyle: Record<string, string> = {
+    total_requests:   'bg-blue-100   text-blue-700',
+    sent_for_pickup:  'bg-yellow-100 text-yellow-700',
+    in_transit:       'bg-purple-100 text-purple-700',
+    shipment_arrived: 'bg-green-100  text-green-700',
+    closed:           'bg-teal-100   text-teal-700',
+  }
+
+  const statusLabel: Record<string, string> = {
+    total_requests:   '📋 New Request',
+    sent_for_pickup:  '🚚 Sent for Pickup',
+    in_transit:       '🔄 In Transit',
+    shipment_arrived: '✅ Shipment Arrived',
+    closed:           '🧾 Closed',
+  }
+
+  const nextMap: Record<
+    TabKey,
+    { key: TabKey; label: string; icon: string } | null
+  > = {
+    total_requests:   { key: 'sent_for_pickup',  label: 'Send for Pickup', icon: '🚚' },
+    sent_for_pickup:  { key: 'in_transit',        label: 'Mark In Transit', icon: '🔄' },
+    in_transit:       { key: 'shipment_arrived',  label: 'Mark Arrived',    icon: '✅' },
+    shipment_arrived: { key: 'closed',            label: 'Close MCL',       icon: '🧾' },
+    closed:           null,
+  }
+
+  const next = nextMap[req.status] ?? null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center
+                 bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl
+                   max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+
+        {/* ── Header ───────────────────────────────────── */}
+        <div className="bg-blue-600 rounded-t-3xl px-6 py-4
+                        flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-gray-400 font-medium">
-                MCL Number
+            <div className="flex items-center gap-2">
+              <span className="text-white text-xl font-bold">
+                MCL {req.mcl_number ?? `#${req.id}`}
               </span>
-              {req.mcl_number && (
-                <span className="text-xs bg-blue-50 text-blue-600
-                                 border border-blue-200 px-2 py-0.5
-                                 rounded-full font-bold">
-                  {req.mcl_number}
-                </span>
-              )}
+              <span className={`text-xs font-semibold px-2.5 py-1
+                               rounded-full ${
+                statusStyle[req.status] ?? 'bg-gray-100 text-gray-600'
+              }`}>
+                {statusLabel[req.status] ?? req.status}
+              </span>
             </div>
-            <p className="text-xs text-gray-400">
-              ID #{req.id} •{' '}
-              {new Date(req.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day:   'numeric',
-                year:  'numeric',
-              })}
+            <p className="text-blue-200 text-xs mt-1">
+              Created {fmtDate(req.created_at)}
             </p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className={`text-xs px-2.5 py-1 rounded-full
-                             font-semibold border ${statusStyle[req.status]}`}>
-              {req.status.replace(/_/g, ' ')}
-            </span>
-            {next && (
+          <div className="flex items-center gap-2">
+            {!editing ? (
               <button
-                onClick={() => onStatusChange(req.id, next.key)}
-                title={next.label}
-                className="text-xs px-2.5 py-1 rounded-full
-                           bg-gray-100 hover:bg-gray-200
-                           text-gray-600 font-semibold
-                           transition-colors border border-gray-200"
+                onClick={() => setEditing(true)}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30
+                           text-white text-sm font-semibold
+                           rounded-xl transition-colors"
+              >
+                ✏️ Edit
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30
+                             text-white text-sm font-semibold
+                             rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-4 py-2 bg-white hover:bg-blue-50
+                             text-blue-700 text-sm font-bold
+                             rounded-xl transition-colors
+                             disabled:opacity-50"
+                >
+                  {saving ? '⏳ Saving...' : '💾 Save Changes'}
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="text-white/70 hover:text-white
+                         text-2xl leading-none font-light"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* ── Scrollable Body ───────────────────────────── */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+
+          {/* ── Status Change Bar ────────────────────────── */}
+          {!editing && next && (
+            <div className="flex items-center justify-between
+                            bg-blue-50 border border-blue-200
+                            rounded-2xl px-4 py-3">
+              <div>
+                <p className="text-xs font-bold text-blue-700">
+                  Next Step
+                </p>
+                <p className="text-xs text-blue-500 mt-0.5">
+                  Move this MCL to the next stage
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  onStatusChange(req.id, next.key)
+                  onClose()
+                }}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700
+                           text-white text-sm font-bold rounded-xl
+                           transition-colors"
               >
                 {next.icon} {next.label}
               </button>
+            </div>
+          )}
+
+          {/* ── Status Selector (Edit Mode) ───────────────── */}
+          {editing && (
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-2">
+                STATUS
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {(
+                  [
+                    'total_requests',
+                    'sent_for_pickup',
+                    'in_transit',
+                    'shipment_arrived',
+                    'closed',
+                  ] as TabKey[]
+                ).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => update('status', s)}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold
+                               border transition-all ${
+                      form.status === s
+                        ? statusStyle[s] + ' border-current'
+                        : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                    }`}
+                  >
+                    {statusLabel[s]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Section: Admin Fields ─────────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              🔧 Admin Fields
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <TextField
+                    label="MCL Number"
+                    value={form.mcl_number as string}
+                    onChange={v => update('mcl_number', v)}
+                    placeholder="e.g. MCL-1234"
+                  />
+                  <TextField
+                    label="Est. Value (USD)"
+                    value={form.fcsd_offer_amount as number}
+                    onChange={v => update('fcsd_offer_amount', v)}
+                    type="number"
+                    placeholder="e.g. 5000"
+                  />
+                  <TextAreaField
+                    label="Admin Notes"
+                    value={form.admin_notes as string}
+                    onChange={v => update('admin_notes', v)}
+                    placeholder="Internal notes..."
+                  />
+                </>
+              ) : (
+                <>
+                  <ReadRow label="MCL Number"  value={req.mcl_number}         />
+                  <ReadRow label="Est. Value"  value={fmtMoney(req.fcsd_offer_amount)} />
+                  <ReadRow label="Admin Notes" value={req.admin_notes}        />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: Key Dates ───────────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              📅 Key Dates
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <DateField
+                    label="Requested Pickup Date"
+                    value={form.requested_pickup_date as string}
+                    onChange={v => update('requested_pickup_date', v)}
+                  />
+                  <DateField
+                    label="Date Sent to Techemet"
+                    value={form.date_sent_to_techemet as string}
+                    onChange={v => update('date_sent_to_techemet', v)}
+                  />
+                  <DateField
+                    label="Scheduled Pickup Date"
+                    value={form.scheduled_pickup_date as string}
+                    onChange={v => update('scheduled_pickup_date', v)}
+                  />
+                  <DateField
+                    label="Actual Pickup Date"
+                    value={form.actual_pickup_date as string}
+                    onChange={v => update('actual_pickup_date', v)}
+                  />
+                  <DateField
+                    label="Invoice Submitted Date"
+                    value={form.invoice_submitted_date as string}
+                    onChange={v => update('invoice_submitted_date', v)}
+                  />
+                </>
+              ) : (
+                <>
+                  <ReadRow label="Requested Pickup"  value={fmtDate(req.requested_pickup_date)}  />
+                  <ReadRow label="Sent to Techemet"  value={fmtDate(req.date_sent_to_techemet)}  />
+                  <ReadRow label="Scheduled Pickup"  value={fmtDate(req.scheduled_pickup_date)}  />
+                  <ReadRow label="Actual Pickup"     value={fmtDate(req.actual_pickup_date)}     />
+                  <ReadRow label="Invoice Submitted" value={fmtDate(req.invoice_submitted_date)} />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: RCRC Info ───────────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              🏢 RCRC Information
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <TextField
+                    label="RCRC Number"
+                    value={form.rcrc_number as string}
+                    onChange={v => update('rcrc_number', v)}
+                  />
+                  <TextField
+                    label="RCRC Name"
+                    value={form.rcrc_name as string}
+                    onChange={v => update('rcrc_name', v)}
+                  />
+                  <TextField
+                    label="Contact Person"
+                    value={form.rcrc_contact_person as string}
+                    onChange={v => update('rcrc_contact_person', v)}
+                  />
+                  <TextField
+                    label="RCRC Email"
+                    value={form.rcrc_email as string}
+                    onChange={v => update('rcrc_email', v)}
+                  />
+                  <TextField
+                    label="RCRC Phone"
+                    value={form.rcrc_phone_number as string}
+                    onChange={v => update('rcrc_phone_number', v)}
+                  />
+                  <TextField
+                    label="RCRC Address"
+                    value={form.rcrc_address as string}
+                    onChange={v => update('rcrc_address', v)}
+                  />
+                  <TextField
+                    label="RCRC Zip Code"
+                    value={form.rcrc_zip_code as string}
+                    onChange={v => update('rcrc_zip_code', v)}
+                  />
+                </>
+              ) : (
+                <>
+                  <ReadRow label="RCRC Number"    value={req.rcrc_number}         />
+                  <ReadRow label="RCRC Name"      value={req.rcrc_name}           />
+                  <ReadRow label="Contact Person" value={req.rcrc_contact_person} />
+                  <ReadRow label="RCRC Email"     value={req.rcrc_email}          />
+                  <ReadRow label="RCRC Phone"     value={req.rcrc_phone_number}   />
+                  <ReadRow label="RCRC Address"   value={req.rcrc_address}        />
+                  <ReadRow label="RCRC Zip Code"  value={req.rcrc_zip_code}       />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: Pickup Details ──────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              📦 Pickup Details
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {editing ? (
+                <>
+                  <TextField
+                    label="Pallet Quantity"
+                    value={form.pallet_quantity as number}
+                    onChange={v => update('pallet_quantity', v)}
+                    type="number"
+                  />
+                  <TextField
+                    label="Total Pieces"
+                    value={form.total_pieces_quantity as number}
+                    onChange={v => update('total_pieces_quantity', v)}
+                    type="number"
+                  />
+                  <TextAreaField
+                    label="Special Instructions"
+                    value={form.special_instructions as string}
+                    onChange={v => update('special_instructions', v)}
+                    placeholder="Any special instructions..."
+                  />
+                  <TextAreaField
+                    label="Notes"
+                    value={form.notes as string}
+                    onChange={v => update('notes', v)}
+                    placeholder="General notes..."
+                  />
+                </>
+              ) : (
+                <>
+                  <ReadRow label="Pallet Quantity"      value={req.pallet_quantity}       />
+                  <ReadRow label="Total Pieces"         value={req.total_pieces_quantity} />
+                  <ReadRow label="Special Instructions" value={req.special_instructions}  />
+                  <ReadRow label="Notes"                value={req.notes}                 />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section: Customer Info (Read Only) ───────── */}
+          <div>
+            <p className="text-xs font-bold text-gray-400
+                          uppercase tracking-wide mb-3">
+              👤 Customer Info
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <ReadRow label="Name"    value={req.customer_name} />
+              <ReadRow label="Email"   value={req.email}         />
+              <ReadRow label="Phone"   value={req.phone}         />
+              <ReadRow label="Address" value={req.address1}      />
+              <ReadRow label="City"    value={req.city}          />
+              <ReadRow label="State"   value={req.state}         />
+              <ReadRow label="Zip"     value={req.zip}           />
+            </div>
+          </div>
+
+        </div>
+
+        {/* ── Footer ───────────────────────────────────── */}
+        <div className="px-6 py-4 border-t border-gray-100
+                        rounded-b-3xl bg-gray-50/50
+                        flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            Last updated: {fmtDate(req.updated_at ?? req.created_at)}
+          </p>
+          <div className="flex gap-2">
+            {editing ? (
+              <>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-5 py-2.5 rounded-xl bg-gray-100
+                             hover:bg-gray-200 text-gray-600
+                             font-semibold text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600
+                             hover:bg-blue-700 text-white font-bold
+                             text-sm transition-colors disabled:opacity-50"
+                >
+                  {saving ? '⏳ Saving...' : '💾 Save Changes'}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl bg-gray-100
+                           hover:bg-gray-200 text-gray-600
+                           font-semibold text-sm transition-colors"
+              >
+                Close
+              </button>
             )}
           </div>
-        </div>
-
-        {/* RCRC Info */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">RCRC Name</p>
-            <p className="text-sm font-bold text-gray-800 truncate">
-              {req.rcrc_name ?? '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">RCRC #</p>
-            <p className="text-sm font-bold text-gray-800">
-              {req.rcrc_number ?? '—'}
-            </p>
-          </div>
-        </div>
-
-        {/* Value & Pieces */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
-            <p className="text-xs text-emerald-600 font-medium mb-0.5">
-              Est. Value
-            </p>
-            <p className="text-sm font-bold text-emerald-700">
-              {req.fcsd_offer_amount
-                ? fmtMoney(req.fcsd_offer_amount)
-                : '—'}
-            </p>
-          </div>
-          <div className="bg-purple-50 rounded-xl p-2.5 text-center">
-            <p className="text-xs text-purple-600 font-medium mb-0.5">
-              Pieces
-            </p>
-            <p className="text-sm font-bold text-purple-700">
-              {req.total_pieces_quantity?.toLocaleString() ?? '—'}
-            </p>
-          </div>
-          <div className="bg-orange-50 rounded-xl p-2.5 text-center">
-            <p className="text-xs text-orange-600 font-medium mb-0.5">
-              Pallets
-            </p>
-            <p className="text-sm font-bold text-orange-700">
-              {req.pallet_quantity ?? '—'}
-            </p>
-          </div>
-        </div>
-
-        {/* Dates */}
-        <div className="space-y-1.5 mb-3">
-          {[
-            { label: 'Requested',  value: req.requested_pickup_date  },
-            { label: 'Scheduled',  value: req.scheduled_pickup_date  },
-            { label: 'Actual Pickup', value: req.actual_pickup_date  },
-            { label: 'Invoice Submitted', value: req.invoice_submitted_date },
-          ].map(d => (
-            <div
-              key={d.label}
-              className="flex justify-between items-center text-xs"
-            >
-              <span className="text-gray-400">{d.label}</span>
-              <span className={`font-medium ${
-                d.value ? 'text-gray-700' : 'text-gray-300'
-              }`}>
-                {d.value ? fmtDate(d.value) : '—'}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-3 border-t border-gray-50">
-          <button
-            onClick={() => onView(req)}
-            className="flex-1 flex items-center justify-center
-                       gap-1.5 py-2 rounded-xl bg-blue-50
-                       hover:bg-blue-100 text-blue-700
-                       text-xs font-semibold transition-colors
-                       border border-blue-200"
-          >
-            ✏️ View / Edit
-          </button>
-          {next && (
-            <button
-              onClick={() => onStatusChange(req.id, next.key)}
-              className="flex-1 flex items-center justify-center
-                         gap-1.5 py-2 rounded-xl bg-green-50
-                         hover:bg-green-100 text-green-700
-                         text-xs font-semibold transition-colors
-                         border border-green-200"
-            >
-              {next.icon} Send for Pickup
-            </button>
-          )}
-          <button
-            onClick={() => onDelete(req)}
-            className="p-2 rounded-xl bg-red-50 hover:bg-red-100
-                       text-red-500 transition-colors
-                       border border-red-200"
-            title="Delete Request"
-          >
-            🗑
-          </button>
         </div>
 
       </div>
     </div>
   )
 }
+
 // ─────────────────────────────────────────────────────────
-// Main Dashboard Component
+// ─────────────────────────────────────────────────────────
+// AdminDashboard — Main Component
 // ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { data: session, status } = useSession()
+  const userEmail = session?.user?.email ?? ''
 
-  // ── Core States ──────────────────────────────────────
-  const [requests,     setRequests]     = useState<PickupRequest[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [syncing,      setSyncing]      = useState(false)
-  const [activeTab,    setActiveTab]    = useState<TabKey>('total_requests')
-  const [activeNav,    setActiveNav]    = useState<
-    'dashboard' | 'analytics' | 'requestors'
-  >('dashboard')
-  const [viewReq,      setViewReq]      = useState<PickupRequest | null>(null)
-  const [deleteReq,    setDeleteReq]    = useState<PickupRequest | null>(null)
-  const [toast,        setToast]        = useState<string | null>(null)
-  const [searchQuery,  setSearchQuery]  = useState('')
-  const [lastSynced,   setLastSynced]   = useState<Date | null>(null)
-
-  // ── Upload Modal States ───────────────────────────────
+  const [requests,      setRequests]      = useState<PickupRequest[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [activeTab,     setActiveTab]     = useState<TabKey>('total_requests')
+  const [viewReq,       setViewReq]       = useState<PickupRequest | null>(null)
+  const [deleteReq,     setDeleteReq]     = useState<PickupRequest | null>(null)
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [search,        setSearch]        = useState('')
+  const [saving,        setSaving]        = useState(false)
+  const [toast,         setToast]         = useState<string | null>(null)
+  const [lastSynced,    setLastSynced]    = useState<Date | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadFile,      setUploadFile]      = useState<File | null>(null)
   const [uploadStep,      setUploadStep]      = useState<
@@ -1901,126 +2460,146 @@ export default function AdminDashboard() {
       failed:     { email: string; error: string }[]
     }
   } | null>(null)
-
   // ── Toast Helper ─────────────────────────────────────
   function showToast(msg: string) {
     setToast(msg)
-    setTimeout(() => setToast(null), 3500)
+    setTimeout(() => setToast(null), 3000)
   }
 
-  // ── Fetch Requests ────────────────────────────────────
+  // ── Fetch Requests ───────────────────────────────────
   const fetchRequests = useCallback(async () => {
-    setLoading(true)
     try {
+      setLoading(true)
       const { data, error } = await supabase
         .from('pickup_request')
         .select('*')
         .order('created_at', { ascending: false })
       if (error) throw error
-      setRequests(data ?? [])
+      const normalized = (data ?? []).map(r => ({
+        ...r,
+        status: r.status === 'pending' ? 'total_requests' : r.status,
+      }))
+      setRequests(normalized)
       setLastSynced(new Date())
     } catch (err) {
-      console.error('Failed to fetch requests:', err)
-      showToast('❌ Failed to load requests')
+      console.error('Fetch error:', err)
     } finally {
       setLoading(false)
     }
   }, [])
 
+  // ── Auth: Fetch on login ─────────────────────────────
   useEffect(() => {
-    if (status === 'authenticated') fetchRequests()
-  }, [status, fetchRequests])
-
-  // ── Sync ─────────────────────────────────────────────
-  async function handleSync() {
-    setSyncing(true)
-    try {
-      const res  = await fetch('/api/admin/sync-from-powerautomate',
-        { method: 'POST' })
-      const data = await res.json()
-      if (data.success) {
-        showToast(`✅ Synced ${data.count ?? ''} records`)
-        fetchRequests()
-      } else {
-        showToast('❌ Sync failed')
-      }
-    } catch {
-      showToast('❌ Sync error')
-    } finally {
-      setSyncing(false)
+    if (status === 'authenticated') {
+      fetchRequests()
     }
-  }
+  }, [fetchRequests, status])
 
-  // ── Status Change ─────────────────────────────────────
+  // ── Real-time subscription ───────────────────────────
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const channel = supabase
+      .channel('pickup_request_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pickup_request' },
+        () => fetchRequests()
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchRequests, status])
+
+  // ── Guards ───────────────────────────────────────────
+  if (status === 'loading')               return <AuthLoadingScreen />
+  if (status === 'unauthenticated')       return <NotSignedInScreen />
+  if (!ADMIN_EMAILS.includes(userEmail))  return <UnauthorizedScreen email={userEmail} />
+
+  // ── Status Change ────────────────────────────────────
   async function handleStatusChange(id: number, newStatus: TabKey) {
-    try {
-      const res  = await fetch('/api/admin/update-status', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, status: newStatus }),
+    const { error } = await supabase
+      .from('pickup_request')
+      .update({
+        status:            newStatus,
+        status_updated_at: new Date().toISOString(),
+        updated_at:        new Date().toISOString(),
       })
-      const data = await res.json()
-      if (data.success) {
-        showToast(`✅ Status updated to ${newStatus.replace(/_/g, ' ')}`)
-        fetchRequests()
-      } else {
-        showToast('❌ Failed to update status')
-      }
-    } catch {
-      showToast('❌ Error updating status')
+      .eq('id', id)
+    if (error) {
+      showToast('❌ Failed to update status')
+    } else {
+      showToast('✅ Status updated!')
+      fetchRequests()
     }
   }
 
-  // ── Save (View/Edit Modal) ────────────────────────────
-  async function handleSave(
-    id:      number,
-    updates: Partial<PickupRequest>
-  ) {
-    try {
-      const res  = await fetch('/api/admin/update-request', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, updates }),
+  // ── Save ─────────────────────────────────────────────
+  async function handleSave(updated: Partial<PickupRequest>) {
+    if (!viewReq) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('pickup_request')
+      .update({
+        ...updated,
+        updated_at: new Date().toISOString(),
       })
-      const data = await res.json()
-      if (data.success) {
-        showToast('✅ Request saved successfully')
-        setViewReq(null)
-        fetchRequests()
-      } else {
-        showToast('❌ Failed to save request')
-      }
-    } catch {
-      showToast('❌ Error saving request')
+      .eq('id', viewReq.id)
+    if (error) {
+      showToast('❌ Failed to save changes')
+    } else {
+      showToast('✅ Changes saved!')
+      fetchRequests()
+      setViewReq(prev => prev ? { ...prev, ...updated } : null)
     }
+    setSaving(false)
   }
 
-  // ── Delete ────────────────────────────────────────────
+  // ── Delete ───────────────────────────────────────────
   async function handleDelete(
     id:           number,
     reason:       string,
     reasonDetail: string
   ) {
+    const req = requests.find(r => r.id === id)
+    if (!req) return
+
+    await supabase.from('deleted_requests').insert({
+      ...req,
+      deleted_at:    new Date().toISOString(),
+      deleted_by:    userEmail,
+      delete_reason: reason,
+      delete_notes:  reasonDetail,
+    })
+
     try {
-      const res  = await fetch('/api/admin/delete-request', {
+      await fetch('/api/delete-notify', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, reason, reasonDetail }),
+        body: JSON.stringify({
+          email:        req.rcrc_email ?? req.email,
+          mcl_number:   req.mcl_number,
+          rcrc_name:    req.rcrc_name,
+          reason,
+          reasonDetail,
+        }),
       })
-      const data = await res.json()
-      if (data.success) {
-        showToast('✅ Request deleted & archived')
-        setDeleteReq(null)
-        fetchRequests()
-      } else {
-        showToast('❌ Failed to delete request')
-      }
-    } catch {
-      showToast('❌ Error deleting request')
+    } catch (e) {
+      console.error('Email notify failed:', e)
+    }
+
+    const { error } = await supabase
+      .from('pickup_request')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      showToast('❌ Failed to delete')
+    } else {
+      showToast('✅ Request deleted & notified!')
+      setDeleteReq(null)
+      fetchRequests()
     }
   }
-
-  // ── Upload Users Functions ────────────────────────────
+// ── Download CSV Template ─────────────────────────
   const downloadTemplate = () => {
     const headers = [
       'First Name', 'Last Name', 'RCRC Email',
@@ -2048,6 +2627,7 @@ export default function AdminDashboard() {
     showToast('✅ Template downloaded!')
   }
 
+  // ── CSV Parser ────────────────────────────────────
   const parseCSV = (text: string): any[] => {
     const lines = text.trim().split('\n')
     if (lines.length < 2) return []
@@ -2066,6 +2646,7 @@ export default function AdminDashboard() {
     })
   }
 
+  // ── Handle File Select ────────────────────────────
   const handleFileSelect = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -2082,6 +2663,7 @@ export default function AdminDashboard() {
     setUploadStep('preview')
   }
 
+  // ── Handle Upload ─────────────────────────────────
   const handleUpload = async () => {
     if (!uploadFile) return
     try {
@@ -2107,6 +2689,7 @@ export default function AdminDashboard() {
     }
   }
 
+  // ── Reset Upload Modal ────────────────────────────
   const resetUploadModal = () => {
     setShowUploadModal(false)
     setUploadFile(null)
@@ -2114,307 +2697,44 @@ export default function AdminDashboard() {
     setUploadStep('upload')
     setPreviewData([])
   }
-
-  // ── Filtered Requests ─────────────────────────────────
+  // ── Filtered Requests ────────────────────────────────
   const tabRequests = requests.filter(r => r.status === activeTab)
-  const filteredRequests = searchQuery.trim()
-    ? tabRequests.filter(r => {
-        const q = searchQuery.toLowerCase()
-        return (
-          r.mcl_number?.toLowerCase().includes(q)       ||
-          r.rcrc_name?.toLowerCase().includes(q)        ||
-          r.rcrc_number?.toLowerCase().includes(q)      ||
-          r.rcrc_email?.toLowerCase().includes(q)       ||
-          r.customer_name?.toLowerCase().includes(q)
-        )
-      })
-    : tabRequests
+  const filtered    = tabRequests.filter(r => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      r.mcl_number?.toLowerCase().includes(q)   ||
+      r.rcrc_name?.toLowerCase().includes(q)     ||
+      r.rcrc_number?.toLowerCase().includes(q)   ||
+      r.customer_name?.toLowerCase().includes(q) ||
+      r.email?.toLowerCase().includes(q)         ||
+      r.rcrc_email?.toLowerCase().includes(q)
+    )
+  })
 
-  // ── Tab Counts ────────────────────────────────────────
-  const tabCounts = TABS.reduce((acc, tab) => {
-    acc[tab.key] = requests.filter(r => r.status === tab.key).length
-    return acc
-  }, {} as Record<TabKey, number>)
-
-  // ── Auth Guards ───────────────────────────────────────
-  if (status === 'loading') return <AuthLoadingScreen />
-  if (!session)             return <NotSignedInScreen />
-  if (!ADMIN_EMAILS.includes(session.user?.email ?? '')) {
-    return <UnauthorizedScreen email={session.user?.email ?? ''} />
-  }
-
-  // ── Render ────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
 
       {/* ── Toast ──────────────────────────────────────── */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50
+        <div className="fixed top-4 right-4 z-[100]
                         bg-gray-900 text-white text-sm
                         font-semibold px-5 py-3 rounded-2xl
-                        shadow-2xl animate-fade-in">
+                        shadow-xl">
           {toast}
         </div>
       )}
 
-      {/* ── Header ─────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-200
-                         sticky top-0 z-40 shadow-sm">
-        <div className="max-w-screen-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-
-            {/* Logo + Title */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-blue-600 rounded-xl
-                              flex items-center justify-center
-                              shadow-sm shrink-0">
-                <span className="text-lg">🏭</span>
-              </div>
-              <div>
-                <h1 className="text-sm font-bold text-gray-900
-                               leading-tight">
-                  Ford MCL Admin
-                </h1>
-                <p className="text-xs text-gray-400 leading-tight">
-                  {lastSynced
-                    ? `Synced ${lastSynced.toLocaleTimeString()}`
-                    : 'Not synced yet'}
-                </p>
-              </div>
-            </div>
-
-            {/* Nav Buttons */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-
-              {/* Sync */}
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className="px-3 py-2 text-sm font-semibold
-                           whitespace-nowrap rounded-xl
-                           transition-colors bg-blue-600
-                           hover:bg-blue-700 text-white
-                           disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {syncing ? '⏳' : '🔄'}
-                <span className="hidden sm:inline">
-                  {syncing ? 'Syncing...' : 'Sync'}
-                </span>
-              </button>
-
-              {/* Analytics */}
-              <button
-                onClick={() => setActiveNav(
-                  activeNav === 'analytics' ? 'dashboard' : 'analytics'
-                )}
-                className={`px-3 py-2 text-sm font-semibold
-                           whitespace-nowrap rounded-xl
-                           transition-colors flex items-center gap-1.5 ${
-                  activeNav === 'analytics'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
-                }`}
-              >
-                📊
-                <span className="hidden sm:inline">Analytics</span>
-              </button>
-
-              {/* Requestors */}
-              <a
-                href="/admin/requestors"
-                className="px-3 py-2 text-sm font-semibold
-                           whitespace-nowrap rounded-xl
-                           transition-colors bg-purple-50
-                           hover:bg-purple-100 text-purple-700
-                           border border-purple-200
-                           flex items-center gap-1.5"
-              >
-                👥
-                <span className="hidden sm:inline">Requestors</span>
-              </a>
-
-              {/* ✅ Upload Users Button */}
-              <button
-                onClick={() => {
-                  setUploadStep('upload')
-                  setUploadResult(null)
-                  setUploadFile(null)
-                  setPreviewData([])
-                  setShowUploadModal(true)
-                }}
-                className="px-3 py-2 text-sm font-semibold
-                           whitespace-nowrap rounded-xl
-                           transition-colors bg-green-50
-                           hover:bg-green-100 text-green-700
-                           border border-green-200
-                           flex items-center gap-1.5"
-              >
-                📤
-                <span className="hidden sm:inline">Upload Users</span>
-              </button>
-
-              {/* Admins */}
-              <a
-                href="/admin/admins"
-                className="px-3 py-2 text-sm font-semibold
-                           whitespace-nowrap rounded-xl
-                           transition-colors bg-gray-50
-                           hover:bg-gray-100 text-gray-700
-                           border border-gray-200
-                           flex items-center gap-1.5"
-              >
-                🛡️
-                <span className="hidden sm:inline">Admins</span>
-              </a>
-
-              {/* Sign Out */}
-              <button
-                onClick={() => signOut({ callbackUrl: '/admin/login' })}
-                className="px-3 py-2 text-sm font-semibold
-                           whitespace-nowrap rounded-xl
-                           transition-colors bg-red-50
-                           hover:bg-red-100 text-red-600
-                           border border-red-200
-                           flex items-center gap-1.5"
-              >
-                🚪
-                <span className="hidden sm:inline">Sign Out</span>
-              </button>
-
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Main Content ───────────────────────────────── */}
-      <main className="max-w-screen-2xl mx-auto px-4 py-6">
-
-        {/* ── Analytics View ─────────────────────────── */}
-        {activeNav === 'analytics' && (
-          <AnalyticsDashboard requests={requests} />
-        )}
-
-        {/* ── Dashboard View ─────────────────────────── */}
-        {activeNav === 'dashboard' && (
-          <>
-            {/* Tab Bar */}
-            <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
-              {TABS.map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-2 px-4 py-2.5
-                             rounded-xl text-sm font-semibold
-                             whitespace-nowrap transition-all
-                             border shrink-0 ${
-                    activeTab === tab.key
-                      ? `${tab.bg} ${tab.color} ${tab.border} shadow-sm`
-                      : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <span>{tab.icon}</span>
-                  <span>{tab.label}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full
-                                   font-bold ${
-                    activeTab === tab.key
-                      ? `${tab.color} bg-white/70`
-                      : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {tabCounts[tab.key]}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Active Tab Header */}
-            {(() => {
-              const tab = TABS.find(t => t.key === activeTab)!
-              return (
-                <div className={`${tab.bg} border ${tab.border}
-                                rounded-2xl p-4 mb-5
-                                flex items-center justify-between
-                                flex-wrap gap-3`}>
-                  <div>
-                    <h2 className={`text-lg font-bold ${tab.color}
-                                   flex items-center gap-2`}>
-                      {tab.icon} {tab.label}
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {tab.desc} •{' '}
-                      {tabCounts[tab.key]} record
-                      {tabCounts[tab.key] !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-
-                  {/* Search */}
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2
-                                     -translate-y-1/2 text-gray-400
-                                     text-sm">
-                      🔍
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Search MCL, RCRC, email..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-8 pr-4 py-2 text-sm border
-                                 border-gray-200 rounded-xl
-                                 focus:outline-none focus:ring-2
-                                 focus:ring-blue-300 bg-white
-                                 w-64 shadow-sm"
-                    />
-                  </div>
-                </div>
-              )
-            })()}
-
-            {/* Request Cards Grid */}
-            {loading ? (
-              <div className="flex items-center justify-center
-                              py-24">
-                <div className="text-center">
-                  <div className="w-10 h-10 border-4 border-blue-600
-                                  border-t-transparent rounded-full
-                                  animate-spin mx-auto mb-3" />
-                  <p className="text-sm text-gray-400 font-medium">
-                    Loading requests...
-                  </p>
-                </div>
-              </div>
-            ) : filteredRequests.length === 0 ? (
-              <div className="text-center py-24">
-                <p className="text-5xl mb-4">📭</p>
-                <p className="text-lg font-bold text-gray-400">
-                  No requests found
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  {searchQuery
-                    ? 'Try a different search term'
-                    : 'No records in this category yet'}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2
-                              lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredRequests.map(req => (
-                  <RequestCard
-                    key={req.id}
-                    req={req}
-                    onStatusChange={handleStatusChange}
-                    onView={setViewReq}
-                    onDelete={setDeleteReq}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </main>
-
       {/* ── Modals ─────────────────────────────────────── */}
-
-      {/* Delete Modal */}
+      {viewReq && (
+        <ViewModal
+          req={viewReq}
+          onClose={() => setViewReq(null)}
+          onSave={handleSave}
+          onStatusChange={handleStatusChange}
+        />
+      )}
       {deleteReq && (
         <DeleteModal
           req={deleteReq}
@@ -2422,7 +2742,6 @@ export default function AdminDashboard() {
           onConfirm={handleDelete}
         />
       )}
-
       {/* ✅ Upload Users Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm
@@ -2431,7 +2750,7 @@ export default function AdminDashboard() {
                           max-w-2xl w-full p-6
                           max-h-[90vh] overflow-y-auto">
 
-            {/* Modal Header */}
+            {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
@@ -2462,8 +2781,7 @@ export default function AdminDashboard() {
                   <div key={step} className="flex items-center gap-2">
                     <div className={`w-7 h-7 rounded-full flex
                                     items-center justify-center
-                                    text-xs font-bold
-                                    transition-all ${
+                                    text-xs font-bold transition-all ${
                       isDone
                         ? 'bg-green-500 text-white'
                         : isActive
@@ -2490,8 +2808,6 @@ export default function AdminDashboard() {
             {/* ── STEP 1: UPLOAD ── */}
             {uploadStep === 'upload' && (
               <div className="space-y-4">
-
-                {/* Download Template */}
                 <div className="bg-blue-50 border border-blue-200
                                 rounded-2xl p-4 flex items-center
                                 justify-between gap-4">
@@ -2514,7 +2830,6 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-                {/* Upload Area */}
                 <div
                   className="border-2 border-dashed border-gray-300
                              rounded-2xl p-8 text-center
@@ -2542,7 +2857,6 @@ export default function AdminDashboard() {
                   />
                 </div>
 
-                {/* Required Columns */}
                 <div className="bg-gray-50 border border-gray-200
                                 rounded-2xl p-4">
                   <p className="text-xs font-bold text-gray-600
@@ -2578,17 +2892,14 @@ export default function AdminDashboard() {
                     * Required fields
                   </p>
                 </div>
-
               </div>
             )}
 
             {/* ── STEP 2: PREVIEW ── */}
             {uploadStep === 'preview' && (
               <div className="space-y-4">
-
                 <div className="bg-green-50 border border-green-200
-                                rounded-2xl p-3 flex items-center
-                                gap-3">
+                                rounded-2xl p-3 flex items-center gap-3">
                   <span className="text-2xl">✅</span>
                   <div>
                     <p className="text-sm font-semibold text-green-800">
@@ -2644,11 +2955,6 @@ export default function AdminDashboard() {
                   </table>
                 </div>
 
-                <p className="text-xs text-gray-500 text-center">
-                  Each user will receive an email invite
-                  to set their own password
-                </p>
-
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
@@ -2670,44 +2976,32 @@ export default function AdminDashboard() {
                                text-white rounded-2xl
                                hover:bg-blue-700 transition
                                font-semibold text-sm
-                               disabled:opacity-50
-                               disabled:cursor-not-allowed"
+                               disabled:opacity-50"
                   >
                     {uploadLoading ? (
                       <span className="flex items-center
                                        justify-center gap-2">
-                        <svg
-                          className="animate-spin h-4 w-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <circle
-                            className="opacity-25"
+                        <svg className="animate-spin h-4 w-4"
+                          viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25"
                             cx="12" cy="12" r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
+                            stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75"
                             fill="currentColor"
                             d="M4 12a8 8 0 018-8V0C5.373
-                            0 0 5.373 0 12h4z"
-                          />
+                            0 0 5.373 0 12h4z"/>
                         </svg>
                         Uploading...
                       </span>
                     ) : '📤 Upload & Create Users'}
                   </button>
                 </div>
-
               </div>
             )}
 
             {/* ── STEP 3: RESULT ── */}
             {uploadStep === 'result' && uploadResult && (
               <div className="space-y-4">
-
-                {/* Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: 'Created',   value: uploadResult.success,    bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-600',  icon: '✅' },
@@ -2715,11 +3009,9 @@ export default function AdminDashboard() {
                     { label: 'Skipped',   value: uploadResult.skipped,    bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-600', icon: '⏭️' },
                     { label: 'Failed',    value: uploadResult.failed,     bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-600',    icon: '❌' },
                   ].map(s => (
-                    <div
-                      key={s.label}
+                    <div key={s.label}
                       className={`${s.bg} border ${s.border}
-                                 rounded-2xl p-3 text-center`}
-                    >
+                                 rounded-2xl p-3 text-center`}>
                       <p className={`text-2xl font-bold ${s.text}`}>
                         {s.value}
                       </p>
@@ -2731,13 +3023,11 @@ export default function AdminDashboard() {
                   ))}
                 </div>
 
-                {/* Successful */}
                 {uploadResult.details.successful.length > 0 && (
                   <div className="bg-green-50 border border-green-200
                                   rounded-2xl p-4">
                     <p className="text-sm font-bold text-green-800 mb-2">
-                      ✅ Created (
-                      {uploadResult.details.successful.length})
+                      ✅ Created ({uploadResult.details.successful.length})
                     </p>
                     <div className="space-y-1 max-h-32 overflow-y-auto">
                       {uploadResult.details.successful.map((u, idx) => (
@@ -2752,13 +3042,11 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {/* Duplicates */}
                 {uploadResult.details.duplicate.length > 0 && (
                   <div className="bg-yellow-50 border border-yellow-200
                                   rounded-2xl p-4">
                     <p className="text-sm font-bold text-yellow-800 mb-2">
-                      ⚠️ Duplicates (
-                      {uploadResult.details.duplicate.length})
+                      ⚠️ Duplicates ({uploadResult.details.duplicate.length})
                     </p>
                     <div className="space-y-1 max-h-28 overflow-y-auto">
                       {uploadResult.details.duplicate.map((u, idx) => (
@@ -2770,13 +3058,11 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {/* Skipped */}
                 {uploadResult.details.skipped.length > 0 && (
                   <div className="bg-orange-50 border border-orange-200
                                   rounded-2xl p-4">
                     <p className="text-sm font-bold text-orange-800 mb-2">
-                      ⏭️ Skipped (
-                      {uploadResult.details.skipped.length})
+                      ⏭️ Skipped ({uploadResult.details.skipped.length})
                     </p>
                     <div className="space-y-1 max-h-28 overflow-y-auto">
                       {uploadResult.details.skipped.map((s, idx) => (
@@ -2788,7 +3074,6 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {/* Failed */}
                 {uploadResult.details.failed.length > 0 && (
                   <div className="bg-red-50 border border-red-200
                                   rounded-2xl p-4">
@@ -2805,24 +3090,249 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {/* Done Button */}
                 <button
                   onClick={resetUploadModal}
                   className="w-full px-4 py-3 bg-blue-600
-                             text-white rounded-2xl
-                             hover:bg-blue-700 transition
-                             font-semibold text-sm"
+                             text-white rounded-2xl hover:bg-blue-700
+                             transition font-semibold text-sm"
                 >
                   ✅ Done — Close
                 </button>
-
               </div>
             )}
 
           </div>
         </div>
       )}
+      {/* ── Top Nav ─────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-200
+                      sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6
+                        py-3 flex items-center justify-between">
 
+          {/* Left: Logo + User */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-600 rounded-xl
+                            flex items-center justify-center shadow-sm">
+              <span className="text-lg">🏭</span>
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-gray-800">
+                Ford MCL Admin
+              </h1>
+              <p className="text-xs text-gray-400">{userEmail}</p>
+            </div>
+          </div>
+
+          {/* Right: Buttons */}
+<div className="flex items-center gap-2 flex-wrap justify-end">
+
+  {/* Last Synced */}
+  {lastSynced && (
+    <span className="text-xs text-gray-400 hidden lg:block whitespace-nowrap">
+      Synced {lastSynced.toLocaleTimeString()}
+    </span>
+  )}
+
+  {/* ✅ SYNC BUTTON */}
+  <button
+    onClick={fetchRequests}
+    disabled={loading}
+    className={`flex items-center gap-1.5 px-3 py-2
+               text-sm font-semibold rounded-xl
+               border transition-all whitespace-nowrap ${
+      loading
+        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+    }`}
+  >
+    <span className={loading ? 'animate-spin inline-block' : ''}>
+      🔄
+    </span>
+    <span className="hidden sm:inline">
+      {loading ? 'Syncing...' : 'Sync'}
+    </span>
+  </button>
+
+  {/* Analytics Toggle */}
+  <button
+    onClick={() => setShowAnalytics(v => !v)}
+    className={`px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors ${
+      showAnalytics
+        ? 'bg-blue-600 text-white'
+        : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+    }`}
+  >
+    📊 <span className="hidden sm:inline">
+      {showAnalytics ? 'Hide Analytics' : 'Analytics'}
+    </span>
+  </button>
+
+  {/* Divider */}
+  <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+  {/* Requestor Management */}
+  <a
+    href="/admin/requestors"
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors bg-indigo-50
+               hover:bg-indigo-100 text-indigo-700 border
+               border-indigo-200 flex items-center gap-1.5"
+  >
+    👥 <span className="hidden sm:inline">Requestors</span>
+  </a>
+  {/* ✅ Upload Users Button */}
+  <button
+    onClick={() => {
+      setUploadStep('upload')
+      setUploadResult(null)
+      setUploadFile(null)
+      setPreviewData([])
+      setShowUploadModal(true)
+    }}
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors bg-green-50
+               hover:bg-green-100 text-green-700 border
+               border-green-200 flex items-center gap-1.5"
+  >
+    📤 <span className="hidden sm:inline">Upload Users</span>
+  </button>
+
+  {/* Admin Management */}
+  <a
+    href="/admin/admins"
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors bg-purple-50
+               hover:bg-purple-100 text-purple-700 border
+               border-purple-200 flex items-center gap-1.5"
+  >
+    🛡️ <span className="hidden sm:inline">Admins</span>
+  </a>
+
+  {/* Divider */}
+  <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+  {/* Sign Out */}
+  <button
+    onClick={() => signOut({ callbackUrl: '/admin/login' })}
+    className="px-3 py-2 text-sm font-semibold whitespace-nowrap
+               rounded-xl transition-colors bg-red-50
+               hover:bg-red-100 text-red-600 border
+               border-red-200 flex items-center gap-1.5"
+  >
+    🚪 <span className="hidden sm:inline">Sign Out</span>
+  </button>
+
+  </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* ── Analytics Panel ─────────────────────────── */}
+        {showAnalytics && (
+          <div className="mb-6">
+            <AnalyticsDashboard requests={requests} />
+          </div>
+        )}
+
+        {/* ── Status Tabs ─────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+          {TABS.map(tab => {
+            const count    = requests.filter(r => r.status === tab.key).length
+            const isActive = activeTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`rounded-2xl border p-3 text-left
+                           transition-all ${
+                  isActive
+                    ? `${tab.bg} ${tab.border} shadow-sm`
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-lg">{tab.icon}</span>
+                  <span className={`text-lg font-bold ${
+                    isActive ? tab.color : 'text-gray-600'
+                  }`}>
+                    {count}
+                  </span>
+                </div>
+                <p className={`text-xs font-bold ${
+                  isActive ? tab.color : 'text-gray-600'
+                }`}>
+                  {tab.label}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">
+                  {tab.desc}
+                </p>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Search Bar ──────────────────────────────── */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="🔍 Search by MCL #, RCRC name, email..."
+            className="w-full text-sm border border-gray-200
+                       rounded-2xl px-4 py-3 focus:outline-none
+                       focus:ring-2 focus:ring-blue-300 bg-white shadow-sm"
+          />
+        </div>
+
+        {/* ── Results Header ──────────────────────────── */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-600">
+            {filtered.length} record{filtered.length !== 1 ? 's' : ''}
+            {search && ` matching "${search}"`}
+          </p>
+        </div>
+
+        {/* ── Cards Grid ──────────────────────────────── */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-10 h-10 border-4 border-blue-600
+                              border-t-transparent rounded-full
+                              animate-spin mx-auto mb-3" />
+              <p className="text-sm text-gray-500 font-medium">
+                Syncing requests...
+              </p>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-4xl mb-3">📭</p>
+            <p className="text-gray-500 font-semibold">No records found</p>
+            <p className="text-gray-400 text-sm mt-1">
+              {search
+                ? 'Try a different search term'
+                : 'No requests in this category yet'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2
+                          lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map(req => (
+              <RequestCard
+                key={req.id}
+                req={req}
+                onStatusChange={handleStatusChange}
+                onView={r  => setViewReq(r)}
+                onDelete={r => setDeleteReq(r)}
+              />
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }
