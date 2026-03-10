@@ -60,7 +60,140 @@ function FCSLogo({ height = 36 }: { height?: number }) {
     </div>
   )
 }
+function ProfileDropdown({
+  name,
+  email,
+  isAdmin,
+  onLogout,
+}: {
+  name:     string
+  email:    string
+  isAdmin:  boolean
+  onLogout: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const initials = name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 
+  return (
+    <div className="relative">
+      {/* Avatar Button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="
+          flex items-center gap-2
+          bg-white/10 hover:bg-white/20
+          border border-white/20
+          rounded-full pl-1 pr-3 py-1
+          transition duration-200
+        "
+      >
+        {/* Round Avatar */}
+        <div className={`
+          w-8 h-8 rounded-full
+          flex items-center justify-center
+          font-bold text-sm shadow-md
+          ${isAdmin
+            ? 'bg-yellow-400 text-[#1B4332]'
+            : 'bg-white     text-[#1B4332]'
+          }
+        `}>
+          {initials}
+        </div>
+        <span className="text-white text-xs font-medium hidden md:block">
+          {name.split(' ')[0]}
+        </span>
+        {/* Chevron */}
+        <svg
+          className={`w-3 h-3 text-white/70 transition-transform
+            ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round"
+                strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown Menu */}
+      {open && (
+        <div className="
+          absolute right-0 top-12
+          bg-white rounded-xl shadow-2xl
+          border border-gray-100
+          w-56 z-50
+          overflow-hidden
+        ">
+          {/* User Info */}
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className={`
+                w-10 h-10 rounded-full
+                flex items-center justify-center
+                font-bold text-sm
+                ${isAdmin
+                  ? 'bg-yellow-400 text-[#1B4332]'
+                  : 'bg-[#1B4332]  text-white'
+                }
+              `}>
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {name}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{email}</p>
+                <span className={`
+                  inline-block text-xs font-bold
+                  px-2 py-0.5 rounded-full mt-0.5
+                  ${isAdmin
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-green-100  text-green-700'
+                  }
+                `}>
+                  {isAdmin ? '🛡️ Admin' : '👤 Requestor'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Menu Items */}
+          <div className="py-1">
+            <button
+              onClick={() => { onLogout(); setOpen(false) }}
+              className="
+                w-full flex items-center gap-3
+                px-4 py-3
+                text-sm text-red-600
+                hover:bg-red-50
+                transition duration-200
+              "
+            >
+              <svg className="w-4 h-4" fill="none"
+                   stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
 // ─── Main Navbar Component ────────────────────────────
 export default function Navbar() {
   const router              = useRouter()
@@ -177,48 +310,46 @@ const isAdmin    = ADMIN_EMAILS.includes(userEmail)
           <div className="flex items-center gap-4">
             <DarkModeToggle />
 
+             // ── LOGGED IN ──────────────────────────
             {isLoggedIn ? (
-              // ── LOGGED IN ──────────────────────────
-              <div className="flex items-center gap-3">
-
-                {/* User Badge */}
-                <div className="
-                  hidden md:flex items-center gap-2
-                  bg-white/10 border border-white/20
-                  rounded-full px-3 py-1
-                ">
-                  <span className="text-xs">
-                    {isAdmin ? '🛡️' : '👤'}
-                  </span>
-                  <span className="text-green-100 text-xs font-medium">
-                    {session?.user?.name?.split(' ')[0]
-                      ?? userEmail.split('@')[0]}
-                  </span>
-                  <span className={`
-                    text-xs font-bold px-2 py-0.5 rounded-full
-                    ${isAdmin
-                      ? 'bg-yellow-400/20 text-yellow-300'
-                      : 'bg-green-400/20  text-green-300'
-                    }
-                  `}>
-                    {isAdmin ? 'admin' : 'user'}
-                  </span>
-                </div>
-
-                {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  className="
-                    bg-red-500/80 hover:bg-red-600
-                    text-white text-sm font-semibold
-                    px-4 py-2 rounded-lg
-                    transition duration-200
-                    shadow-md hover:shadow-lg
-                  "
-                >
-                  Logout
-                </button>
-              </div>
+  <div className="flex items-center gap-3">
+    {/* Profile Dropdown */}
+    <ProfileDropdown
+      name={session?.user?.name ?? userEmail.split('@')[0]}
+      email={userEmail}
+      isAdmin={isAdmin}
+      onLogout={handleLogout}
+    />
+  </div>
+) : (
+  <div className="flex items-center gap-2">
+    <Link
+      href="/login/requestor"
+      className="
+        bg-white/10 hover:bg-white/20
+        text-white text-sm font-semibold
+        px-4 py-2 rounded-lg
+        border border-white/20
+        transition duration-200
+      "
+    >
+      Requestor Login
+    </Link>
+    <Link
+      href="/admin/login"
+      className="
+        bg-white text-[#1B4332]
+        hover:bg-green-50
+        text-sm font-semibold
+        px-4 py-2 rounded-lg
+        transition duration-200
+        shadow-md hover:shadow-lg
+      "
+    >
+      Admin Login
+    </Link>
+  </div>
+)}
 
             ) : (
               // ── NOT LOGGED IN ──────────────────────

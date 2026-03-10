@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import bcrypt from 'bcryptjs'
+import bcrypt           from 'bcryptjs'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,10 +19,27 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 2: Find user by email in users table
+    // Step 2: Find user — now selecting ALL profile fields
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('*')
+      .select(`
+        id,
+        email,
+        full_name,
+        role,
+        status,
+        password,
+        plant,
+        department,
+        phone,
+        rcrc_number,
+        rcrc_name,
+        rcrc_contact_person,
+        rcrc_address,
+        rcrc_address2,
+        state,
+        rcrc_zip_code
+      `)
       .eq('email', email.toLowerCase().trim())
       .maybeSingle()
 
@@ -33,41 +50,31 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 3: Check if password is plain text or hashed
-    // Handles existing plain text passwords
-    // during transition period to bcrypt
+    // Step 3: Check plain text or hashed password
     let passwordMatch = false
 
-    const isHashed = user.password.startsWith('$2a$') ||
-                     user.password.startsWith('$2b$')
+    const isHashed =
+      user.password.startsWith('$2a$') ||
+      user.password.startsWith('$2b$')
 
     if (isHashed) {
       // ✅ Already hashed — use bcrypt compare
-      passwordMatch = await bcrypt.compare(
-        password,
-        user.password
-      )
+      passwordMatch = await bcrypt.compare(password, user.password)
     } else {
-      // ⚠️ Old plain text password — direct compare
-      // Then immediately hash and update it!
+      // ⚠️ Old plain text — direct compare then auto-upgrade
       passwordMatch = (password === user.password)
 
       if (passwordMatch) {
-        // Auto-upgrade plain text to bcrypt hash
         const hashedPassword = await bcrypt.hash(password, 12)
         await supabase
           .from('users')
           .update({ password: hashedPassword })
           .eq('id', user.id)
-
-        console.log(
-          'Auto-upgraded password to bcrypt for:',
-          user.email
-        )
+        console.log('Auto-upgraded password to bcrypt for:', user.email)
       }
     }
 
-    // Step 4: If password wrong — return error
+    // Step 4: Wrong password
     if (!passwordMatch) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -75,7 +82,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 5: Check if user account is active
+    // Step 5: Check account status
     if (
       user.status &&
       user.status !== 'active' &&
@@ -90,19 +97,29 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 6: Return safe user data
+    // Step 6: Return full user profile
     // ⚠️ NEVER return password field!
     return NextResponse.json(
       {
         success: true,
         user: {
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
-          role: user.role,
-          status: user.status,
-          plant: user.plant || null,
-          department: user.department || null
+          // ── Existing fields ──────────────────────
+          id:                  user.id,
+          email:               user.email,
+          full_name:           user.full_name,
+          role:                user.role,
+          status:              user.status,
+          plant:               user.plant        || null,
+          department:          user.department   || null,
+          // ── NEW: Profile fields for form prefill ─
+          phone:               user.phone               || '',
+          rcrc_number:         user.rcrc_number         || '',
+          rcrc_name:           user.rcrc_name           || '',
+          rcrc_contact_person: user.rcrc_contact_person || '',
+          rcrc_address:        user.rcrc_address        || '',
+          rcrc_address2:       user.rcrc_address2       || '',
+          state:               user.state               || '',
+          rcrc_zip_code:       user.rcrc_zip_code       || '',
         }
       },
       { status: 200 }
