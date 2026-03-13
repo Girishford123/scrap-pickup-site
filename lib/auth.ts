@@ -21,9 +21,10 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId:     process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // ✅ REMOVED prompt:'consent' — was forcing 
+      // consent screen every time
       authorization: {
         params: {
-          prompt:        'consent',
           access_type:   'offline',
           response_type: 'code',
         },
@@ -36,23 +37,12 @@ export const authOptions: NextAuthOptions = {
     maxAge:   30 * 24 * 60 * 60,
   },
 
-  cookies: {
-    sessionToken: {
-      name: 'next-auth.session-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path:     '/',
-        secure:   process.env.NODE_ENV === 'production',
-      },
-    },
-  },
-
   callbacks: {
     async signIn({ user }) {
       const userEmail = (user.email ?? '').toLowerCase().trim()
       console.log('=== SIGN IN ATTEMPT ===')
       console.log('User email:', userEmail)
+      console.log('Allowed emails:', ALLOWED_EMAILS)
       console.log('Is allowed:', ALLOWED_EMAILS.includes(userEmail))
       return ALLOWED_EMAILS.includes(userEmail)
     },
@@ -69,7 +59,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      // ✅ After Sign Out → always go to admin login
+      // ✅ After Sign Out → go to admin login
       if (url.includes('/api/auth/signout')) {
         return `${baseUrl}/admin/login`
       }
@@ -83,36 +73,13 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // ✅ Added signOut page
   pages: {
     signIn:  '/admin/login',
-    signOut: '/admin/login',   // ← THIS was missing!
-    error:   '/admin/login',
+    signOut: '/admin/login',
+    // ✅ CHANGED: error goes to dedicated page
+    // not back to login (prevents loop!)
+    error:   '/admin/auth-error',
   },
 
   debug: process.env.NODE_ENV === 'development',
-}
-
-// ── Legacy helpers ─────────────────────────────────────
-const SESSION_KEY = 'admin_user'
-
-export function getUserSession(): User | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const stored = sessionStorage.getItem(SESSION_KEY)
-    if (!stored) return null
-    return JSON.parse(stored) as User
-  } catch { return null }
-}
-
-export function clearUserSession(): void {
-  if (typeof window === 'undefined') return
-  try { sessionStorage.removeItem(SESSION_KEY) } catch {}
-}
-
-export function setUserSession(user: User): void {
-  if (typeof window === 'undefined') return
-  try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(user))
-  } catch {}
 }
