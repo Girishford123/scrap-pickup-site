@@ -570,97 +570,97 @@ export default function Home() {
             </div>
 
             {/* ── Right — CTA Card ── */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="bg-slate-800 dark:bg-slate-900 rounded-2xl
-              p-10 text-white flex flex-col justify-between
-              border border-slate-700"
-            >
-              <div>
-                <div className="flex items-center gap-4 mb-8">
-                  <FordLogo height={30} />
-                  <div className="w-px h-7 bg-white/20" />
-                  <FCSLogo  height={28} />
-                </div>
+<motion.div
+  initial={{ opacity: 0, x: 20 }}
+  whileInView={{ opacity: 1, x: 0 }}
+  transition={{ duration: 0.5 }}
+  viewport={{ once: true }}
+  className="bg-slate-800 rounded-2xl p-10 text-white
+  flex flex-col justify-between"
+  style={{ backgroundColor: '#1e293b' }}
+>
+  <div>
+    {/* ✅ Logos on white background pill — visible on dark card */}
+    <div className="flex items-center gap-3 mb-8
+    bg-white rounded-xl px-4 py-2.5 w-fit">
+      <FordLogo height={26} />
+      <div className="w-px h-6 bg-slate-200" />
+      <FCSLogo  height={24} />
+    </div>
 
-                <h3 className="text-3xl font-bold mb-3">
-                  Ready to Get Started?
-                </h3>
-                <p className="text-slate-300 mb-8 leading-relaxed text-sm">
-                  Login to your account and schedule a scrap vehicle pickup.
-                  Our team will handle everything from start to finish.
-                </p>
+    <h3 className="text-3xl font-bold mb-3 text-white">
+      Ready to Get Started?
+    </h3>
+    <p className="text-slate-300 mb-8 leading-relaxed text-sm">
+      Login to your account and schedule a scrap vehicle pickup.
+      Our team will handle everything from start to finish.
+    </p>
 
-                <Link
-                  href="/login/requestor"
-                  className="inline-flex items-center gap-2
-                  bg-white text-slate-800 px-6 py-3 rounded-xl
-                  font-semibold text-sm hover:bg-slate-100
-                  transition shadow-lg w-full justify-center mb-6"
-                >
-                  Schedule a Pickup
-                  <svg className="w-4 h-4" fill="none"
-                       stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round"
-                          strokeLinejoin="round" strokeWidth={2}
-                          d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </Link>
+    <Link
+      href="/login/requestor"
+      className="inline-flex items-center gap-2
+      bg-white text-slate-800 px-6 py-3 rounded-xl
+      font-semibold text-sm hover:bg-slate-100
+      transition shadow-lg w-full justify-center mb-6"
+    >
+      Schedule a Pickup
+      <svg className="w-4 h-4" fill="none"
+           stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round"
+              strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+      </svg>
+    </Link>
 
-                {/* ✅ All 3 emails — NO phone number */}
-                <div className="space-y-2.5 text-sm text-slate-300
-                bg-white/5 rounded-xl p-4 border border-white/10">
-                  <p className="text-slate-400 text-xs font-semibold
-                  uppercase tracking-wider mb-3">
-                    Direct Contact
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span>👤</span>
-                    <span className="text-white font-medium text-sm">
-                      Michelle Ridenour
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>📧</span>
-                    <a href="mailto:mrideno2@ford.com"
-                       className="hover:text-white transition text-sm">
-                      mrideno2@ford.com
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>📧</span>
-                    <a href="mailto:fcscats@ford.com"
-                       className="hover:text-white transition text-sm">
-                      fcscats@ford.com
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>📧</span>
-                    <a href="mailto:fcsmktg@ford.com"
-                       className="hover:text-white transition text-sm">
-                      fcsmktg@ford.com
-                    </a>
-                  </div>
-                </div>
-              </div>
+    {/* ✅ Contact details — no phone */}
+    <div className="space-y-2.5 text-sm text-slate-300
+    bg-white/5 rounded-xl p-4 border border-white/10">
+      <p className="text-slate-400 text-xs font-semibold
+      uppercase tracking-wider mb-3">
+        Direct Contact
+      </p>
+      <div className="flex items-center gap-2">
+        <span>👤</span>
+        <span className="text-white font-medium text-sm">
+          Michelle Ridenour
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span>📧</span>
+        <a href="mailto:mrideno2@ford.com"
+           className="hover:text-white transition text-sm">
+          mrideno2@ford.com
+        </a>
+      </div>
+      <div className="flex items-center gap-2">
+        <span>📧</span>
+        <a href="mailto:fcscats@ford.com"
+           className="hover:text-white transition text-sm">
+          fcscats@ford.com
+        </a>
+      </div>
+      <div className="flex items-center gap-2">
+        <span>📧</span>
+        <a href="mailto:fcsmktg@ford.com"
+           className="hover:text-white transition text-sm">
+          fcsmktg@ford.com
+        </a>
+      </div>
+    </div>
+  </div>
 
-              <div className="pt-6 mt-6 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() =>
-                    signIn('google', { callbackUrl: '/admin/dashboard' })
-                  }
-                  className="text-slate-400 hover:text-white
-                  text-sm font-medium transition"
-                >
-                  Admin Login →
-                </button>
-              </div>
-            </motion.div>
-
+  <div className="pt-6 mt-6 border-t border-white/10">
+    <button
+      type="button"
+      onClick={() =>
+        signIn('google', { callbackUrl: '/admin/dashboard' })
+      }
+      className="text-slate-400 hover:text-white
+      text-sm font-medium transition"
+    >
+      Admin Login →
+    </button>
+  </div>
+</motion.div>
           </div>
         </div>
       </section>
