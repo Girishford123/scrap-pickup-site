@@ -1,47 +1,60 @@
 'use client'
 
-import { useEffect, Suspense } from 'react'
+import { useEffect, Suspense }        from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import NProgress                        from 'nprogress'
 
-// ─── Dynamic Import To Avoid SSR Issues ──────────────
-let NProgress: typeof import('nprogress') | null = null
+// ✅ Configure NProgress with Ford brand color
+NProgress.configure({
+  minimum:     0.15,
+  easing:      'ease',
+  speed:       400,
+  showSpinner: false,
+  trickleSpeed: 150,
+})
 
-if (typeof window !== 'undefined') {
-  Promise.all([
-    import('nprogress'),
-    import('nprogress/nprogress.css' as string),
-  ]).then(([np]) => {
-    NProgress = np.default
-    NProgress.configure({
-      minimum:     0.3,
-      easing:      'ease',
-      speed:       500,
-      showSpinner: false,
-    })
-  })
-}
+// ✅ Inject custom CSS for Ford green color
+const PROGRESS_STYLE = `
+  #nprogress .bar {
+    background: #52B788 !important;
+    height: 3px !important;
+  }
+  #nprogress .peg {
+    box-shadow: 0 0 10px #52B788, 0 0 5px #52B788 !important;
+  }
+`
 
-// ─── Inner Component ──────────────────────────────────
+// ─── Inner Component ──────────────────────────────
 function ProgressBarInner() {
   const pathname     = usePathname()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (!NProgress) return
+    // ✅ Inject style once
+    if (!document.getElementById('nprogress-style')) {
+      const style       = document.createElement('style')
+      style.id          = 'nprogress-style'
+      style.textContent = PROGRESS_STYLE
+      document.head.appendChild(style)
+    }
+  }, [])
+
+  useEffect(() => {
     NProgress.start()
     const timer = setTimeout(() => {
-      NProgress?.done()
-    }, 500)
+      NProgress.done()
+    }, 400)  // ✅ Faster than before (was 500ms)
+
     return () => {
       clearTimeout(timer)
-      NProgress?.done()
+      NProgress.done()
     }
   }, [pathname, searchParams])
 
   return null
 }
 
-// ─── Main Export ──────────────────────────────────────
+// ─── Main Export ──────────────────────────────────
 export default function ProgressBar() {
   return (
     <Suspense fallback={null}>
