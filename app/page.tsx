@@ -5,8 +5,6 @@ import { signIn } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import DarkModeToggle    from './components/DarkModeToggle'
-import HeroVehicleSlider from './components/HeroVehicleSlider'
-
 // ─── Animated Counter Hook ────────────────────────────
 function useCountUp(
   target: number,
@@ -185,111 +183,127 @@ export default function Home() {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
 
       {/* ── HERO SECTION ─────────────────────────────── */}
-      <section className="
-        relative bg-gradient-to-br
-        from-[#1B4332] via-[#2D6A4F] to-[#1B4332]
-        text-white py-28 overflow-hidden
-      ">
-        <motion.div
-          animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 6, repeat: Infinity }}
-          className="absolute top-0 left-0 w-96 h-96 bg-green-400/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 8, repeat: Infinity, delay: 2 }}
-          className="absolute bottom-0 right-0 w-96 h-96 bg-green-300/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"
-        />
+<section className="
+  relative bg-gradient-to-br
+  from-[#1B4332] via-[#2D6A4F] to-[#1B4332]
+  text-white py-28 overflow-hidden
+">
+  <motion.div
+    animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
+    transition={{ duration: 6, repeat: Infinity }}
+    className="absolute top-0 left-0 w-96 h-96 bg-green-400/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"
+  />
+  <motion.div
+    animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
+    transition={{ duration: 8, repeat: Infinity, delay: 2 }}
+    className="absolute bottom-0 right-0 w-96 h-96 bg-green-300/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"
+  />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
+  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            {/* ── Left Content ── */}
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
-              className="flex-1 text-center lg:text-left"
+    {/* ✅ Single column centered layout */}
+    <div className="flex flex-col items-center">
+
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.7, ease: 'easeOut' }}
+        className="w-full max-w-3xl text-center"
+      >
+        {/* Logos */}
+        <div className="flex items-center gap-4 justify-center mb-8">
+          <FordLogo height={40} />
+          <div className="h-10 w-px bg-white/40" />
+          <FCSLogo height={40} />
+        </div>
+
+        {/* Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm font-medium text-green-100 mb-6"
+        >
+          <span className="w-2 h-2 bg-[#52B788] rounded-full animate-pulse" />
+          Trusted by 500+ Customers Across the US
+        </motion.div>
+
+        {/* Heading */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6"
+        >
+          Professional Scrap
+          <br />
+          <span className="text-[#52B788]">Vehicle Pickup</span>
+          <br />
+          Service
+        </motion.h1>
+
+        {/* Description */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="text-lg text-green-100 mb-8 max-w-xl mx-auto leading-relaxed"
+        >
+          Fast, reliable, and eco-friendly scrap component collection
+          for Ford vehicles across the United States. Login to schedule
+          your pickup today!
+        </motion.p>
+
+        {/* Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="flex flex-col sm:flex-row gap-4 justify-center"
+        >
+          <a
+            href="#how-it-works"
+            className="inline-flex items-center justify-center gap-2 bg-white text-[#1B4332] px-8 py-4 rounded-xl font-bold text-lg hover:bg-green-50 shadow-2xl transform hover:scale-105 transition duration-300"
+          >
+            Learn More →
+          </a>
+          <a
+            href="#contact"
+            className="inline-flex items-center justify-center gap-2 bg-transparent border-2 border-white/40 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/10 transition duration-300"
+          >
+            Contact Us →
+          </a>
+        </motion.div>
+
+        {/* Badges */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="flex flex-wrap justify-center gap-4 mt-8"
+        >
+          {[
+            '⚡ 24hr Response',
+            '🛡️ Safe & Secure',
+            '🌿 Eco-Friendly',
+            '🏆 Ford Authorised',
+          ].map((badge, i) => (
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.8 + i * 0.1 }}
+              className="bg-white/10 border border-white/20 rounded-full px-3 py-1 text-sm text-green-100"
             >
-              <div className="flex items-center gap-4 justify-center lg:justify-start mb-8">
-                <FordLogo height={40} />
-                <div className="h-10 w-px bg-white/40" />
-                <FCSLogo height={40} />
-              </div>
+              {badge}
+            </motion.span>
+          ))}
+        </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm font-medium text-green-100 mb-6"
-              >
-                <span className="w-2 h-2 bg-[#52B788] rounded-full animate-pulse" />
-                Trusted by 500+ Customers Across the US
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6"
-              >
-                Professional Scrap
-                <br />
-                <span className="text-[#52B788]">Vehicle Pickup</span>
-                <br />
-                Service
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="text-lg text-green-100 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed"
-              >
-                Fast, reliable, and eco-friendly scrap component collection
-                for Ford vehicles across the United States. Login to schedule
-                your pickup today!
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
-              >
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-[#1B4332] px-8 py-4 rounded-xl font-bold text-lg hover:bg-green-50 shadow-2xl transform hover:scale-105 transition duration-300"
-                >
-                  Learn More →
-                </a>
-                <a
-                  href="#contact"
-                  className="inline-flex items-center justify-center gap-2 bg-transparent border-2 border-white/40 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/10 transition duration-300"
-                >
-                  Contact Us →
-                </a>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                className="flex flex-wrap justify-center lg:justify-start gap-4 mt-8"
-              >
-                {['⚡ 24hr Response', '🛡️ Safe & Secure', '🌿 Eco-Friendly', '🏆 Ford Authorised'].map((badge, i) => (
-                  <motion.span
-                    key={i}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.8 + i * 0.1 }}
-                    className="bg-white/10 border border-white/20 rounded-full px-3 py-1 text-sm text-green-100"
-                  >
-                    {badge}
-                  </motion.span>
-                ))}
-              </motion.div>
-            </motion.div>
+      </motion.div>
+    </div>
+  </div>
+</section>
 
             {/* ── Right Content — Vehicle Slider ── */}
             <motion.div
@@ -571,30 +585,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── CTA BANNER ───────────────────────────────── */}
-      <section className="py-20 bg-gradient-to-r from-[#1B4332] to-[#2D6A4F] text-white">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
-        >
-          <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-6 border border-white/20">🌿</div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to Schedule Your Pickup?</h2>
-          <p className="text-xl text-green-100 mb-8">Login to your customer account to get started today!</p>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link
-              href="/login/requestor"
-              className="inline-block bg-white text-[#1B4332] px-10 py-5 rounded-xl font-bold text-xl hover:bg-green-50 shadow-2xl transition duration-300"
-            >
-              🔐 Login to Get Started
-            </Link>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* ── FOOTER ───────────────────────────────────── */}
+            {/* ── FOOTER ───────────────────────────────────── */}
       <footer className="bg-[#0D2B1F] text-white pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
