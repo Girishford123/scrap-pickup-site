@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import DarkModeToggle    from './components/DarkModeToggle'
+
 // ─── Animated Counter Hook ────────────────────────────
 function useCountUp(
   target: number,
@@ -164,160 +164,130 @@ function FCSLogo({ height = 40 }: { height?: number }) {
 
 // ─── Main Page ────────────────────────────────────────
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10)
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  const navLinks = [
-    { label: 'How It Works',  href: '#how-it-works' },
-    { label: 'Why Choose Us', href: '#why-us'       },
-    { label: 'Contact',       href: '#contact'      },
-  ]
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
 
       {/* ── HERO SECTION ─────────────────────────────── */}
-<section className="
-  relative bg-gradient-to-br
-  from-[#1B4332] via-[#2D6A4F] to-[#1B4332]
-  text-white py-28 overflow-hidden
-">
-  <motion.div
-    animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
-    transition={{ duration: 6, repeat: Infinity }}
-    className="absolute top-0 left-0 w-96 h-96 bg-green-400/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"
-  />
-  <motion.div
-    animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
-    transition={{ duration: 8, repeat: Infinity, delay: 2 }}
-    className="absolute bottom-0 right-0 w-96 h-96 bg-green-300/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"
-  />
-
-  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-    {/* ✅ Single column centered layout */}
-    <div className="flex flex-col items-center">
-
-      <motion.div
-        initial={{ opacity: 0, x: -50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.7, ease: 'easeOut' }}
-        className="w-full max-w-3xl text-center"
-      >
-        {/* Logos */}
-        <div className="flex items-center gap-4 justify-center mb-8">
-          <FordLogo height={40} />
-          <div className="h-10 w-px bg-white/40" />
-          <FCSLogo height={40} />
-        </div>
-
-        {/* Badge */}
+      <section className="
+        relative bg-gradient-to-br
+        from-[#1B4332] via-[#2D6A4F] to-[#1B4332]
+        text-white py-28 overflow-hidden
+      ">
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm font-medium text-green-100 mb-6"
-        >
-          <span className="w-2 h-2 bg-[#52B788] rounded-full animate-pulse" />
-          Trusted by 500+ Customers Across the US
-        </motion.div>
-
-        {/* Heading */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6"
-        >
-          Professional Scrap
-          <br />
-          <span className="text-[#52B788]">Vehicle Pickup</span>
-          <br />
-          Service
-        </motion.h1>
-
-        {/* Description */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="text-lg text-green-100 mb-8 max-w-xl mx-auto leading-relaxed"
-        >
-          Fast, reliable, and eco-friendly scrap component collection
-          for Ford vehicles across the United States. Login to schedule
-          your pickup today!
-        </motion.p>
-
-        {/* Buttons */}
+          animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
+          transition={{ duration: 6, repeat: Infinity }}
+          className="absolute top-0 left-0 w-96 h-96 bg-green-400/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"
+        />
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
-        >
-          <a
-            href="#how-it-works"
-            className="inline-flex items-center justify-center gap-2 bg-white text-[#1B4332] px-8 py-4 rounded-xl font-bold text-lg hover:bg-green-50 shadow-2xl transform hover:scale-105 transition duration-300"
-          >
-            Learn More →
-          </a>
-          <a
-            href="#contact"
-            className="inline-flex items-center justify-center gap-2 bg-transparent border-2 border-white/40 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/10 transition duration-300"
-          >
-            Contact Us →
-          </a>
-        </motion.div>
+          animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
+          transition={{ duration: 8, repeat: Infinity, delay: 2 }}
+          className="absolute bottom-0 right-0 w-96 h-96 bg-green-300/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"
+        />
 
-        {/* Badges */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="flex flex-wrap justify-center gap-4 mt-8"
-        >
-          {[
-            '⚡ 24hr Response',
-            '🛡️ Safe & Secure',
-            '🌿 Eco-Friendly',
-            '🏆 Ford Authorised',
-          ].map((badge, i) => (
-            <motion.span
-              key={i}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.8 + i * 0.1 }}
-              className="bg-white/10 border border-white/20 rounded-full px-3 py-1 text-sm text-green-100"
-            >
-              {badge}
-            </motion.span>
-          ))}
-        </motion.div>
-
-      </motion.div>
-    </div>
-  </div>
-</section>
-
-            {/* ── Right Content — Vehicle Slider ── */}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center">
             <motion.div
-              initial={{ opacity: 0, x: 50 }}
+              initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, ease: 'easeOut', delay: 0.2 }}
-              className="flex-1 w-full max-w-md flex justify-center"
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+              className="w-full max-w-3xl text-center"
             >
-              <HeroVehicleSlider />
-            </motion.div>
+              {/* Logos */}
+              <div className="flex items-center gap-4 justify-center mb-8">
+                <FordLogo height={40} />
+                <div className="h-10 w-px bg-white/40" />
+                <FCSLogo height={40} />
+              </div>
 
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm font-medium text-green-100 mb-6"
+              >
+                <span className="w-2 h-2 bg-[#52B788] rounded-full animate-pulse" />
+                Trusted by 500+ Customers Across the US
+              </motion.div>
+
+              {/* Heading */}
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6"
+              >
+                Professional Scrap
+                <br />
+                <span className="text-[#52B788]">Vehicle Pickup</span>
+                <br />
+                Service
+              </motion.h1>
+
+              {/* Description */}
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-lg text-green-100 mb-8 max-w-xl mx-auto leading-relaxed"
+              >
+                Fast, reliable, and eco-friendly scrap component collection
+                for Ford vehicles across the United States. Login to schedule
+                your pickup today!
+              </motion.p>
+
+              {/* Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="flex flex-col sm:flex-row gap-4 justify-center"
+              >
+                <a
+                  href="#how-it-works"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-[#1B4332] px-8 py-4 rounded-xl font-bold text-lg hover:bg-green-50 shadow-2xl transform hover:scale-105 transition duration-300"
+                >
+                  Learn More →
+                </a>
+                <a
+                  href="#contact"
+                  className="inline-flex items-center justify-center gap-2 bg-transparent border-2 border-white/40 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/10 transition duration-300"
+                >
+                  Contact Us →
+                </a>
+              </motion.div>
+
+              {/* Badges */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="flex flex-wrap justify-center gap-4 mt-8"
+              >
+                {[
+                  '⚡ 24hr Response',
+                  '🛡️ Safe & Secure',
+                  '🌿 Eco-Friendly',
+                  '🏆 Ford Authorised',
+                ].map((badge, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.8 + i * 0.1 }}
+                    className="bg-white/10 border border-white/20 rounded-full px-3 py-1 text-sm text-green-100"
+                  >
+                    {badge}
+                  </motion.span>
+                ))}
+              </motion.div>
+
+            </motion.div>
           </div>
         </div>
       </section>
+      {/* ── Hero Section End ── */}
 
       {/* ── ANIMATED STATS ───────────────────────────── */}
       <StatsSection />
@@ -335,7 +305,9 @@ export default function Home() {
             <span className="inline-block bg-green-100 text-[#1B4332] dark:bg-green-900/40 dark:text-green-400 text-sm font-semibold px-4 py-2 rounded-full mb-4">
               Simple Process
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">How It Works</h2>
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              How It Works
+            </h2>
             <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
               Get your scrap vehicle picked up in 3 simple steps
             </p>
@@ -388,8 +360,12 @@ export default function Home() {
                 <div className={`w-20 h-20 ${item.iconBg} rounded-2xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg`}>
                   {item.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{item.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{item.desc}</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  {item.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+                  {item.desc}
+                </p>
                 {item.btn && (
                   <Link
                     href={item.btnHref!}
@@ -417,7 +393,9 @@ export default function Home() {
             <span className="inline-block bg-green-100 text-[#1B4332] dark:bg-green-900/40 dark:text-green-400 text-sm font-semibold px-4 py-2 rounded-full mb-4">
               Our Advantages
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Us?</h2>
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Why Choose Us?
+            </h2>
             <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
               Professional and reliable scrap pickup service you can trust
             </p>
@@ -425,14 +403,14 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: '🚚', title: 'Fast Pickup',      desc: '24-48 hour guaranteed response time for all pickup requests.',              color: 'hover:border-[#1B4332] hover:bg-green-50 dark:hover:bg-green-900/20',   badge: 'Fast',     badgeColor: 'bg-green-100 text-[#1B4332]'   },
-              { icon: '📋', title: 'Easy Process',     desc: 'Simple 3-step online booking. No paperwork hassle.',                       color: 'hover:border-[#2D6A4F] hover:bg-emerald-50 dark:hover:bg-emerald-900/20', badge: 'Simple',   badgeColor: 'bg-emerald-100 text-[#2D6A4F]' },
-              { icon: '🕐', title: '24/7 Support',     desc: 'Our support team is always available to assist you.',                      color: 'hover:border-[#52B788] hover:bg-teal-50 dark:hover:bg-teal-900/20',      badge: 'Always On',badgeColor: 'bg-teal-100 text-teal-700'     },
-              { icon: '🛡️', title: 'Safe & Secure',    desc: 'Professional handling with proper documentation provided.',                color: 'hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20',    badge: 'Trusted',  badgeColor: 'bg-green-100 text-green-700'    },
-              { icon: '🌿', title: 'Eco-Friendly',     desc: 'Responsible disposal and recycling of all scrap components.',             color: 'hover:border-[#1B4332] hover:bg-green-50 dark:hover:bg-green-900/20',   badge: 'Green',    badgeColor: 'bg-green-100 text-[#1B4332]'   },
-              { icon: '💰', title: 'Best Rates',       desc: 'Competitive and transparent pricing for all scrap vehicles.',             color: 'hover:border-[#52B788] hover:bg-emerald-50 dark:hover:bg-emerald-900/20',badge: 'Value',    badgeColor: 'bg-emerald-100 text-[#2D6A4F]' },
-              { icon: '📄', title: 'Documentation',   desc: 'Complete paperwork and legal compliance handled by us.',                   color: 'hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20',       badge: 'Compliant',badgeColor: 'bg-teal-100 text-teal-700'     },
-              { icon: '🏆', title: 'Ford Authorised',  desc: 'Officially authorised Ford scrap collection partner.',                    color: 'hover:border-[#1B4332] hover:bg-green-50 dark:hover:bg-green-900/20',   badge: 'Official', badgeColor: 'bg-green-100 text-[#1B4332]'   },
+              { icon: '🚚', title: 'Fast Pickup',     desc: '24-48 hour guaranteed response time for all pickup requests.',    color: 'hover:border-[#1B4332] hover:bg-green-50 dark:hover:bg-green-900/20',    badge: 'Fast',      badgeColor: 'bg-green-100 text-[#1B4332]'   },
+              { icon: '📋', title: 'Easy Process',    desc: 'Simple 3-step online booking. No paperwork hassle.',             color: 'hover:border-[#2D6A4F] hover:bg-emerald-50 dark:hover:bg-emerald-900/20', badge: 'Simple',    badgeColor: 'bg-emerald-100 text-[#2D6A4F]' },
+              { icon: '🕐', title: '24/7 Support',    desc: 'Our support team is always available to assist you.',            color: 'hover:border-[#52B788] hover:bg-teal-50 dark:hover:bg-teal-900/20',       badge: 'Always On', badgeColor: 'bg-teal-100 text-teal-700'     },
+              { icon: '🛡️', title: 'Safe & Secure',   desc: 'Professional handling with proper documentation provided.',      color: 'hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20',    badge: 'Trusted',   badgeColor: 'bg-green-100 text-green-700'    },
+              { icon: '🌿', title: 'Eco-Friendly',    desc: 'Responsible disposal and recycling of all scrap components.',   color: 'hover:border-[#1B4332] hover:bg-green-50 dark:hover:bg-green-900/20',    badge: 'Green',     badgeColor: 'bg-green-100 text-[#1B4332]'   },
+              { icon: '💰', title: 'Best Rates',      desc: 'Competitive and transparent pricing for all scrap vehicles.',   color: 'hover:border-[#52B788] hover:bg-emerald-50 dark:hover:bg-emerald-900/20', badge: 'Value',     badgeColor: 'bg-emerald-100 text-[#2D6A4F]' },
+              { icon: '📄', title: 'Documentation',  desc: 'Complete paperwork and legal compliance handled by us.',         color: 'hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20',        badge: 'Compliant', badgeColor: 'bg-teal-100 text-teal-700'     },
+              { icon: '🏆', title: 'Ford Authorised', desc: 'Officially authorised Ford scrap collection partner.',          color: 'hover:border-[#1B4332] hover:bg-green-50 dark:hover:bg-green-900/20',    badge: 'Official',  badgeColor: 'bg-green-100 text-[#1B4332]'   },
             ].map((feature, i) => (
               <motion.div
                 key={i}
@@ -447,8 +425,12 @@ export default function Home() {
                   {feature.badge}
                 </span>
                 <div className="text-5xl mb-4">{feature.icon}</div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{feature.desc}</p>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
+                  {feature.desc}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -468,7 +450,9 @@ export default function Home() {
             <span className="inline-block bg-green-100 text-[#1B4332] dark:bg-green-900/40 dark:text-green-400 text-sm font-semibold px-4 py-2 rounded-full mb-4">
               Get In Touch
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Contact Us</h2>
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Contact Us
+            </h2>
             <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
               Have questions? We are here to help you!
             </p>
@@ -505,8 +489,12 @@ export default function Home() {
                 <div className="w-14 h-14 bg-[#2D6A4F] rounded-xl flex items-center justify-center text-2xl shadow-md flex-shrink-0">📧</div>
                 <div>
                   <div className="font-bold text-gray-900 dark:text-white text-lg mb-1">Email</div>
-                  <a href="mailto:fcscats@ford.com" className="block text-[#1B4332] dark:text-green-400 font-medium hover:text-[#2D6A4F] transition text-sm">fcscats@ford.com</a>
-                  <a href="mailto:fcsmktg@ford.com" className="block text-[#1B4332] dark:text-green-400 font-medium hover:text-[#2D6A4F] transition text-sm mt-1">fcsmktg@ford.com</a>
+                  <a href="mailto:fcscats@ford.com" className="block text-[#1B4332] dark:text-green-400 font-medium hover:text-[#2D6A4F] transition text-sm">
+                    fcscats@ford.com
+                  </a>
+                  <a href="mailto:fcsmktg@ford.com" className="block text-[#1B4332] dark:text-green-400 font-medium hover:text-[#2D6A4F] transition text-sm mt-1">
+                    fcsmktg@ford.com
+                  </a>
                 </div>
               </motion.div>
 
@@ -562,14 +550,15 @@ export default function Home() {
               </Link>
 
               <div className="bg-white/10 rounded-2xl p-5 text-left space-y-3 border border-white/20">
-                <p className="text-green-300 text-xs font-semibold uppercase tracking-wider mb-2">Direct Contact</p>
+                <p className="text-green-300 text-xs font-semibold uppercase tracking-wider mb-2">
+                  Direct Contact
+                </p>
                 <div className="flex items-center gap-3"><span>👤</span><span className="text-white text-sm font-semibold">Michelle Ridenour</span></div>
                 <div className="flex items-center gap-3"><span>📞</span><a href="tel:+12489127995" className="text-green-200 text-sm hover:text-white transition">+1 (248) 912-7995</a></div>
                 <div className="flex items-center gap-3"><span>📧</span><a href="mailto:fcscats@ford.com" className="text-green-200 text-sm hover:text-white transition">fcscats@ford.com</a></div>
                 <div className="flex items-center gap-3"><span>📧</span><a href="mailto:fcsmktg@ford.com" className="text-green-200 text-sm hover:text-white transition">fcsmktg@ford.com</a></div>
               </div>
 
-              {/* ✅ FIXED: Admin Login now goes directly to Google */}
               <div className="flex justify-center pt-6 border-t border-white/20 mt-6">
                 <button
                   type="button"
@@ -585,7 +574,7 @@ export default function Home() {
         </div>
       </section>
 
-            {/* ── FOOTER ───────────────────────────────────── */}
+      {/* ── FOOTER ───────────────────────────────────── */}
       <footer className="bg-[#0D2B1F] text-white pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
@@ -624,8 +613,6 @@ export default function Home() {
                     </Link>
                   </li>
                 ))}
-
-                {/* ✅ FIXED: Admin Login in footer also goes directly to Google */}
                 <li>
                   <button
                     type="button"
