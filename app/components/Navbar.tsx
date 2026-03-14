@@ -414,7 +414,7 @@ export default function Navbar() {
           </Link>
 
           {/* ── Desktop Nav Links ── */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
             {navLinks.map((link) => (
               <Link
                 key={link.label}
@@ -434,7 +434,7 @@ export default function Navbar() {
           </div>
 
           {/* ── Right Side ── */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <DarkModeToggle />
 
             {/* ✅ Single round icon — no text buttons */}
