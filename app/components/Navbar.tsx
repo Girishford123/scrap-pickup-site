@@ -404,17 +404,17 @@ export default function Navbar() {
       ${scrolled ? 'shadow-md' : ''}
     `}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center h-16">
+        <div className="flex items-center justify-between h-16">
 
-          {/* ── Logo ── */}
-          <Link href="/" className="flex items-center gap-3">
-            <FordLogo height={28} />
-            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
-            <FCSLogo  height={26} />
-          </Link>
+  {/* ── Logo ── */}
+  <Link href="/" className="flex items-center gap-3 flex-shrink-0">
+    <FordLogo height={28} />
+    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+    <FCSLogo  height={26} />
+  </Link>
 
-          {/* ── Desktop Nav Links ── */}
-          <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
+  {/* ── Desktop Nav Links ── */}
+  <div className="hidden md:flex items-center gap-1 justify-center flex-1">
             {navLinks.map((link) => (
               <Link
                 key={link.label}
@@ -434,7 +434,7 @@ export default function Navbar() {
           </div>
 
           {/* ── Right Side ── */}
-          <div className="flex items-center gap-2 ml-auto pl-8">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <DarkModeToggle />
 
             {/* ✅ Single round icon — no text buttons */}
