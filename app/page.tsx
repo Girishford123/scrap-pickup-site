@@ -249,34 +249,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Bottom — CTA mini card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-            className="relative bg-white rounded-2xl p-6"
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <FordLogo height={22} />
-              <span className="w-px h-5 bg-slate-200" />
-              <FCSLogo  height={20} />
-            </div>
-            <p className="text-slate-800 font-bold text-lg mb-1">
-              Ready to schedule?
-            </p>
-            <p className="text-slate-500 text-xs mb-4">
-              Login to request a pickup instantly.
-            </p>
-            <Link
-              href="/login/requestor"
-              className="block w-full text-center bg-slate-900
-                text-white text-sm font-semibold py-2.5 rounded-xl
-                hover:bg-slate-700 transition"
-            >
-              Get Started →
-            </Link>
-          </motion.div>
-        </motion.div>
+          
 
       </section>
 
@@ -626,16 +599,6 @@ export default function Home() {
                   Login and schedule a scrap vehicle pickup.
                   We handle everything — paperwork, logistics, disposal.
                 </p>
-
-                <Link
-                  href="/login/requestor"
-                  className="flex items-center justify-center gap-2
-                    bg-white text-slate-900 py-4 rounded-2xl
-                    font-bold text-sm hover:bg-slate-100
-                    transition mb-4"
-                >
-                  🔐 Schedule a Pickup
-                </Link>
 
                 {/* Mini contact list */}
                 <div className="bg-white/5 border border-white/10
