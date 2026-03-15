@@ -433,26 +433,25 @@ export default function Home() {
 
             {/* Large card — spans 2 cols 2 rows */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="col-span-2 row-span-2 bg-slate-900
-                dark:bg-white/5 rounded-3xl p-8 flex flex-col
-                justify-between border border-slate-800
-                group hover:border-slate-600 transition"
-            >
-              <span className="text-5xl">🏆</span>
-              <div>
-                <h3 className="text-2xl font-black text-white mb-2">
-                  Ford Authorised
-                </h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Officially certified Ford scrap collection partner
-                  operating across all major US states with full
-                  legal compliance.
-                </p>
-              </div>
-            </motion.div>
+  initial={{ opacity: 0, scale: 0.95 }}
+  whileInView={{ opacity: 1, scale: 1 }}
+  viewport={{ once: true }}
+  className="col-span-1 row-span-1 bg-slate-900
+    dark:bg-white/5 rounded-3xl p-6 flex flex-col
+    justify-between border border-slate-800
+    hover:border-slate-600 transition"
+>
+  <span className="text-3xl">🏆</span>
+  <div>
+    <h3 className="text-base font-black text-white mb-1">
+      Ford Authorised
+    </h3>
+    <p className="text-slate-400 text-xs leading-relaxed">
+      Officially certified Ford scrap collection partner
+      across all major US states.
+    </p>
+  </div>
+</motion.div>
 
             {[
               { icon: '🚚', title: 'Fast Pickup',    desc: '24–48hr response'       },
