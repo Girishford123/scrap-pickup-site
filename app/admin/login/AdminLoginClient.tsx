@@ -37,6 +37,7 @@ export default function AdminLoginClient() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1B4332]">
         <div className="bg-white rounded-2xl shadow-2xl p-10 flex flex-col items-center gap-6 w-full max-w-md">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/ford-logo.png" alt="Ford Logo" className="h-12 w-auto" />
           <h1 className="text-2xl font-bold text-red-600">
             Access Denied

@@ -304,7 +304,7 @@ export default function Home() {
                 text-slate-900 dark:text-white leading-tight">
                 Three steps.<br />
                 <span className="text-slate-400 font-light italic">
-                  That's all.
+                  {`That's all.`}
                 </span>
               </h2>
             </div>
