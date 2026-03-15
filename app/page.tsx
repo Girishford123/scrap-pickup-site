@@ -203,50 +203,53 @@ export default function Home() {
         </div>
 
         {/* Right — Visual Panel */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="hidden lg:flex flex-col justify-between
-            bg-slate-900 dark:bg-[#111] p-16 relative overflow-hidden"
-        >
-          {/* Background grid pattern */}
-          <div className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage: `linear-gradient(#fff 1px, transparent 1px),
-                linear-gradient(90deg, #fff 1px, transparent 1px)`,
-              backgroundSize: '40px 40px'
-            }}
-          />
+<motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ delay: 0.3 }}
+  className="hidden lg:flex flex-col justify-center
+    bg-slate-900 dark:bg-[#111] p-16 relative overflow-hidden"
+>
+  {/* Background grid */}
+  <div className="absolute inset-0 opacity-[0.04]"
+    style={{
+      backgroundImage: `linear-gradient(#fff 1px, transparent 1px),
+        linear-gradient(90deg, #fff 1px, transparent 1px)`,
+      backgroundSize: '40px 40px'
+    }}
+  />
 
-          {/* Top — Feature cards */}
-          <div className="relative space-y-3">
-            {[
-              { icon: '🚚', label: 'Fast Pickup',    sub: '24–48 hour guaranteed' },
-              { icon: '📋', label: 'Easy Booking',   sub: '3-step simple process'  },
-              { icon: '🌿', label: 'Eco Compliant',  sub: 'Responsible disposal'   },
-              { icon: '🛡️', label: 'Ford Certified', sub: 'Authorised partner'    },
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + i * 0.1 }}
-                className="flex items-center gap-4 bg-white/5
-                  border border-white/10 rounded-2xl px-5 py-4
-                  backdrop-blur-sm"
-              >
-                <span className="text-2xl">{item.icon}</span>
-                <div>
-                  <p className="text-white font-semibold text-sm">
-                    {item.label}
-                  </p>
-                  <p className="text-slate-400 text-xs">{item.sub}</p>
-                </div>
-                <span className="ml-auto w-2 h-2 rounded-full
-                  bg-emerald-400 animate-pulse" />
-              </motion.div>
-            ))}
+  {/* Feature cards only — no CTA card */}
+  <div className="relative space-y-3">
+    {[
+      { icon: '🚚', label: 'Fast Pickup',    sub: '24–48 hour guaranteed' },
+      { icon: '📋', label: 'Easy Booking',   sub: '3-step simple process'  },
+      { icon: '🌿', label: 'Eco Compliant',  sub: 'Responsible disposal'   },
+      { icon: '🛡️', label: 'Ford Certified', sub: 'Authorised partner'    },
+    ].map((item, i) => (
+      <motion.div
+        key={i}
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.4 + i * 0.1 }}
+        className="flex items-center gap-4 bg-white/5
+          border border-white/10 rounded-2xl px-5 py-4
+          backdrop-blur-sm"
+      >
+        <span className="text-2xl">{item.icon}</span>
+        <div>
+          <p className="text-white font-semibold text-sm">
+            {item.label}
+          </p>
+          <p className="text-slate-400 text-xs">{item.sub}</p>
+        </div>
+        <span className="ml-auto w-2 h-2 rounded-full
+          bg-emerald-400 animate-pulse" />
+      </motion.div>
+    ))}
+  </div>
+
+</motion.div>
           </div>
 
           
